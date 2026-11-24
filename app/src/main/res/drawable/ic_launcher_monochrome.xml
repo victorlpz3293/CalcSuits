@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Material You (Android 13+) Monochrome Layer: crisp linear 2x2 grid + solid '=' cutout key -->
+
+    <!-- Top-Left Key Outline + '+' -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#000000"
+        android:strokeWidth="2.0"
+        android:pathData="M35.5,31 H46.5 A4.5,4.5 0 0,1 51,35.5 V46.5 A4.5,4.5 0 0,1 46.5,51 H35.5 A4.5,4.5 0 0,1 31,46.5 V35.5 A4.5,4.5 0 0,1 35.5,31 Z" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#000000"
+        android:strokeWidth="2.0"
+        android:strokeLineCap="round"
+        android:pathData="M37.2,41 L44.8,41 M41,37.2 L41,44.8" />
+
+    <!-- Top-Right Key Outline + '−' -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#000000"
+        android:strokeWidth="2.0"
+        android:pathData="M61.5,31 H72.5 A4.5,4.5 0 0,1 77,35.5 V46.5 A4.5,4.5 0 0,1 72.5,51 H61.5 A4.5,4.5 0 0,1 57,46.5 V35.5 A4.5,4.5 0 0,1 61.5,31 Z" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#000000"
+        android:strokeWidth="2.0"
+        android:strokeLineCap="round"
+        android:pathData="M63.2,41 L70.8,41" />
+
+    <!-- Bottom-Left Key Outline + '×' -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#000000"
+        android:strokeWidth="2.0"
+        android:pathData="M35.5,57 H46.5 A4.5,4.5 0 0,1 51,61.5 V72.5 A4.5,4.5 0 0,1 46.5,77 H35.5 A4.5,4.5 0 0,1 31,72.5 V61.5 A4.5,4.5 0 0,1 35.5,57 Z" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#000000"
+        android:strokeWidth="2.0"
+        android:strokeLineCap="round"
+        android:pathData="M38.2,64.2 L43.8,69.8 M43.8,64.2 L38.2,69.8" />
+
+    <!-- Bottom-Right Signature Key: Solid keycap with '=' cutout via evenOdd fill -->
+    <path
+        android:fillColor="#000000"
+        android:fillType="evenOdd"
+        android:pathData="M61,56 H73 A5,5 0 0,1 78,61 V73 A5,5 0 0,1 73,78 H61 A5,5 0 0,1 56,73 V61 A5,5 0 0,1 61,56 Z M63.1,63.5 H70.9 A1.1,1.1 0 0,1 72,64.6 A1.1,1.1 0 0,1 70.9,65.7 H63.1 A1.1,1.1 0 0,1 62,64.6 A1.1,1.1 0 0,1 63.1,63.5 Z M63.1,68.3 H70.9 A1.1,1.1 0 0,1 72,69.4 A1.1,1.1 0 0,1 70.9,70.5 H63.1 A1.1,1.1 0 0,1 62,69.4 A1.1,1.1 0 0,1 63.1,68.3 Z" />
+</vector>

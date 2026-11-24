@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Solución definitiva: Tema Material 3 estándar -->
+    <style name="Theme.CalcSuits" parent="android:Theme.Material.NoActionBar" />
+</resources>

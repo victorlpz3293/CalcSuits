@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- 2x2 Industrial Braun Key Grid centered strictly within the 66dp safe zone (30..78) -->
+
+    <!-- Top-Left Key: Graphite (#2A2A2F) with subtle '+' symbol -->
+    <path
+        android:fillColor="#2A2A2F"
+        android:strokeColor="#3A3A42"
+        android:strokeWidth="0.6"
+        android:pathData="M35,30 H47 A5,5 0 0,1 52,35 V47 A5,5 0 0,1 47,52 H35 A5,5 0 0,1 30,47 V35 A5,5 0 0,1 35,30 Z" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#A8A8B2"
+        android:strokeWidth="2.1"
+        android:strokeLineCap="round"
+        android:pathData="M36.8,41 L45.2,41 M41,36.8 L41,45.2" />
+
+    <!-- Top-Right Key: Graphite (#2A2A2F) with subtle '−' symbol -->
+    <path
+        android:fillColor="#2A2A2F"
+        android:strokeColor="#3A3A42"
+        android:strokeWidth="0.6"
+        android:pathData="M61,30 H73 A5,5 0 0,1 78,35 V47 A5,5 0 0,1 73,52 H61 A5,5 0 0,1 56,47 V35 A5,5 0 0,1 61,30 Z" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#A8A8B2"
+        android:strokeWidth="2.1"
+        android:strokeLineCap="round"
+        android:pathData="M62.8,41 L71.2,41" />
+
+    <!-- Bottom-Left Key: Graphite (#2A2A2F) with subtle '×' symbol -->
+    <path
+        android:fillColor="#2A2A2F"
+        android:strokeColor="#3A3A42"
+        android:strokeWidth="0.6"
+        android:pathData="M35,56 H47 A5,5 0 0,1 52,61 V73 A5,5 0 0,1 47,78 H35 A5,5 0 0,1 30,73 V61 A5,5 0 0,1 35,56 Z" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#A8A8B2"
+        android:strokeWidth="2.1"
+        android:strokeLineCap="round"
+        android:pathData="M37.9,63.9 L44.1,70.1 M44.1,63.9 L37.9,70.1" />
+
+    <!-- Bottom-Right Signature Key: Braun Orange (#E05A2B) with crisp white '=' -->
+    <path
+        android:fillColor="#E05A2B"
+        android:pathData="M61,56 H73 A5,5 0 0,1 78,61 V73 A5,5 0 0,1 73,78 H61 A5,5 0 0,1 56,73 V61 A5,5 0 0,1 61,56 Z" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2.4"
+        android:strokeLineCap="round"
+        android:pathData="M62.6,64.6 L71.4,64.6 M62.6,69.4 L71.4,69.4" />
+</vector>

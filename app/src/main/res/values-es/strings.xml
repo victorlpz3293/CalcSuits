@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">CalcSuits</string>
+    <string name="calculator">Calculadora</string>
+    <string name="converter">Conversores</string>
+    <string name="finance">Finanzas</string>
+    <string name="engineering">Ingeniería</string>
+    <string name="programmer">Programador</string>
+    <string name="graphs">Gráficas</string>
+    <string name="settings">Ajustes</string>
+    <string name="history">Historial</string>
+    <string name="clear_history">Borrar historial</string>
+</resources>

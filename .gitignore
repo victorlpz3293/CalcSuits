@@ -1,0 +1,27 @@
+# Gradle files
+.gradle/
+build/
+/*/build/
+
+# Kotlin / IntelliJ
+.kotlin/
+*.iml
+.idea/
+!.idea/codeStyles/
+!.idea/copyright/
+!.idea/vcs.xml
+
+# Android Studio
+local.properties
+.DS_Store
+/captures
+.externalNativeBuild
+.cxx
+
+# KSP
+/app/build/generated/ksp/
+
+# Secret files
+*.jks
+*.keystore
+google-services.json
