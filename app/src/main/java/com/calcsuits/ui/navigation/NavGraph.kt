@@ -47,7 +47,8 @@ fun NavGraph(navController: NavHostController, onOpenDrawer: () -> Unit) {
                 onCategorySelected = vm::onCategorySelected,
                 onValueChanged = vm::onValueChange,
                 onUnitChange = vm::onUnitChange,
-                onSwap = vm::swapUnits
+                onSwap = vm::swapUnits,
+                onRefreshCurrency = vm::refreshCurrencyRates
             )
         }
         composable(Screen.Finance.route) {

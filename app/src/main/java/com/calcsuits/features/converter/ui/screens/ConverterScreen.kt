@@ -20,9 +20,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.SwapVert
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilledIconButton
@@ -65,6 +69,7 @@ import com.calcsuits.ui.components.CalcPinnedScaffold
 import com.calcsuits.ui.components.CalcResultCard
 import com.calcsuits.ui.components.CalcSuitsHeader
 import com.calcsuits.ui.theme.JetBrainsMonoFontFamily
+import com.calcsuits.ui.util.asString
 import com.calcsuits.ui.util.rememberCurrentLocale
 import kotlinx.coroutines.launch
 
@@ -75,7 +80,8 @@ fun ConverterScreen(
     onCategorySelected: (ConversionCategory) -> Unit,
     onValueChanged: (String) -> Unit,
     onUnitChange: (Boolean, ConversionUnit) -> Unit = { _, _ -> },
-    onSwap: () -> Unit = {}
+    onSwap: () -> Unit = {},
+    onRefreshCurrency: () -> Unit = {}
 ) {
     val categories = ConversionCategory.all
     val clipboard = LocalClipboardManager.current
@@ -154,7 +160,7 @@ fun ConverterScreen(
                                 Spacer(Modifier.width(8.dp))
                                 UnitDropdownPill(
                                     selected = state.fromUnit,
-                                    units = state.selectedCategory.units,
+                                    units = state.availableUnits,
                                     onSelected = { onUnitChange(true, it) },
                                     tag = "converter_from_unit",
                                     modifier = Modifier.weight(1f, fill = false)
@@ -202,7 +208,7 @@ fun ConverterScreen(
                                 Spacer(Modifier.width(8.dp))
                                 UnitDropdownPill(
                                     selected = state.toUnit,
-                                    units = state.selectedCategory.units,
+                                    units = state.availableUnits,
                                     onSelected = { onUnitChange(false, it) },
                                     tag = "converter_to_unit",
                                     modifier = Modifier.weight(1f, fill = false)
@@ -223,8 +229,13 @@ fun ConverterScreen(
                                         ),
                                         color = MaterialTheme.colorScheme.onSurface
                                     )
+                                    val toUnitSubtitle = if (state.toUnit.symbol in state.referenceCurrencySymbols) {
+                                        "${stringResource(state.toUnit.nameRes)} · ${stringResource(R.string.converter_rate_reference_tag)}"
+                                    } else {
+                                        stringResource(state.toUnit.nameRes)
+                                    }
                                     Text(
-                                        text = stringResource(state.toUnit.nameRes),
+                                        text = toUnitSubtitle,
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -276,25 +287,72 @@ fun ConverterScreen(
             }
         }
     ) {
-            state.selectedCategory.noteRes?.let { noteRes ->
+            if (state.selectedCategory == ConversionCategory.Currency) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 18.dp),
+                        .padding(start = 18.dp, end = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Info,
+                        imageVector = if (state.isCurrencyOffline) Icons.Default.CloudOff else Icons.Default.Schedule,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(16.dp)
                     )
                     Text(
-                        text = stringResource(noteRes),
+                        text = state.currencyStatusText?.asString()
+                            ?: stringResource(R.string.cat_currency_note),
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier
+                            .weight(1f)
+                            .testTag("converter_currency_status")
                     )
+                    IconButton(
+                        onClick = onRefreshCurrency,
+                        enabled = !state.isRefreshingCurrency,
+                        modifier = Modifier.testTag("converter_currency_refresh")
+                    ) {
+                        if (state.isRefreshingCurrency) {
+                            CircularProgressIndicator(
+                                modifier = Modifier
+                                    .size(18.dp)
+                                    .testTag("converter_currency_loading"),
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = stringResource(R.string.cd_converter_refresh_rates),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                }
+            } else {
+                state.selectedCategory.noteRes?.let { noteRes ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 18.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Info,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Text(
+                            text = stringResource(noteRes),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
 
@@ -328,8 +386,13 @@ fun ConverterScreen(
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis
                                     )
+                                    val previewSymbolLabel = if (preview.unit.symbol in state.referenceCurrencySymbols) {
+                                        "${preview.unit.symbol} · ${stringResource(R.string.converter_rate_reference_tag)}"
+                                    } else {
+                                        preview.unit.symbol
+                                    }
                                     Text(
-                                        text = preview.unit.symbol,
+                                        text = previewSymbolLabel,
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )

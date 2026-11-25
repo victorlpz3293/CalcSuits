@@ -128,12 +128,16 @@ class ConvertUnitsUseCaseTest {
     fun currencyUsdToEurWithFixedDecimalsAndRoundTrip() {
         val usd = unitOf(ConversionCategory.Currency, "USD")
         val eur = unitOf(ConversionCategory.Currency, "EUR")
+        val nio = unitOf(ConversionCategory.Currency, "NIO")
 
         val eurFormatted = useCase(100.0, usd, eur, fixedDecimals = 2, locale = Locale.US)
         assertEquals("92.00", eurFormatted)
 
         val backToUsd = useCase(eurFormatted.toDouble(), eur, usd, fixedDecimals = 2, locale = Locale.US)
         assertEquals("100.00", backToUsd)
+
+        val largeNioFormatted = useCase(1000.0, usd, nio, fixedDecimals = 2, locale = Locale.US)
+        assertEquals("36,620.00", largeNioFormatted)
     }
 
     @Test

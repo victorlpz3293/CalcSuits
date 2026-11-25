@@ -5,13 +5,13 @@ import retrofit2.http.GET
 import retrofit2.http.Path
 
 interface ExchangeRateApi {
-    @GET("v6/{apiKey}/latest/{base}")
+    @GET("v6/latest/{base}")
     suspend fun getLatestRates(
-        @Path("apiKey") apiKey: String,
-        @Path("base") base: String
+        @Path("base") base: String = DEFAULT_BASE
     ): CurrencyResponse
 
     companion object {
-        const val BASE_URL = "https://v6.exchangerate-api.com/"
+        const val BASE_URL = "https://open.er-api.com/"
+        const val DEFAULT_BASE = "USD"
     }
 }

@@ -145,6 +145,12 @@
     <string name="cat_time">Time</string>
     <string name="cat_currency">Currency</string>
     <string name="cat_currency_note">Approximate local reference rates (USD base)</string>
+    <string name="converter_rates_updated">Updated: %1$s</string>
+    <string name="converter_rates_offline_cached">Offline · rates from %1$s</string>
+    <string name="converter_rates_offline_reference">Offline · reference rates</string>
+    <string name="converter_rates_updating">Updating rates…</string>
+    <string name="converter_rate_reference_tag">reference</string>
+    <string name="cd_converter_refresh_rates">Refresh exchange rates</string>
 
     <string name="unit_meters">Meters</string>
     <string name="unit_kilometers">Kilometers</string>
