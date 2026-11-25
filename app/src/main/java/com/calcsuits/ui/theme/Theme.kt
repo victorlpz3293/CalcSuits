@@ -21,13 +21,16 @@ import com.calcsuits.R
 
 enum class AppThemeMode(val storageKey: String, @StringRes val labelRes: Int) {
     SYSTEM("system", R.string.theme_system),
-    DARK("dark", R.string.theme_dark),
-    OLED("oled", R.string.theme_oled),
-    LIGHT("light", R.string.theme_light);
+    LIGHT("light", R.string.theme_light),
+    DARK("dark", R.string.theme_dark);
 
     companion object {
-        fun fromKey(key: String?): AppThemeMode =
-            entries.firstOrNull { it.storageKey == key } ?: DARK
+        fun fromKey(key: String?): AppThemeMode = when (key) {
+            SYSTEM.storageKey -> SYSTEM
+            LIGHT.storageKey -> LIGHT
+            DARK.storageKey, "carbon", "oled" -> DARK
+            else -> DARK
+        }
     }
 }
 
@@ -88,10 +91,10 @@ private val CarbonDarkColorScheme = darkColorScheme(
     onPrimary = BraunOnOrange,
     primaryContainer = BraunOrangeContainerDark,
     onPrimaryContainer = BraunOnOrangeContainerDark,
-    secondary = BraunSage,
-    onSecondary = BraunOnSage,
-    secondaryContainer = BraunSageContainerDark,
-    onSecondaryContainer = BraunOnSageContainerDark,
+    secondary = TextSecondaryDark,
+    onSecondary = CarbonBackground,
+    secondaryContainer = CarbonKeyNumeric,
+    onSecondaryContainer = TextPrimaryDark,
     tertiary = BraunAmber,
     onTertiary = BraunOnAmber,
     tertiaryContainer = BraunAmberContainerDark,
@@ -116,6 +119,8 @@ private val CarbonDarkColorScheme = darkColorScheme(
 )
 
 private val OledDarkColorScheme = CarbonDarkColorScheme.copy(
+    onSecondary = OledBackground,
+    secondaryContainer = OledKeyNumeric,
     background = OledBackground,
     surface = OledSurface,
     surfaceVariant = OledKeyScientific,
@@ -133,10 +138,10 @@ private val PaperLightColorScheme = lightColorScheme(
     onPrimary = BraunOnOrange,
     primaryContainer = BraunOrangeContainerLight,
     onPrimaryContainer = BraunOnOrangeContainerLight,
-    secondary = BraunSage,
-    onSecondary = BraunOnSage,
-    secondaryContainer = BraunSageContainerLight,
-    onSecondaryContainer = BraunOnSageContainerLight,
+    secondary = TextSecondaryLight,
+    onSecondary = PaperSurface,
+    secondaryContainer = PaperKeyNumeric,
+    onSecondaryContainer = TextPrimaryLight,
     tertiary = BraunAmber,
     onTertiary = BraunOnAmber,
     tertiaryContainer = BraunAmberContainerLight,
@@ -177,27 +182,26 @@ object CalcSuitsTheme {
 @Composable
 fun CalcSuitsTheme(
     themeMode: AppThemeMode = AppThemeMode.DARK,
+    usePureBlackOled: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val systemDark = isSystemInDarkTheme()
     val isDark = when (themeMode) {
         AppThemeMode.SYSTEM -> systemDark
-        AppThemeMode.DARK, AppThemeMode.OLED -> true
+        AppThemeMode.DARK -> true
         AppThemeMode.LIGHT -> false
     }
 
-    val colorScheme = when (themeMode) {
-        AppThemeMode.OLED -> OledDarkColorScheme
-        AppThemeMode.DARK -> CarbonDarkColorScheme
-        AppThemeMode.LIGHT -> PaperLightColorScheme
-        AppThemeMode.SYSTEM -> if (systemDark) CarbonDarkColorScheme else PaperLightColorScheme
+    val colorScheme = when {
+        !isDark -> PaperLightColorScheme
+        usePureBlackOled -> OledDarkColorScheme
+        else -> CarbonDarkColorScheme
     }
 
-    val extendedColors = when (themeMode) {
-        AppThemeMode.OLED -> OledExtendedColors
-        AppThemeMode.DARK -> CarbonExtendedColors
-        AppThemeMode.LIGHT -> PaperExtendedColors
-        AppThemeMode.SYSTEM -> if (systemDark) CarbonExtendedColors else PaperExtendedColors
+    val extendedColors = when {
+        !isDark -> PaperExtendedColors
+        usePureBlackOled -> OledExtendedColors
+        else -> CarbonExtendedColors
     }
 
     val view = LocalView.current

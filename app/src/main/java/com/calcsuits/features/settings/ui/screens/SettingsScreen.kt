@@ -3,11 +3,8 @@ package com.calcsuits.features.settings.ui.screens
 import androidx.annotation.StringRes
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -18,11 +15,9 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Palette
@@ -52,10 +47,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
@@ -73,12 +64,8 @@ import com.calcsuits.ui.components.CalcFilterChip
 import com.calcsuits.ui.components.CalcSuitsHeader
 import com.calcsuits.ui.components.calcSegmentedButtonColors
 import com.calcsuits.ui.theme.AppThemeMode
-import com.calcsuits.ui.theme.BraunOrange
 import com.calcsuits.ui.theme.CalcSuitsTheme
-import com.calcsuits.ui.theme.CarbonSurface
 import com.calcsuits.ui.theme.JetBrainsMonoFontFamily
-import com.calcsuits.ui.theme.OledBackground
-import com.calcsuits.ui.theme.PaperBackground
 import com.calcsuits.ui.util.formatDecimal
 import com.calcsuits.ui.util.rememberCurrentLocale
 import java.util.Locale
@@ -101,6 +88,7 @@ fun SettingsScreen(
     settings: AppSettings,
     onMenuClick: () -> Unit,
     onThemeModeChange: (AppThemeMode) -> Unit,
+    onUseOledBlackChange: (Boolean) -> Unit,
     onUseRadiansChange: (Boolean) -> Unit,
     onDecimalPrecisionChange: (Int) -> Unit,
     onHapticChange: (Boolean) -> Unit,
@@ -111,6 +99,12 @@ fun SettingsScreen(
     val extColors = CalcSuitsTheme.colors
     val locale = rememberCurrentLocale()
     val configuration = LocalConfiguration.current
+    val systemDark = isSystemInDarkTheme()
+    val isEffectiveDark = when (settings.themeMode) {
+        AppThemeMode.SYSTEM -> systemDark
+        AppThemeMode.DARK -> true
+        AppThemeMode.LIGHT -> false
+    }
 
     val selectedLanguage = remember(configuration) {
         val currentLocales = AppCompatDelegate.getApplicationLocales()
@@ -153,22 +147,71 @@ fun SettingsScreen(
                         style = MaterialTheme.typography.titleSmall,
                         color = MaterialTheme.colorScheme.onSurface
                     )
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        AppThemeMode.entries.chunked(2).forEach { row ->
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                        AppThemeMode.entries.forEachIndexed { index, mode ->
+                            SegmentedButton(
+                                selected = settings.themeMode == mode,
+                                onClick = { onThemeModeChange(mode) },
+                                shape = SegmentedButtonDefaults.itemShape(
+                                    index = index,
+                                    count = AppThemeMode.entries.size
+                                ),
+                                colors = calcSegmentedButtonColors(),
+                                modifier = Modifier.testTag("theme_option_${mode.storageKey}")
                             ) {
-                                row.forEach { mode ->
-                                    ThemeOptionTile(
-                                        mode = mode,
-                                        selected = settings.themeMode == mode,
-                                        onClick = { onThemeModeChange(mode) },
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                }
+                                Text(
+                                    text = stringResource(mode.labelRes),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
                             }
                         }
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
+                            Text(
+                                text = stringResource(R.string.settings_oled_black_title),
+                                style = MaterialTheme.typography.titleSmall,
+                                color = if (isEffectiveDark) {
+                                    MaterialTheme.colorScheme.onSurface
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                }
+                            )
+                            Text(
+                                text = stringResource(R.string.settings_oled_black_desc),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (isEffectiveDark) {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                }
+                            )
+                        }
+                        Switch(
+                            checked = settings.useOledBlack,
+                            onCheckedChange = onUseOledBlackChange,
+                            enabled = isEffectiveDark,
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                                checkedTrackColor = MaterialTheme.colorScheme.primary,
+                                uncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                uncheckedTrackColor = MaterialTheme.colorScheme.surfaceContainer,
+                                uncheckedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                                disabledCheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                                disabledCheckedTrackColor = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.5f),
+                                disabledCheckedBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                                disabledUncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                                disabledUncheckedTrackColor = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.5f),
+                                disabledUncheckedBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                            ),
+                            modifier = Modifier.testTag("settings_oled_switch")
+                        )
                     }
 
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -468,100 +511,5 @@ private fun SectionHeader(
             color = MaterialTheme.colorScheme.primary,
             fontWeight = FontWeight.Bold
         )
-    }
-}
-
-@Composable
-private fun ThemeOptionTile(
-    mode: AppThemeMode,
-    selected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val swatchBorderColor = if (selected) {
-        MaterialTheme.colorScheme.primary
-    } else {
-        MaterialTheme.colorScheme.outline
-    }
-
-    Surface(
-        onClick = onClick,
-        modifier = modifier.testTag("theme_option_${mode.storageKey}"),
-        shape = MaterialTheme.shapes.medium,
-        color = if (selected) {
-            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f)
-        } else {
-            MaterialTheme.colorScheme.surfaceContainer
-        },
-        border = BorderStroke(
-            width = if (selected) 1.5.dp else 1.dp,
-            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
-        )
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(24.dp)
-                    .clip(CircleShape)
-                    .border(1.dp, swatchBorderColor, CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                when (mode) {
-                    AppThemeMode.SYSTEM -> {
-                        // Distinct split dark/paper preview swatch for System mode
-                        Canvas(modifier = Modifier.fillMaxSize()) {
-                            drawRect(
-                                color = CarbonSurface,
-                                topLeft = Offset.Zero,
-                                size = Size(size.width / 2f, size.height)
-                            )
-                            drawRect(
-                                color = PaperBackground,
-                                topLeft = Offset(size.width / 2f, 0f),
-                                size = Size(size.width / 2f, size.height)
-                            )
-                        }
-                    }
-                    AppThemeMode.DARK -> {
-                        Box(modifier = Modifier.fillMaxSize().background(CarbonSurface))
-                    }
-                    AppThemeMode.OLED -> {
-                        Box(modifier = Modifier.fillMaxSize().background(OledBackground))
-                    }
-                    AppThemeMode.LIGHT -> {
-                        Box(modifier = Modifier.fillMaxSize().background(PaperBackground))
-                    }
-                }
-
-                if (selected) {
-                    Box(
-                        modifier = Modifier
-                            .size(16.dp)
-                            .clip(CircleShape)
-                            .background(BraunOrange),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Check,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(11.dp)
-                        )
-                    }
-                }
-            }
-            Text(
-                text = stringResource(mode.labelRes),
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
     }
 }

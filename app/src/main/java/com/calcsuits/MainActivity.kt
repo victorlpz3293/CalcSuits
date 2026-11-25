@@ -25,7 +25,10 @@ class MainActivity : AppCompatActivity() {
             val settingsVm: SettingsViewModel = hiltViewModel()
             val settings by settingsVm.settings.collectAsStateWithLifecycle()
 
-            CalcSuitsTheme(themeMode = settings.themeMode) {
+            CalcSuitsTheme(
+                themeMode = settings.themeMode,
+                usePureBlackOled = settings.useOledBlack
+            ) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background

@@ -7,11 +7,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.consumeWindowInsets
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -21,7 +18,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.ContentCopy
@@ -36,12 +32,12 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -65,6 +61,7 @@ import com.calcsuits.domain.model.converter.ConversionUnit
 import com.calcsuits.features.converter.ui.viewmodel.ConverterState
 import com.calcsuits.ui.components.CalcCard
 import com.calcsuits.ui.components.CalcFilterChip
+import com.calcsuits.ui.components.CalcPinnedScaffold
 import com.calcsuits.ui.components.CalcResultCard
 import com.calcsuits.ui.components.CalcSuitsHeader
 import com.calcsuits.ui.theme.JetBrainsMonoFontFamily
@@ -86,8 +83,13 @@ fun ConverterScreen(
     val locale = rememberCurrentLocale()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    val scrollState = rememberScrollState()
 
-    Scaffold(
+    LaunchedEffect(state.selectedCategory) {
+        scrollState.scrollTo(0)
+    }
+
+    CalcPinnedScaffold(
         topBar = {
             CalcSuitsHeader(
                 title = stringResource(R.string.converter),
@@ -96,18 +98,13 @@ fun ConverterScreen(
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
-        containerColor = MaterialTheme.colorScheme.background
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .consumeWindowInsets(padding)
-                .imePadding()
-                .verticalScroll(rememberScrollState())
-                .padding(vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
+        pinnedPadding = PaddingValues(top = 10.dp, bottom = 10.dp),
+        pinnedSpacing = 12.dp,
+        contentPadding = PaddingValues(top = 2.dp, bottom = 12.dp),
+        contentSpacing = 12.dp,
+        scrollState = scrollState,
+        compactHeightThreshold = 420.dp,
+        pinnedContent = {
             LazyRow(
                 contentPadding = PaddingValues(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -277,7 +274,8 @@ fun ConverterScreen(
                     )
                 }
             }
-
+        }
+    ) {
             state.selectedCategory.noteRes?.let { noteRes ->
                 Row(
                     modifier = Modifier
@@ -360,7 +358,6 @@ fun ConverterScreen(
             }
 
             Spacer(Modifier.height(12.dp))
-        }
     }
 }
 

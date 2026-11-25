@@ -110,6 +110,7 @@ fun NavGraph(navController: NavHostController, onOpenDrawer: () -> Unit) {
                 settings = settings,
                 onMenuClick = onOpenDrawer,
                 onThemeModeChange = vm::setThemeMode,
+                onUseOledBlackChange = vm::setUseOledBlack,
                 onUseRadiansChange = vm::setUseRadians,
                 onDecimalPrecisionChange = vm::setDecimalPrecision,
                 onHapticChange = vm::setHapticEnabled,

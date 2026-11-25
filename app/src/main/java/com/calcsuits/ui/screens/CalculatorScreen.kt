@@ -9,9 +9,11 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -25,6 +27,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Backspace
 import androidx.compose.material.icons.filled.ContentCopy
@@ -181,78 +184,136 @@ fun CalculatorScreen(
             )
         }
     ) { padding ->
-        Column(
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .navigationBarsPadding()
-                .padding(horizontal = 14.dp, vertical = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+                .consumeWindowInsets(padding)
+                .padding(horizontal = 14.dp, vertical = 10.dp)
         ) {
-            CalculatorDisplayPanel(
-                expression = expression,
-                previousExpression = state.previousExpression,
-                livePreview = state.livePreview,
-                errorMessage = state.errorMessage,
-                memory = state.memory,
-                useRadians = state.useRadians,
-                isScientificExpanded = state.isScientificExpanded,
-                onToggleAngle = {
-                    triggerHaptic()
-                    onAction(CalculatorAction.ToggleAngleUnit)
-                },
-                onCopy = {
-                    val toCopy = state.livePreview.ifBlank { state.number1.ifBlank { "0" } }
-                    clipboard.setText(AnnotatedString(toCopy))
-                    scope.launch {
-                        snackbarHostState.showSnackbar(
-                            context.getString(R.string.copied_value_format, toCopy)
+            val isCompactHeight = maxHeight < 460.dp
+
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                CalculatorDisplayPanel(
+                    expression = expression,
+                    previousExpression = state.previousExpression,
+                    livePreview = state.livePreview,
+                    errorMessage = state.errorMessage,
+                    memory = state.memory,
+                    useRadians = state.useRadians,
+                    isScientificExpanded = state.isScientificExpanded,
+                    onToggleAngle = {
+                        triggerHaptic()
+                        onAction(CalculatorAction.ToggleAngleUnit)
+                    },
+                    onCopy = {
+                        val toCopy = state.livePreview.ifBlank { state.number1.ifBlank { "0" } }
+                        clipboard.setText(AnnotatedString(toCopy))
+                        scope.launch {
+                            snackbarHostState.showSnackbar(
+                                context.getString(R.string.copied_value_format, toCopy)
+                            )
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .let {
+                            if (isCompactHeight) it.height(104.dp)
+                            else it.weight(if (state.isScientificExpanded) 0.30f else 0.36f)
+                        }
+                )
+
+                if (isCompactHeight) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                            .verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        AnimatedVisibility(
+                            visible = state.isScientificExpanded,
+                            enter = fadeIn() + expandVertically(),
+                            exit = fadeOut() + shrinkVertically()
+                        ) {
+                            ScientificPanel(
+                                onSymbol = { symbol ->
+                                    triggerHaptic()
+                                    when (symbol) {
+                                        "√" -> onAction(CalculatorAction.SquareRoot)
+                                        "x²" -> onAction(CalculatorAction.Square)
+                                        "x!" -> onAction(CalculatorAction.ScientificFunction("fact"))
+                                        "π", "e" -> onAction(CalculatorAction.Constant(symbol))
+                                        "^" -> onAction(CalculatorAction.Operation(CalculatorOperation.Power))
+                                        "mod" -> onAction(CalculatorAction.Operation(CalculatorOperation.Modulo))
+                                        else -> onAction(CalculatorAction.ScientificFunction(symbol))
+                                    }
+                                }
+                            )
+                        }
+
+                        MemoryStrip(
+                            hasMemory = state.memory != "0",
+                            onAction = { action ->
+                                triggerHaptic()
+                                onAction(action)
+                            }
+                        )
+
+                        CalculatorKeypad(
+                            onAction = { action ->
+                                triggerHaptic()
+                                onAction(action)
+                            },
+                            fillHeight = false,
+                            modifier = Modifier.fillMaxWidth()
                         )
                     }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(if (state.isScientificExpanded) 0.30f else 0.36f)
-            )
-
-            AnimatedVisibility(
-                visible = state.isScientificExpanded,
-                enter = fadeIn() + expandVertically(),
-                exit = fadeOut() + shrinkVertically()
-            ) {
-                ScientificPanel(
-                    onSymbol = { symbol ->
-                        triggerHaptic()
-                        when (symbol) {
-                            "√" -> onAction(CalculatorAction.SquareRoot)
-                            "x²" -> onAction(CalculatorAction.Square)
-                            "x!" -> onAction(CalculatorAction.ScientificFunction("fact"))
-                            "π", "e" -> onAction(CalculatorAction.Constant(symbol))
-                            "^" -> onAction(CalculatorAction.Operation(CalculatorOperation.Power))
-                            "mod" -> onAction(CalculatorAction.Operation(CalculatorOperation.Modulo))
-                            else -> onAction(CalculatorAction.ScientificFunction(symbol))
-                        }
+                } else {
+                    AnimatedVisibility(
+                        visible = state.isScientificExpanded,
+                        enter = fadeIn() + expandVertically(),
+                        exit = fadeOut() + shrinkVertically()
+                    ) {
+                        ScientificPanel(
+                            onSymbol = { symbol ->
+                                triggerHaptic()
+                                when (symbol) {
+                                    "√" -> onAction(CalculatorAction.SquareRoot)
+                                    "x²" -> onAction(CalculatorAction.Square)
+                                    "x!" -> onAction(CalculatorAction.ScientificFunction("fact"))
+                                    "π", "e" -> onAction(CalculatorAction.Constant(symbol))
+                                    "^" -> onAction(CalculatorAction.Operation(CalculatorOperation.Power))
+                                    "mod" -> onAction(CalculatorAction.Operation(CalculatorOperation.Modulo))
+                                    else -> onAction(CalculatorAction.ScientificFunction(symbol))
+                                }
+                            }
+                        )
                     }
-                )
-            }
 
-            MemoryStrip(
-                hasMemory = state.memory != "0",
-                onAction = { action ->
-                    triggerHaptic()
-                    onAction(action)
+                    MemoryStrip(
+                        hasMemory = state.memory != "0",
+                        onAction = { action ->
+                            triggerHaptic()
+                            onAction(action)
+                        }
+                    )
+
+                    CalculatorKeypad(
+                        onAction = { action ->
+                            triggerHaptic()
+                            onAction(action)
+                        },
+                        fillHeight = true,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(if (state.isScientificExpanded) 0.56f else 0.64f)
+                    )
                 }
-            )
-
-            CalculatorKeypad(
-                onAction = { action ->
-                    triggerHaptic()
-                    onAction(action)
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(if (state.isScientificExpanded) 0.56f else 0.64f)
-            )
+            }
         }
 
         if (showHistory) {
@@ -517,6 +578,7 @@ private fun MemoryStrip(
 @Composable
 private fun CalculatorKeypad(
     onAction: (CalculatorAction) -> Unit,
+    fillHeight: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val extColors = CalcSuitsTheme.colors
@@ -537,7 +599,7 @@ private fun CalculatorKeypad(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f),
+                    .let { if (fillHeight) it.weight(1f) else it.height(44.dp) },
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 row.forEach { symbol ->

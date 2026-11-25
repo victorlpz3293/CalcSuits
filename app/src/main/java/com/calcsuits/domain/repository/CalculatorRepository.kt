@@ -14,6 +14,7 @@ interface CalculatorRepository {
     fun isScientificExpanded(): Flow<Boolean>
     suspend fun setScientificExpanded(isExpanded: Boolean)
     suspend fun setThemeMode(mode: AppThemeMode)
+    suspend fun setUseOledBlack(enabled: Boolean)
     suspend fun setUseRadians(useRadians: Boolean)
     suspend fun setDecimalPrecision(precision: Int)
     suspend fun setHapticEnabled(enabled: Boolean)

@@ -319,12 +319,13 @@
 
     <!-- Settings -->
     <string name="theme_system">Sistema</string>
-    <string name="theme_dark">Oscuro Carbono</string>
-    <string name="theme_oled">Negro OLED</string>
     <string name="theme_light">Claro</string>
+    <string name="theme_dark">Oscuro</string>
 
     <string name="settings_section_appearance">Apariencia</string>
     <string name="settings_theme_title">Tema de la interfaz</string>
+    <string name="settings_oled_black_title">Negro puro (OLED)</string>
+    <string name="settings_oled_black_desc">Usa fondo #000000 real en modo oscuro</string>
     <string name="settings_language_title">Idioma de la aplicación</string>
     <string name="settings_language_system">Sistema</string>
     <string name="settings_language_spanish">Español</string>

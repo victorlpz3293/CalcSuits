@@ -3,14 +3,15 @@ package com.calcsuits.features.programmer.ui.screens
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -21,7 +22,6 @@ import androidx.compose.material.icons.automirrored.rounded.Backspace
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
@@ -46,11 +46,14 @@ import com.calcsuits.R
 import com.calcsuits.features.programmer.ui.viewmodel.ProgrammerState
 import com.calcsuits.ui.components.CalcCard
 import com.calcsuits.ui.components.CalcFilterChip
+import com.calcsuits.ui.components.CalcPinnedScaffold
 import com.calcsuits.ui.components.CalcSuitsHeader
 import com.calcsuits.ui.components.calcSegmentedButtonColors
 import com.calcsuits.ui.theme.CalcSuitsTheme
 import com.calcsuits.ui.theme.JetBrainsMonoFontFamily
 import com.calcsuits.ui.util.asString
+
+private val MIN_PROPORTIONAL_KEYPAD_HEIGHT = 270.dp
 
 @Composable
 fun ProgrammerScreen(
@@ -67,7 +70,7 @@ fun ProgrammerScreen(
     var showBitGrid by remember { mutableStateOf(false) }
     val extColors = CalcSuitsTheme.colors
 
-    Scaffold(
+    CalcPinnedScaffold(
         topBar = {
             CalcSuitsHeader(
                 title = stringResource(R.string.programmer),
@@ -75,17 +78,14 @@ fun ProgrammerScreen(
                 onMenuClick = onMenuClick
             )
         },
-        containerColor = MaterialTheme.colorScheme.background
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .navigationBarsPadding()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 14.dp, vertical = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
+        applyImePadding = false,
+        enableContentScroll = false,
+        pinnedPadding = PaddingValues(start = 14.dp, top = 2.dp, end = 14.dp, bottom = 4.dp),
+        pinnedSpacing = 4.dp,
+        contentPadding = PaddingValues(start = 14.dp, top = 2.dp, end = 14.dp, bottom = 8.dp),
+        contentSpacing = 0.dp,
+        compactHeightThreshold = 340.dp,
+        pinnedContent = {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -110,9 +110,9 @@ fun ProgrammerScreen(
 
             CalcCard(
                 shape = MaterialTheme.shapes.extraLarge,
-                contentPadding = PaddingValues(12.dp)
+                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     if (state.pendingExpression.isNotBlank()) {
                         Text(
                             text = state.pendingExpression,
@@ -169,23 +169,51 @@ fun ProgrammerScreen(
                     )
                 }
             }
-
+        }
+    ) {
+        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
             if (showBitGrid) {
-                BitToggleMatrix(
-                    rawValue = state.rawValue,
-                    wordSize = state.wordSize.coerceAtMost(32),
-                    onToggleBit = onToggleBit
-                )
+                val bitContainerModifier = if (constraints.hasBoundedHeight) {
+                    Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                } else {
+                    Modifier.fillMaxWidth()
+                }
+                Column(modifier = bitContainerModifier) {
+                    BitToggleMatrix(
+                        rawValue = state.rawValue,
+                        wordSize = state.wordSize.coerceAtMost(32),
+                        onToggleBit = onToggleBit
+                    )
+                    Spacer(Modifier.height(4.dp))
+                }
             } else {
                 val bitwiseRows = listOf(
                     listOf("AND", "OR", "XOR", "NOT"),
                     listOf("NAND", "NOR", "SHL", "SHR")
                 )
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                val fitProportionally = constraints.hasBoundedHeight &&
+                    maxHeight >= MIN_PROPORTIONAL_KEYPAD_HEIGHT
+                val spacing = if (fitProportionally) 5.dp else 6.dp
+                val keypadContainerModifier = when {
+                    fitProportionally -> Modifier.fillMaxSize()
+                    constraints.hasBoundedHeight -> Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                    else -> Modifier.fillMaxWidth()
+                }
+
+                Column(
+                    modifier = keypadContainerModifier,
+                    verticalArrangement = Arrangement.spacedBy(spacing)
+                ) {
                     bitwiseRows.forEach { row ->
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .let { if (fitProportionally) it.weight(0.78f) else it.height(38.dp) },
+                            horizontalArrangement = Arrangement.spacedBy(spacing)
                         ) {
                             row.forEach { op ->
                                 val isActiveOp = state.pendingOperator == op
@@ -193,7 +221,7 @@ fun ProgrammerScreen(
                                     onClick = { onBitwise(op) },
                                     modifier = Modifier
                                         .weight(1f)
-                                        .height(40.dp)
+                                        .fillMaxHeight()
                                         .testTag("prog_op_$op"),
                                     shape = RoundedCornerShape(10.dp),
                                     color = if (isActiveOp) extColors.technicalContainer else extColors.scientificKey,
@@ -213,17 +241,21 @@ fun ProgrammerScreen(
                             }
                         }
                     }
-                }
 
-                ProgrammerKeypad(
-                    activeBase = state.activeBase,
-                    onKeyPress = onKeyPress,
-                    onBackspace = onBackspace,
-                    onClear = onClear,
-                    onEquals = { onBitwise("=") }
-                )
+                    ProgrammerKeypad(
+                        activeBase = state.activeBase,
+                        fillHeight = fitProportionally,
+                        spacing = spacing,
+                        onKeyPress = onKeyPress,
+                        onBackspace = onBackspace,
+                        onClear = onClear,
+                        onEquals = { onBitwise("=") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .let { if (fitProportionally) it.weight(5f) else it }
+                    )
+                }
             }
-            Spacer(Modifier.height(8.dp))
         }
     }
 }
@@ -247,7 +279,7 @@ private fun BaseRow(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 10.dp, vertical = 8.dp),
+                .padding(horizontal = 10.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
@@ -280,10 +312,13 @@ private fun BaseRow(
 @Composable
 private fun ProgrammerKeypad(
     activeBase: Int,
+    fillHeight: Boolean,
+    spacing: Dp,
     onKeyPress: (String) -> Unit,
     onBackspace: () -> Unit,
     onClear: () -> Unit,
-    onEquals: () -> Unit
+    onEquals: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val allowedDigits = when (activeBase) {
         2 -> setOf("0", "1", "00")
@@ -292,20 +327,25 @@ private fun ProgrammerKeypad(
         else -> setOf("0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D", "E", "F", "00")
     }
 
-    val keyHeight = 48.dp
-    val spacing = 6.dp
+    val minKeyHeight = 44.dp
+    val rowKeyHeight: Dp? = if (fillHeight) null else minKeyHeight
 
-    Column(verticalArrangement = Arrangement.spacedBy(spacing)) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(spacing)
+    ) {
         // Dedicated A-F hex bar cleanly visible even when disabled in DEC/OCT/BIN
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .let { if (fillHeight) it.weight(1f) else it },
             horizontalArrangement = Arrangement.spacedBy(spacing)
         ) {
             listOf("A", "B", "C", "D", "E", "F").forEach { hexKey ->
                 ProgrammerKey(
                     key = hexKey,
                     enabled = hexKey in allowedDigits,
-                    height = 44.dp,
+                    height = rowKeyHeight,
                     modifier = Modifier.weight(1f),
                     onClick = { onKeyPress(hexKey) }
                 )
@@ -314,14 +354,16 @@ private fun ProgrammerKeypad(
 
         // Row 1: 7 8 9 AC
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .let { if (fillHeight) it.weight(1f) else it },
             horizontalArrangement = Arrangement.spacedBy(spacing)
         ) {
             listOf("7", "8", "9", "AC").forEach { key ->
                 ProgrammerKey(
                     key = key,
                     enabled = key == "AC" || key in allowedDigits,
-                    height = keyHeight,
+                    height = rowKeyHeight,
                     modifier = Modifier.weight(1f),
                     onClick = { if (key == "AC") onClear() else onKeyPress(key) }
                 )
@@ -330,14 +372,16 @@ private fun ProgrammerKeypad(
 
         // Row 2: 4 5 6 DEL
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .let { if (fillHeight) it.weight(1f) else it },
             horizontalArrangement = Arrangement.spacedBy(spacing)
         ) {
             listOf("4", "5", "6", "DEL").forEach { key ->
                 ProgrammerKey(
                     key = key,
                     enabled = key == "DEL" || key in allowedDigits,
-                    height = keyHeight,
+                    height = rowKeyHeight,
                     modifier = Modifier.weight(1f),
                     onClick = { if (key == "DEL") onBackspace() else onKeyPress(key) }
                 )
@@ -346,43 +390,51 @@ private fun ProgrammerKeypad(
 
         // Rows 3 & 4: standard muscle-memory layout with 0 / 00 on bottom row and = on bottom-right
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .let { if (fillHeight) it.weight(2f) else it },
             horizontalArrangement = Arrangement.spacedBy(spacing),
             verticalAlignment = Alignment.Top
         ) {
             Column(
-                modifier = Modifier.weight(3f),
+                modifier = Modifier
+                    .weight(3f)
+                    .let { if (fillHeight) it.fillMaxHeight() else it },
                 verticalArrangement = Arrangement.spacedBy(spacing)
             ) {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .let { if (fillHeight) it.weight(1f) else it },
                     horizontalArrangement = Arrangement.spacedBy(spacing)
                 ) {
                     listOf("1", "2", "3").forEach { key ->
                         ProgrammerKey(
                             key = key,
                             enabled = key in allowedDigits,
-                            height = keyHeight,
+                            height = rowKeyHeight,
                             modifier = Modifier.weight(1f),
                             onClick = { onKeyPress(key) }
                         )
                     }
                 }
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .let { if (fillHeight) it.weight(1f) else it },
                     horizontalArrangement = Arrangement.spacedBy(spacing)
                 ) {
                     ProgrammerKey(
                         key = "0",
                         enabled = "0" in allowedDigits,
-                        height = keyHeight,
+                        height = rowKeyHeight,
                         modifier = Modifier.weight(2f),
                         onClick = { onKeyPress("0") }
                     )
                     ProgrammerKey(
                         key = "00",
                         enabled = "00" in allowedDigits,
-                        height = keyHeight,
+                        height = rowKeyHeight,
                         modifier = Modifier.weight(1f),
                         onClick = {
                             onKeyPress("0")
@@ -395,7 +447,7 @@ private fun ProgrammerKeypad(
             ProgrammerKey(
                 key = "=",
                 enabled = true,
-                height = keyHeight * 2 + spacing,
+                height = if (fillHeight) null else minKeyHeight * 2 + spacing,
                 modifier = Modifier.weight(1f),
                 onClick = onEquals
             )
@@ -407,7 +459,7 @@ private fun ProgrammerKeypad(
 private fun ProgrammerKey(
     key: String,
     enabled: Boolean,
-    height: Dp,
+    height: Dp?,
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
@@ -436,7 +488,7 @@ private fun ProgrammerKey(
         onClick = onClick,
         enabled = enabled,
         modifier = modifier
-            .height(height)
+            .let { if (height != null) it.height(height) else it.fillMaxHeight() }
             .testTag("prog_key_$key"),
         shape = RoundedCornerShape(12.dp),
         color = bg,

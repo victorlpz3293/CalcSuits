@@ -10,12 +10,9 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -25,7 +22,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.TableRows
 import androidx.compose.material3.ButtonDefaults
@@ -34,12 +30,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -62,6 +58,7 @@ import com.calcsuits.features.finance.ui.viewmodel.FinanceState
 import com.calcsuits.features.finance.ui.viewmodel.FinanceTab
 import com.calcsuits.ui.components.CalcCard
 import com.calcsuits.ui.components.CalcFilterChip
+import com.calcsuits.ui.components.CalcPinnedScaffold
 import com.calcsuits.ui.components.CalcResultCard
 import com.calcsuits.ui.components.CalcSuitsHeader
 import com.calcsuits.ui.components.calcSegmentedButtonColors
@@ -90,8 +87,13 @@ fun FinanceScreen(
     onTaxIncludedChange: (Boolean) -> Unit
 ) {
     val locale = rememberCurrentLocale()
+    val scrollState = rememberScrollState()
 
-    Scaffold(
+    LaunchedEffect(state.selectedTab) {
+        scrollState.scrollTo(0)
+    }
+
+    CalcPinnedScaffold(
         topBar = {
             CalcSuitsHeader(
                 title = stringResource(R.string.finance),
@@ -99,18 +101,12 @@ fun FinanceScreen(
                 onMenuClick = onMenuClick
             )
         },
-        containerColor = MaterialTheme.colorScheme.background
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .consumeWindowInsets(padding)
-                .imePadding()
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
+        pinnedPadding = PaddingValues(start = 16.dp, top = 12.dp, end = 16.dp, bottom = 8.dp),
+        contentPadding = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 16.dp),
+        contentSpacing = 16.dp,
+        scrollState = scrollState,
+        compactHeightThreshold = 200.dp,
+        pinnedContent = {
             SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
                 FinanceTab.entries.forEachIndexed { index, tab ->
                     SegmentedButton(
@@ -131,33 +127,33 @@ fun FinanceScreen(
                     }
                 }
             }
-
-            when (state.selectedTab) {
-                FinanceTab.LOAN -> LoanSection(
-                    state = state,
-                    locale = locale,
-                    onAmountChange = onAmountChange,
-                    onInterestRateChange = onInterestRateChange,
-                    onYearsChange = onYearsChange
-                )
-                FinanceTab.INTEREST -> InterestSection(
-                    state = state,
-                    locale = locale,
-                    onPrincipalChange = onPrincipalChange,
-                    onAnnualRateChange = onAnnualRateChange,
-                    onTermYearsChange = onTermYearsChange,
-                    onFrequencyChange = onFrequencyChange
-                )
-                FinanceTab.TAX -> TaxSection(
-                    state = state,
-                    locale = locale,
-                    onTaxBaseChange = onTaxBaseChange,
-                    onTaxRateChange = onTaxRateChange,
-                    onTaxIncludedChange = onTaxIncludedChange
-                )
-            }
-            Spacer(Modifier.height(12.dp))
         }
+    ) {
+        when (state.selectedTab) {
+            FinanceTab.LOAN -> LoanSection(
+                state = state,
+                locale = locale,
+                onAmountChange = onAmountChange,
+                onInterestRateChange = onInterestRateChange,
+                onYearsChange = onYearsChange
+            )
+            FinanceTab.INTEREST -> InterestSection(
+                state = state,
+                locale = locale,
+                onPrincipalChange = onPrincipalChange,
+                onAnnualRateChange = onAnnualRateChange,
+                onTermYearsChange = onTermYearsChange,
+                onFrequencyChange = onFrequencyChange
+            )
+            FinanceTab.TAX -> TaxSection(
+                state = state,
+                locale = locale,
+                onTaxBaseChange = onTaxBaseChange,
+                onTaxRateChange = onTaxRateChange,
+                onTaxIncludedChange = onTaxIncludedChange
+            )
+        }
+        Spacer(Modifier.height(12.dp))
     }
 }
 

@@ -45,6 +45,23 @@ No se aceptarán Pull Requests que rompan la compilación o las pruebas unitaria
 
 ---
 
-## 4. Licencia de las contribuciones
+## 4. Reglas de UI
+
+### Ergonomía de scroll (regla global)
+
+Toda pantalla de CalcSuits —presente y futura— debe respetar la siguiente regla de diseño:
+
+> **Lo que da contexto a una función (pestañas o selector de modo, tarjetas de valor/entrada principal, resultado principal) permanece fijo arriba. Solo se desplaza el contenido secundario que sobra (listas largas, detalles, tablas). Las pantallas cuyo contenido cabe en la altura disponible no deben hacer scroll. Una pantalla NO debe envolverse entera en un único `verticalScroll` si tiene encabezado de contexto.**
+
+Lineamientos de implementación:
+
+- **Usa `CalcPinnedScaffold`** (`ui/components/CalcPinnedScaffold.kt`) en toda pantalla que tenga pestañas, selector de modo o tarjetas de contexto arriba y contenido secundario desplazable debajo. Evita repetir la combinación manual de `Scaffold` + `Column` + `verticalScroll`.
+- **Conserva insets e IME**: `CalcPinnedScaffold` aplica `consumeWindowInsets(padding)` y `imePadding()` de forma consistente, y ofrece un fallback automático cuando la altura disponible es muy reducida (horizontal o teclado del sistema abierto) para que ningún control quede cortado ni inalcanzable.
+- **Pantallas de teclado / canvas**: reparte la altura restante con `weight(1f)` por fila o área principal para evitar scroll en alturas estándar (`~640dp`–`900dp`), habilitando scroll únicamente sobre el bloque secundario/teclado cuando no cabe.
+- **Excepciones válidas**: pantallas que son exclusivamente listas largas de secciones independientes sin encabezado de contexto (como **Ajustes**) o sheets/conversaciones con barra fija y lista interna (`LazyColumn`, como **Historial** y **Solucionador**).
+
+---
+
+## 5. Licencia de las contribuciones
 
 Al enviar una contribución a **CalcSuits**, aceptas que tu código se distribuya bajo la misma licencia del proyecto: **GNU General Public License v3.0 (GPL-3.0)** (ver [LICENSE](LICENSE)).

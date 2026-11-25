@@ -227,6 +227,10 @@ class CalculatorViewModelTest {
             settingsFlow.update { it.copy(themeMode = mode) }
         }
 
+        override suspend fun setUseOledBlack(enabled: Boolean) {
+            settingsFlow.update { it.copy(useOledBlack = enabled) }
+        }
+
         override suspend fun setUseRadians(useRadians: Boolean) {
             settingsFlow.update { it.copy(useRadians = useRadians) }
         }

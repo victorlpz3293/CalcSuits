@@ -8,20 +8,21 @@ import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CenterFocusStrong
@@ -33,7 +34,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -64,6 +64,7 @@ import com.calcsuits.domain.model.UiText
 import com.calcsuits.domain.usecase.MathExpressionEvaluator
 import com.calcsuits.domain.usecase.toMathUiText
 import com.calcsuits.ui.components.CalcFilterChip
+import com.calcsuits.ui.components.CalcPinnedScaffold
 import com.calcsuits.ui.components.CalcSuitsHeader
 import com.calcsuits.ui.theme.CalcSuitsTheme
 import com.calcsuits.ui.theme.JetBrainsMonoFontFamily
@@ -124,7 +125,7 @@ fun GraphScreen(onMenuClick: () -> Unit) {
         }
     }
 
-    Scaffold(
+    CalcPinnedScaffold(
         topBar = {
             CalcSuitsHeader(
                 title = stringResource(R.string.graphs),
@@ -149,17 +150,12 @@ fun GraphScreen(onMenuClick: () -> Unit) {
                 }
             )
         },
-        containerColor = MaterialTheme.colorScheme.background
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .consumeWindowInsets(padding)
-                .imePadding()
-                .padding(vertical = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
+        pinnedPadding = PaddingValues(start = 16.dp, top = 10.dp, end = 16.dp, bottom = 6.dp),
+        contentPadding = PaddingValues(top = 2.dp, bottom = 8.dp),
+        contentSpacing = 0.dp,
+        enableContentScroll = false,
+        compactHeightThreshold = 200.dp,
+        pinnedContent = {
             OutlinedTextField(
                 value = expression,
                 onValueChange = {
@@ -170,14 +166,28 @@ fun GraphScreen(onMenuClick: () -> Unit) {
                 placeholder = { Text(stringResource(R.string.graph_input_placeholder)) },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
                     .testTag("graph_expression_input"),
                 singleLine = true,
                 isError = syntaxError != null,
                 supportingText = syntaxError?.let { msg -> { Text(msg.asString()) } },
                 textStyle = MaterialTheme.typography.titleMedium.copy(fontFamily = JetBrainsMonoFontFamily)
             )
+        }
+    ) {
+        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+            val fitsWithoutScroll = constraints.hasBoundedHeight && maxHeight >= 260.dp
+            val bodyModifier = when {
+                fitsWithoutScroll -> Modifier.fillMaxSize()
+                constraints.hasBoundedHeight -> Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                else -> Modifier.fillMaxWidth()
+            }
 
+            Column(
+                modifier = bodyModifier,
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
             // Quick math symbol insertion strip
             LazyRow(
                 contentPadding = PaddingValues(horizontal = 16.dp),
@@ -244,7 +254,7 @@ fun GraphScreen(onMenuClick: () -> Unit) {
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f)
+                    .let { if (fitsWithoutScroll) it.weight(1f) else it.height(220.dp) }
                     .padding(horizontal = 16.dp),
                 shape = MaterialTheme.shapes.extraLarge,
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -542,6 +552,7 @@ fun GraphScreen(onMenuClick: () -> Unit) {
                 modifier = Modifier.padding(horizontal = 18.dp)
             )
             Spacer(Modifier.height(4.dp))
+            }
         }
     }
 }

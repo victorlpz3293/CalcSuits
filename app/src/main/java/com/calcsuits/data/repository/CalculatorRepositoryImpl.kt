@@ -46,6 +46,10 @@ class CalculatorRepositoryImpl @Inject constructor(
         settingsDataStore.setThemeMode(mode)
     }
 
+    override suspend fun setUseOledBlack(enabled: Boolean) {
+        settingsDataStore.setUseOledBlack(enabled)
+    }
+
     override suspend fun setUseRadians(useRadians: Boolean) {
         settingsDataStore.setUseRadians(useRadians)
     }

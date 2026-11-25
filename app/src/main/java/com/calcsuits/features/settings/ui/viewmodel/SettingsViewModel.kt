@@ -28,6 +28,10 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { repository.setThemeMode(mode) }
     }
 
+    fun setUseOledBlack(enabled: Boolean) {
+        viewModelScope.launch { repository.setUseOledBlack(enabled) }
+    }
+
     fun setUseRadians(useRadians: Boolean) {
         viewModelScope.launch { repository.setUseRadians(useRadians) }
     }
