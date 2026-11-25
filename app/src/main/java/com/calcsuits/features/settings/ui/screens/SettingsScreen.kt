@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -18,7 +19,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.OpenInNew
+import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.DeleteSweep
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Gavel
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Tune
@@ -49,6 +54,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -73,6 +79,8 @@ import kotlin.math.PI
 import kotlin.math.roundToInt
 
 private const val AUTHOR_NAME = "Victor R. Lopez"
+private const val SOURCE_REPO_URL = "https://github.com/victorlpz3293/CalcSuits"
+private const val GPL_V3_URL = "https://www.gnu.org/licenses/gpl-3.0.html"
 
 private enum class AppLanguageOption(
     val tag: String,
@@ -95,9 +103,12 @@ fun SettingsScreen(
     onClearHistory: () -> Unit
 ) {
     var showClearDialog by remember { mutableStateOf(false) }
+    var showGplDialog by remember { mutableStateOf(false) }
+    var showThirdPartyDialog by remember { mutableStateOf(false) }
     var historyClearedFeedback by remember { mutableStateOf(false) }
     val extColors = CalcSuitsTheme.colors
     val locale = rememberCurrentLocale()
+    val uriHandler = LocalUriHandler.current
     val configuration = LocalConfiguration.current
     val systemDark = isSystemInDarkTheme()
     val isEffectiveDark = when (settings.themeMode) {
@@ -431,28 +442,58 @@ fun SettingsScreen(
             CalcCard(
                 containerColor = MaterialTheme.colorScheme.surface
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(
+                            text = stringResource(R.string.app_name),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = stringResource(R.string.settings_about_tagline),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = stringResource(R.string.settings_about_author, AUTHOR_NAME),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = stringResource(R.string.settings_about_version, BuildConfig.VERSION_NAME),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
                     Text(
-                        text = stringResource(R.string.app_name),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
+                        text = stringResource(R.string.settings_about_gpl_warranty),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.testTag("settings_about_gpl_warranty")
                     )
-                    Text(
-                        text = stringResource(R.string.settings_about_tagline),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+                    AboutActionButton(
+                        icon = Icons.Default.Gavel,
+                        label = stringResource(R.string.settings_about_license_button),
+                        onClick = { showGplDialog = true },
+                        modifier = Modifier.testTag("settings_about_license_button")
                     )
-                    Text(
-                        text = stringResource(R.string.settings_about_author, AUTHOR_NAME),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface
+                    AboutActionButton(
+                        icon = Icons.Default.Description,
+                        label = stringResource(R.string.settings_about_third_party_button),
+                        onClick = { showThirdPartyDialog = true },
+                        modifier = Modifier.testTag("settings_about_third_party_button")
                     )
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        text = stringResource(R.string.settings_about_version, BuildConfig.VERSION_NAME),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    AboutActionButton(
+                        icon = Icons.Default.Code,
+                        label = stringResource(R.string.settings_about_source_button),
+                        trailingIcon = Icons.AutoMirrored.Rounded.OpenInNew,
+                        onClick = { runCatching { uriHandler.openUri(SOURCE_REPO_URL) } },
+                        modifier = Modifier.testTag("settings_about_source_button")
                     )
                 }
             }
@@ -486,6 +527,116 @@ fun SettingsScreen(
                 }
             }
         )
+    }
+
+    if (showGplDialog) {
+        AlertDialog(
+            onDismissRequest = { showGplDialog = false },
+            containerColor = MaterialTheme.colorScheme.surface,
+            title = { Text(stringResource(R.string.settings_about_license_button)) },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .heightIn(max = 360.dp)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    Text(
+                        text = stringResource(R.string.settings_about_gpl_dialog_body, AUTHOR_NAME),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showGplDialog = false }) {
+                    Text(stringResource(R.string.settings_about_close))
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        runCatching { uriHandler.openUri(GPL_V3_URL) }
+                    }
+                ) {
+                    Text(stringResource(R.string.settings_about_view_full_license))
+                }
+            }
+        )
+    }
+
+    if (showThirdPartyDialog) {
+        AlertDialog(
+            onDismissRequest = { showThirdPartyDialog = false },
+            containerColor = MaterialTheme.colorScheme.surface,
+            title = { Text(stringResource(R.string.settings_about_third_party_button)) },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .heightIn(max = 380.dp)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    Text(
+                        text = stringResource(R.string.settings_about_third_party_dialog_body),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showThirdPartyDialog = false }) {
+                    Text(stringResource(R.string.settings_about_close))
+                }
+            }
+        )
+    }
+}
+
+@Composable
+private fun AboutActionButton(
+    icon: ImageVector,
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    trailingIcon: ImageVector? = null
+) {
+    OutlinedButton(
+        onClick = onClick,
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(min = 48.dp),
+        colors = ButtonDefaults.outlinedButtonColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+            contentColor = MaterialTheme.colorScheme.onSurface
+        ),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(18.dp)
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelLarge,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
+            if (trailingIcon != null) {
+                Icon(
+                    imageVector = trailingIcon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        }
     }
 }
 

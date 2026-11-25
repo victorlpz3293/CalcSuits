@@ -354,7 +354,15 @@
     <string name="settings_section_about">Acerca de</string>
     <string name="settings_about_tagline">Suite matemática y técnica de precisión</string>
     <string name="settings_about_author">Desarrollada por %1$s</string>
-    <string name="settings_about_version">Versión %1$s · Motor determinista BigDecimal + Jetpack Compose</string>
+    <string name="settings_about_version">Versión %1$s · Jetpack Compose</string>
+    <string name="settings_about_gpl_warranty">Este programa es software libre bajo GNU GPL v3.0 y se distribuye SIN GARANTÍA ALGUNA; puedes redistribuirlo bajo ciertas condiciones.</string>
+    <string name="settings_about_license_button">Licencia (GPL-3.0)</string>
+    <string name="settings_about_third_party_button">Licencias de terceros</string>
+    <string name="settings_about_source_button">Código fuente</string>
+    <string name="settings_about_gpl_dialog_body">Copyright (C) 2026 %1$s\n\nCalcSuits es software libre: puedes redistribuirlo y/o modificarlo bajo los términos de la Licencia Pública General de GNU publicada por la Free Software Foundation, ya sea la versión 3 de la Licencia o (a tu elección) cualquier versión posterior.\n\nEste programa se distribuye con la esperanza de que sea útil, pero SIN GARANTÍA ALGUNA; sin siquiera la garantía implícita de COMERCIABILIDAD o IDONEIDAD PARA UN PROPÓSITO PARTICULAR. Consulta la Licencia Pública General de GNU para más detalles.</string>
+    <string name="settings_about_view_full_license">Ver licencia completa</string>
+    <string name="settings_about_third_party_dialog_body">Bibliotecas (Apache License 2.0 — compatible con GPL-3.0):\n• Jetpack Compose y Material 3\n• AndroidX Core, AppCompat, Lifecycle y Navigation\n• Dagger Hilt\n• Jetpack Room y DataStore\n• Retrofit, OkHttp, Okio y Gson\n• Kotlin Standard Library y Coroutines\n\nFuentes tipográficas (SIL Open Font License 1.1):\n• JetBrains Mono — Copyright 2020 The JetBrains Mono Project Authors\n• Space Grotesk — Copyright 2020 The Space Grotesk Project Authors\nLas fuentes conservan su licencia SIL OFL 1.1 y no pueden venderse por separado.\n\nDatos de tasas de cambio:\n• ExchangeRate-API (open.er-api.com) — Tasas por ExchangeRate-API (https://www.exchangerate-api.com)</string>
+    <string name="settings_about_close">Cerrar</string>
     <string name="settings_clear_dialog_title">¿Borrar todo el historial?</string>
     <string name="settings_clear_dialog_message">Se eliminarán todas las operaciones guardadas en la base de datos local.</string>
     <string name="settings_clear_dialog_confirm">Eliminar</string>

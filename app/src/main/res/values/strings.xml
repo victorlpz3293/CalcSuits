@@ -354,7 +354,15 @@
     <string name="settings_section_about">About</string>
     <string name="settings_about_tagline">Precision mathematical &amp; technical suite</string>
     <string name="settings_about_author">Developed by %1$s</string>
-    <string name="settings_about_version">Version %1$s · Deterministic BigDecimal engine + Jetpack Compose</string>
+    <string name="settings_about_version">Version %1$s · Jetpack Compose</string>
+    <string name="settings_about_gpl_warranty">This program is free software under GNU GPL v3.0 and comes with ABSOLUTELY NO WARRANTY; you may redistribute it under certain conditions.</string>
+    <string name="settings_about_license_button">License (GPL-3.0)</string>
+    <string name="settings_about_third_party_button">Third-party licenses</string>
+    <string name="settings_about_source_button">Source code</string>
+    <string name="settings_about_gpl_dialog_body">Copyright (C) 2026 %1$s\n\nCalcSuits is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.\n\nThis program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.</string>
+    <string name="settings_about_view_full_license">View full license</string>
+    <string name="settings_about_third_party_dialog_body">Libraries (Apache License 2.0 — GPL-3.0 compatible):\n• Jetpack Compose &amp; Material 3\n• AndroidX Core, AppCompat, Lifecycle &amp; Navigation\n• Dagger Hilt\n• Jetpack Room &amp; DataStore\n• Retrofit, OkHttp, Okio &amp; Gson\n• Kotlin Standard Library &amp; Coroutines\n\nBundled Fonts (SIL Open Font License 1.1):\n• JetBrains Mono — Copyright 2020 The JetBrains Mono Project Authors\n• Space Grotesk — Copyright 2020 The Space Grotesk Project Authors\nThe fonts remain licensed under SIL OFL 1.1 and may not be sold by themselves.\n\nExchange Rate Data:\n• ExchangeRate-API (open.er-api.com) — Rates by ExchangeRate-API (https://www.exchangerate-api.com)</string>
+    <string name="settings_about_close">Close</string>
     <string name="settings_clear_dialog_title">Clear all history?</string>
     <string name="settings_clear_dialog_message">All operations saved in the local database will be deleted.</string>
     <string name="settings_clear_dialog_confirm">Delete</string>
