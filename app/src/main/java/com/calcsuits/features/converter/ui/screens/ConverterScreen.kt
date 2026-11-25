@@ -1,6 +1,7 @@
 package com.calcsuits.features.converter.ui.screens
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,9 +10,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -49,14 +52,20 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.calcsuits.R
@@ -73,6 +82,9 @@ import com.calcsuits.ui.util.asString
 import com.calcsuits.ui.util.rememberCurrentLocale
 import kotlinx.coroutines.launch
 
+private const val EXCHANGE_RATE_API_NAME = "ExchangeRate-API"
+private const val EXCHANGE_RATE_API_URL = "https://www.exchangerate-api.com"
+
 @Composable
 fun ConverterScreen(
     state: ConverterState,
@@ -86,6 +98,7 @@ fun ConverterScreen(
     val categories = ConversionCategory.all
     val clipboard = LocalClipboardManager.current
     val context = LocalContext.current
+    val uriHandler = LocalUriHandler.current
     val locale = rememberCurrentLocale()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -417,6 +430,55 @@ fun ConverterScreen(
                             }
                         }
                     }
+                }
+            }
+
+            if (state.selectedCategory == ConversionCategory.Currency) {
+                val attributionFull = stringResource(
+                    R.string.converter_rates_attribution,
+                    EXCHANGE_RATE_API_NAME
+                )
+                val linkColor = MaterialTheme.colorScheme.primary
+                val attributionText = remember(attributionFull, linkColor) {
+                    buildAnnotatedString {
+                        append(attributionFull)
+                        val start = attributionFull.indexOf(EXCHANGE_RATE_API_NAME)
+                        if (start >= 0) {
+                            addStyle(
+                                style = SpanStyle(
+                                    color = linkColor,
+                                    textDecoration = TextDecoration.Underline,
+                                    fontWeight = FontWeight.Medium
+                                ),
+                                start = start,
+                                end = start + EXCHANGE_RATE_API_NAME.length
+                            )
+                        }
+                    }
+                }
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    contentAlignment = Alignment.CenterStart
+                ) {
+                    Text(
+                        text = attributionText,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable(
+                                role = Role.Button,
+                                onClickLabel = EXCHANGE_RATE_API_NAME
+                            ) {
+                                runCatching { uriHandler.openUri(EXCHANGE_RATE_API_URL) }
+                            }
+                            .heightIn(min = 48.dp)
+                            .wrapContentHeight(Alignment.CenterVertically)
+                            .padding(horizontal = 4.dp)
+                            .testTag("converter_currency_attribution")
+                    )
                 }
             }
 

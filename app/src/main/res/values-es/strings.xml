@@ -151,6 +151,7 @@
     <string name="converter_rates_updating">Actualizando tasas…</string>
     <string name="converter_rate_reference_tag">referencia</string>
     <string name="cd_converter_refresh_rates">Actualizar tasas de cambio</string>
+    <string name="converter_rates_attribution">Tasas por %1$s</string>
 
     <string name="unit_meters">Metros</string>
     <string name="unit_kilometers">Kilómetros</string>

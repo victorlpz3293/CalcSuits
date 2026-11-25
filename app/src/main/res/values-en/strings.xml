@@ -151,6 +151,7 @@
     <string name="converter_rates_updating">Updating rates…</string>
     <string name="converter_rate_reference_tag">reference</string>
     <string name="cd_converter_refresh_rates">Refresh exchange rates</string>
+    <string name="converter_rates_attribution">Rates by %1$s</string>
 
     <string name="unit_meters">Meters</string>
     <string name="unit_kilometers">Kilometers</string>
