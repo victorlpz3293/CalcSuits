@@ -55,13 +55,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.calcsuits.R
+import com.calcsuits.domain.model.UiText
 import com.calcsuits.model.CalculatorAction
 import com.calcsuits.model.CalculatorHistoryEntry
 import com.calcsuits.model.CalculatorOperation
@@ -70,6 +74,7 @@ import com.calcsuits.ui.components.CalcSuitsHeader
 import com.calcsuits.ui.components.CalculatorButton
 import com.calcsuits.ui.theme.CalcSuitsTheme
 import com.calcsuits.ui.theme.JetBrainsMonoFontFamily
+import com.calcsuits.ui.util.asString
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -81,6 +86,7 @@ fun CalculatorScreen(
 ) {
     val haptic = LocalHapticFeedback.current
     val clipboard = LocalClipboardManager.current
+    val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     var showHistory by remember { mutableStateOf(false) }
@@ -109,8 +115,14 @@ fun CalculatorScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             CalcSuitsHeader(
-                title = "Calculadora",
-                subtitle = if (state.isScientificExpanded) "MODO CIENTÍFICO" else "ESTÁNDAR",
+                title = stringResource(R.string.calculator),
+                subtitle = stringResource(
+                    if (state.isScientificExpanded) {
+                        R.string.calc_subtitle_scientific
+                    } else {
+                        R.string.calc_subtitle_standard
+                    }
+                ),
                 onMenuClick = onMenuClick,
                 actions = {
                     IconButton(
@@ -119,7 +131,7 @@ fun CalculatorScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Default.History,
-                            contentDescription = "Historial de cálculos",
+                            contentDescription = stringResource(R.string.cd_calc_history),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -192,7 +204,11 @@ fun CalculatorScreen(
                 onCopy = {
                     val toCopy = state.livePreview.ifBlank { state.number1.ifBlank { "0" } }
                     clipboard.setText(AnnotatedString(toCopy))
-                    scope.launch { snackbarHostState.showSnackbar("Copiado: $toCopy") }
+                    scope.launch {
+                        snackbarHostState.showSnackbar(
+                            context.getString(R.string.copied_value_format, toCopy)
+                        )
+                    }
                 },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -265,7 +281,7 @@ private fun CalculatorDisplayPanel(
     expression: String,
     previousExpression: String,
     livePreview: String,
-    errorMessage: String?,
+    errorMessage: UiText?,
     memory: String,
     useRadians: Boolean,
     isScientificExpanded: Boolean,
@@ -333,7 +349,7 @@ private fun CalculatorDisplayPanel(
                             border = BorderStroke(1.dp, extColors.technicalAccent.copy(alpha = 0.35f))
                         ) {
                             Text(
-                                text = "M $memory",
+                                text = stringResource(R.string.calc_memory_badge, memory),
                                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                                 style = MaterialTheme.typography.labelMedium,
                                 color = extColors.onTechnicalContainer,
@@ -349,7 +365,7 @@ private fun CalculatorDisplayPanel(
                 ) {
                     Icon(
                         imageVector = Icons.Default.ContentCopy,
-                        contentDescription = "Copiar resultado",
+                        contentDescription = stringResource(R.string.cd_copy_result),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(18.dp)
                     )
@@ -380,7 +396,7 @@ private fun CalculatorDisplayPanel(
                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.4f))
                     ) {
                         Text(
-                            text = errorMessage,
+                            text = errorMessage.asString(),
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onErrorContainer,
@@ -504,6 +520,7 @@ private fun CalculatorKeypad(
     modifier: Modifier = Modifier
 ) {
     val extColors = CalcSuitsTheme.colors
+    val deleteCd = stringResource(R.string.cd_delete_last_digit)
     val rows = listOf(
         listOf("AC", "DEL", "%", "÷"),
         listOf("7", "8", "9", "×"),
@@ -551,7 +568,7 @@ private fun CalculatorKeypad(
                     CalculatorButton(
                         symbol = symbol,
                         icon = if (isDelete) Icons.AutoMirrored.Rounded.Backspace else null,
-                        iconContentDescription = if (isDelete) "Borrar último dígito" else null,
+                        iconContentDescription = if (isDelete) deleteCd else null,
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxHeight(),
@@ -601,14 +618,14 @@ private fun HistorySheetContent(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Historial",
+                    text = stringResource(R.string.history),
                     style = MaterialTheme.typography.headlineSmall,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = "Toca una operación para reutilizar el resultado",
+                    text = stringResource(R.string.calc_history_subtitle),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -622,7 +639,10 @@ private fun HistorySheetContent(
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(Modifier.width(4.dp))
-                    Text("Borrar", color = extColors.destructiveText)
+                    Text(
+                        text = stringResource(R.string.calc_history_clear_action),
+                        color = extColors.destructiveText
+                    )
                 }
             }
         }
@@ -647,7 +667,7 @@ private fun HistorySheetContent(
                     )
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        text = "Sin operaciones registradas",
+                        text = stringResource(R.string.calc_history_empty),
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

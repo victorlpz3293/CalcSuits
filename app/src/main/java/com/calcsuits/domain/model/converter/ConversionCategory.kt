@@ -1,5 +1,6 @@
 package com.calcsuits.domain.model.converter
 
+import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.CropSquare
@@ -11,124 +12,135 @@ import androidx.compose.material.icons.filled.Straighten
 import androidx.compose.material.icons.filled.Thermostat
 import androidx.compose.material.icons.filled.WaterDrop
 import androidx.compose.ui.graphics.vector.ImageVector
+import com.calcsuits.R
 
 sealed class ConversionCategory(
-    val title: String,
+    val key: String,
+    @StringRes val titleRes: Int,
     val icon: ImageVector,
     val units: List<ConversionUnit>,
-    val note: String? = null
+    @StringRes val noteRes: Int? = null
 ) {
     object Length : ConversionCategory(
-        "Longitud",
-        Icons.Default.Straighten,
-        listOf(
-            ConversionUnit("Metros", "m", 1.0),
-            ConversionUnit("Kilómetros", "km", 1000.0),
-            ConversionUnit("Centímetros", "cm", 0.01),
-            ConversionUnit("Milímetros", "mm", 0.001),
-            ConversionUnit("Millas", "mi", 1609.344),
-            ConversionUnit("Yardas", "yd", 0.9144),
-            ConversionUnit("Pies", "ft", 0.3048),
-            ConversionUnit("Pulgadas", "in", 0.0254)
+        key = "length",
+        titleRes = R.string.cat_length,
+        icon = Icons.Default.Straighten,
+        units = listOf(
+            ConversionUnit(R.string.unit_meters, "m", 1.0),
+            ConversionUnit(R.string.unit_kilometers, "km", 1000.0),
+            ConversionUnit(R.string.unit_centimeters, "cm", 0.01),
+            ConversionUnit(R.string.unit_millimeters, "mm", 0.001),
+            ConversionUnit(R.string.unit_miles, "mi", 1609.344),
+            ConversionUnit(R.string.unit_yards, "yd", 0.9144),
+            ConversionUnit(R.string.unit_feet, "ft", 0.3048),
+            ConversionUnit(R.string.unit_inches, "in", 0.0254)
         )
     )
 
     object Mass : ConversionCategory(
-        "Masa",
-        Icons.Default.Scale,
-        listOf(
-            ConversionUnit("Kilogramos", "kg", 1.0),
-            ConversionUnit("Gramos", "g", 0.001),
-            ConversionUnit("Miligramos", "mg", 0.000001),
-            ConversionUnit("Libras", "lb", 0.45359237),
-            ConversionUnit("Onzas", "oz", 0.028349523),
-            ConversionUnit("Toneladas", "t", 1000.0)
+        key = "mass",
+        titleRes = R.string.cat_mass,
+        icon = Icons.Default.Scale,
+        units = listOf(
+            ConversionUnit(R.string.unit_kilograms, "kg", 1.0),
+            ConversionUnit(R.string.unit_grams, "g", 0.001),
+            ConversionUnit(R.string.unit_milligrams, "mg", 0.000001),
+            ConversionUnit(R.string.unit_pounds, "lb", 0.45359237),
+            ConversionUnit(R.string.unit_ounces, "oz", 0.028349523),
+            ConversionUnit(R.string.unit_tonnes, "t", 1000.0)
         )
     )
 
     object Temperature : ConversionCategory(
-        "Temperatura",
-        Icons.Default.Thermostat,
-        listOf(
-            ConversionUnit("Celsius", "°C", 1.0, isTemperature = true),
-            ConversionUnit("Fahrenheit", "°F", 1.0, isTemperature = true),
-            ConversionUnit("Kelvin", "K", 1.0, isTemperature = true)
+        key = "temperature",
+        titleRes = R.string.cat_temperature,
+        icon = Icons.Default.Thermostat,
+        units = listOf(
+            ConversionUnit(R.string.unit_celsius, "°C", 1.0, isTemperature = true),
+            ConversionUnit(R.string.unit_fahrenheit, "°F", 1.0, isTemperature = true),
+            ConversionUnit(R.string.unit_kelvin, "K", 1.0, isTemperature = true)
         )
     )
 
     object Area : ConversionCategory(
-        "Área",
-        Icons.Default.CropSquare,
-        listOf(
-            ConversionUnit("Metro cuadrado", "m²", 1.0),
-            ConversionUnit("Kilómetro cuadrado", "km²", 1_000_000.0),
-            ConversionUnit("Centímetro cuadrado", "cm²", 0.0001),
-            ConversionUnit("Hectárea", "ha", 10_000.0),
-            ConversionUnit("Pie cuadrado", "ft²", 0.09290304),
-            ConversionUnit("Acre", "ac", 4046.8564224)
+        key = "area",
+        titleRes = R.string.cat_area,
+        icon = Icons.Default.CropSquare,
+        units = listOf(
+            ConversionUnit(R.string.unit_sq_meter, "m²", 1.0),
+            ConversionUnit(R.string.unit_sq_kilometer, "km²", 1_000_000.0),
+            ConversionUnit(R.string.unit_sq_centimeter, "cm²", 0.0001),
+            ConversionUnit(R.string.unit_hectare, "ha", 10_000.0),
+            ConversionUnit(R.string.unit_sq_foot, "ft²", 0.09290304),
+            ConversionUnit(R.string.unit_acre, "ac", 4046.8564224)
         )
     )
 
     object Volume : ConversionCategory(
-        "Volumen",
-        Icons.Default.WaterDrop,
-        listOf(
-            ConversionUnit("Litros", "L", 1.0),
-            ConversionUnit("Mililitros", "mL", 0.001),
-            ConversionUnit("Metro cúbico", "m³", 1000.0),
-            ConversionUnit("Galón (US)", "gal", 3.785411784),
-            ConversionUnit("Onza líquida", "fl oz", 0.02957353)
+        key = "volume",
+        titleRes = R.string.cat_volume,
+        icon = Icons.Default.WaterDrop,
+        units = listOf(
+            ConversionUnit(R.string.unit_liters, "L", 1.0),
+            ConversionUnit(R.string.unit_milliliters, "mL", 0.001),
+            ConversionUnit(R.string.unit_cubic_meter, "m³", 1000.0),
+            ConversionUnit(R.string.unit_gallon_us, "gal", 3.785411784),
+            ConversionUnit(R.string.unit_fluid_ounce, "fl oz", 0.02957353)
         )
     )
 
     object Speed : ConversionCategory(
-        "Velocidad",
-        Icons.Default.Speed,
-        listOf(
-            ConversionUnit("Metros / seg", "m/s", 1.0),
-            ConversionUnit("Kilómetros / hora", "km/h", 1.0 / 3.6),
-            ConversionUnit("Millas / hora", "mph", 0.44704),
-            ConversionUnit("Nudos", "kn", 0.514444)
+        key = "speed",
+        titleRes = R.string.cat_speed,
+        icon = Icons.Default.Speed,
+        units = listOf(
+            ConversionUnit(R.string.unit_meters_per_sec, "m/s", 1.0),
+            ConversionUnit(R.string.unit_km_per_hour, "km/h", 1.0 / 3.6),
+            ConversionUnit(R.string.unit_miles_per_hour, "mph", 0.44704),
+            ConversionUnit(R.string.unit_knots, "kn", 0.514444)
         )
     )
 
     object Data : ConversionCategory(
-        "Datos",
-        Icons.Default.Storage,
-        listOf(
-            ConversionUnit("Bytes", "B", 1.0),
-            ConversionUnit("Kilobytes", "KB", 1024.0),
-            ConversionUnit("Megabytes", "MB", 1024.0 * 1024.0),
-            ConversionUnit("Gigabytes", "GB", 1024.0 * 1024.0 * 1024.0),
-            ConversionUnit("Terabytes", "TB", 1024.0 * 1024.0 * 1024.0 * 1024.0)
+        key = "data",
+        titleRes = R.string.cat_data,
+        icon = Icons.Default.Storage,
+        units = listOf(
+            ConversionUnit(R.string.unit_bytes, "B", 1.0),
+            ConversionUnit(R.string.unit_kilobytes, "KB", 1024.0),
+            ConversionUnit(R.string.unit_megabytes, "MB", 1024.0 * 1024.0),
+            ConversionUnit(R.string.unit_gigabytes, "GB", 1024.0 * 1024.0 * 1024.0),
+            ConversionUnit(R.string.unit_terabytes, "TB", 1024.0 * 1024.0 * 1024.0 * 1024.0)
         )
     )
 
     object Time : ConversionCategory(
-        "Tiempo",
-        Icons.Default.Schedule,
-        listOf(
-            ConversionUnit("Segundos", "s", 1.0),
-            ConversionUnit("Milisegundos", "ms", 0.001),
-            ConversionUnit("Minutos", "min", 60.0),
-            ConversionUnit("Horas", "h", 3600.0),
-            ConversionUnit("Días", "d", 86400.0),
-            ConversionUnit("Semanas", "sem", 604800.0)
+        key = "time",
+        titleRes = R.string.cat_time,
+        icon = Icons.Default.Schedule,
+        units = listOf(
+            ConversionUnit(R.string.unit_seconds, "s", 1.0),
+            ConversionUnit(R.string.unit_milliseconds, "ms", 0.001),
+            ConversionUnit(R.string.unit_minutes, "min", 60.0),
+            ConversionUnit(R.string.unit_hours, "h", 3600.0),
+            ConversionUnit(R.string.unit_days, "d", 86400.0),
+            ConversionUnit(R.string.unit_weeks, "wk", 604800.0)
         )
     )
 
     object Currency : ConversionCategory(
-        "Moneda",
-        Icons.Default.AttachMoney,
-        listOf(
-            ConversionUnit("Dólar estadounidense", "USD", 1.0),
-            ConversionUnit("Euro", "EUR", 1.0 / 0.92),
-            ConversionUnit("Córdoba (NI)", "NIO", 1.0 / 36.62),
-            ConversionUnit("Peso mexicano", "MXN", 1.0 / 17.50),
-            ConversionUnit("Colón (CR)", "CRC", 1.0 / 512.0),
-            ConversionUnit("Libra esterlina", "GBP", 1.0 / 0.79)
+        key = "currency",
+        titleRes = R.string.cat_currency,
+        icon = Icons.Default.AttachMoney,
+        units = listOf(
+            ConversionUnit(R.string.unit_usd, "USD", 1.0),
+            ConversionUnit(R.string.unit_eur, "EUR", 1.0 / 0.92),
+            ConversionUnit(R.string.unit_nio, "NIO", 1.0 / 36.62),
+            ConversionUnit(R.string.unit_mxn, "MXN", 1.0 / 17.50),
+            ConversionUnit(R.string.unit_crc, "CRC", 1.0 / 512.0),
+            ConversionUnit(R.string.unit_gbp, "GBP", 1.0 / 0.79)
         ),
-        note = "Tasas de referencia locales aproximadas (base USD)"
+        noteRes = R.string.cat_currency_note
     )
 
     companion object {
@@ -139,7 +151,7 @@ sealed class ConversionCategory(
 }
 
 data class ConversionUnit(
-    val name: String,
+    @StringRes val nameRes: Int,
     val symbol: String,
     val factorToBase: Double,
     val isTemperature: Boolean = false

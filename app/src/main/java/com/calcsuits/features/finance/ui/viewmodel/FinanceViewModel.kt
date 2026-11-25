@@ -1,6 +1,8 @@
 package com.calcsuits.features.finance.ui.viewmodel
 
+import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
+import com.calcsuits.R
 import com.calcsuits.domain.model.finance.LoanResult
 import com.calcsuits.domain.usecase.CalculateLoanUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -10,18 +12,18 @@ import kotlinx.coroutines.flow.update
 import javax.inject.Inject
 import kotlin.math.pow
 
-enum class FinanceTab(val label: String) {
-    LOAN("Préstamo"),
-    INTEREST("Interés"),
-    TAX("IVA / Impuestos")
+enum class FinanceTab(@StringRes val labelRes: Int) {
+    LOAN(R.string.finance_tab_loan),
+    INTEREST(R.string.finance_tab_interest),
+    TAX(R.string.finance_tab_tax)
 }
 
-enum class CompoundingFrequency(val label: String, val periodsPerYear: Int) {
-    ANNUAL("Anual", 1),
-    SEMIANNUAL("Semestral", 2),
-    QUARTERLY("Trimestral", 4),
-    MONTHLY("Mensual", 12),
-    DAILY("Diaria", 365)
+enum class CompoundingFrequency(@StringRes val labelRes: Int, val periodsPerYear: Int) {
+    ANNUAL(R.string.finance_freq_annual, 1),
+    SEMIANNUAL(R.string.finance_freq_semiannual, 2),
+    QUARTERLY(R.string.finance_freq_quarterly, 4),
+    MONTHLY(R.string.finance_freq_monthly, 12),
+    DAILY(R.string.finance_freq_daily, 365)
 }
 
 data class InterestComparisonResult(

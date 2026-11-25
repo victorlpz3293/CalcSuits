@@ -26,7 +26,7 @@ class EngineeringViewModel @Inject constructor(
 
     fun onFormulaSelected(formula: EngineeringFormula) {
         val defaultInputs = if (formula == EngineeringFormula.Subnetting) {
-            mapOf("Dirección IPv4" to "192.168.1.10", "Máscara o CIDR" to "/24")
+            mapOf("ip" to "192.168.1.10", "mask" to "/24")
         } else {
             emptyMap()
         }
@@ -34,7 +34,7 @@ class EngineeringViewModel @Inject constructor(
         calculate()
     }
 
-    fun onInputChange(variable: String, value: String) {
+    fun onInputChange(variableKey: String, value: String) {
         val allowsCidr = _state.value.selectedFormula.allowsCidrText
         val cleanValue = if (allowsCidr) {
             value.filter { it.isDigit() || it == '.' || it == '/' }
@@ -54,7 +54,7 @@ class EngineeringViewModel @Inject constructor(
         }
         _state.update {
             val newInputs = it.inputs.toMutableMap()
-            newInputs[variable] = cleanValue
+            newInputs[variableKey] = cleanValue
             it.copy(inputs = newInputs)
         }
         calculate()
@@ -64,33 +64,37 @@ class EngineeringViewModel @Inject constructor(
         _state.update { it.copy(inputs = emptyMap(), output = EngineeringOutput()) }
     }
 
+    fun recalculate() {
+        calculate()
+    }
+
     private fun calculate() {
         val currentState = _state.value
         val inputs = currentState.inputs
 
         val res = when (currentState.selectedFormula) {
             is EngineeringFormula.OhmsLaw -> calculateUseCase.calculateOhmsLaw(
-                v = inputs["Voltaje (V)"]?.toDoubleOrNull(),
-                i = inputs["Corriente (A)"]?.toDoubleOrNull(),
-                r = inputs["Resistencia (Ω)"]?.toDoubleOrNull()
+                v = inputs["v"]?.toDoubleOrNull(),
+                i = inputs["i"]?.toDoubleOrNull(),
+                r = inputs["r"]?.toDoubleOrNull()
             )
             is EngineeringFormula.Power -> calculateUseCase.calculatePower(
-                v = inputs["Voltaje (V)"]?.toDoubleOrNull(),
-                i = inputs["Corriente (A)"]?.toDoubleOrNull(),
-                p = inputs["Potencia (W)"]?.toDoubleOrNull()
+                v = inputs["v"]?.toDoubleOrNull(),
+                i = inputs["i"]?.toDoubleOrNull(),
+                p = inputs["p"]?.toDoubleOrNull()
             )
             is EngineeringFormula.Resistors -> calculateUseCase.calculateResistors(
-                r1 = inputs["R1 (Ω)"]?.toDoubleOrNull(),
-                r2 = inputs["R2 (Ω)"]?.toDoubleOrNull()
+                r1 = inputs["r1"]?.toDoubleOrNull(),
+                r2 = inputs["r2"]?.toDoubleOrNull()
             )
             is EngineeringFormula.VoltageDivider -> calculateUseCase.calculateVoltageDivider(
-                vin = inputs["Vin (V)"]?.toDoubleOrNull(),
-                r1 = inputs["R1 (Ω)"]?.toDoubleOrNull(),
-                r2 = inputs["R2 (Ω)"]?.toDoubleOrNull()
+                vin = inputs["vin"]?.toDoubleOrNull(),
+                r1 = inputs["r1"]?.toDoubleOrNull(),
+                r2 = inputs["r2"]?.toDoubleOrNull()
             )
             is EngineeringFormula.Subnetting -> calculateUseCase.calculateSubnetting(
-                ip = inputs["Dirección IPv4"] ?: "",
-                mask = inputs["Máscara o CIDR"] ?: ""
+                ip = inputs["ip"] ?: "",
+                mask = inputs["mask"] ?: ""
             )
         }
 

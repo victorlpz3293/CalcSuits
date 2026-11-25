@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.calcsuits.domain.repository.CalculatorRepository
 import com.calcsuits.domain.usecase.CalculateExpressionUseCase
+import com.calcsuits.domain.usecase.MathError
+import com.calcsuits.domain.usecase.toMathUiText
 import com.calcsuits.model.CalculatorAction
 import com.calcsuits.model.CalculatorHistoryEntry
 import com.calcsuits.model.CalculatorOperation
@@ -185,7 +187,7 @@ class CalculatorViewModel @Inject constructor(
                         operation = null,
                         previousExpression = displayExpr,
                         livePreview = "",
-                        errorMessage = error.message ?: "Error de cálculo",
+                        errorMessage = error.toMathUiText(MathError.CalculationError),
                         justCalculated = false
                     )
                 }
@@ -243,7 +245,7 @@ class CalculatorViewModel @Inject constructor(
                 _state.update {
                     it.copy(
                         livePreview = "",
-                        errorMessage = error.message ?: "Operación inválida",
+                        errorMessage = error.toMathUiText(MathError.InvalidOperation),
                         justCalculated = false
                     )
                 }

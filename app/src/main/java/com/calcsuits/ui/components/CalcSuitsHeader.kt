@@ -25,16 +25,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.calcsuits.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CalcSuitsHeader(
     title: String,
     onMenuClick: () -> Unit,
-    subtitle: String = "CALCSUITS",
+    subtitle: String = stringResource(R.string.header_default_subtitle),
     actions: @Composable RowScope.() -> Unit = {}
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -45,7 +48,9 @@ fun CalcSuitsHeader(
                         text = title,
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground
+                        color = MaterialTheme.colorScheme.onBackground,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(
@@ -58,7 +63,9 @@ fun CalcSuitsHeader(
                         Text(
                             text = subtitle,
                             style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.6.sp),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
@@ -70,7 +77,7 @@ fun CalcSuitsHeader(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Menu,
-                        contentDescription = "Abrir menú de módulos"
+                        contentDescription = stringResource(R.string.cd_open_modules_menu)
                     )
                 }
             },

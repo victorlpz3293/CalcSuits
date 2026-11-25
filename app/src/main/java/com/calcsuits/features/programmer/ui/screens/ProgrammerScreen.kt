@@ -35,12 +35,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.calcsuits.R
 import com.calcsuits.features.programmer.ui.viewmodel.ProgrammerState
 import com.calcsuits.ui.components.CalcCard
 import com.calcsuits.ui.components.CalcFilterChip
@@ -48,6 +50,7 @@ import com.calcsuits.ui.components.CalcSuitsHeader
 import com.calcsuits.ui.components.calcSegmentedButtonColors
 import com.calcsuits.ui.theme.CalcSuitsTheme
 import com.calcsuits.ui.theme.JetBrainsMonoFontFamily
+import com.calcsuits.ui.util.asString
 
 @Composable
 fun ProgrammerScreen(
@@ -67,8 +70,8 @@ fun ProgrammerScreen(
     Scaffold(
         topBar = {
             CalcSuitsHeader(
-                title = "Programador",
-                subtitle = "${state.wordSize}-BIT · BASE ${state.activeBase}",
+                title = stringResource(R.string.programmer),
+                subtitle = stringResource(R.string.prog_subtitle, state.wordSize, state.activeBase),
                 onMenuClick = onMenuClick
             )
         },
@@ -93,7 +96,12 @@ fun ProgrammerScreen(
                         CalcFilterChip(
                             selected = state.wordSize == size,
                             onClick = { onWordSizeSelected(size) },
-                            label = { Text("${size}b", fontFamily = JetBrainsMonoFontFamily) },
+                            label = {
+                                Text(
+                                    text = stringResource(R.string.prog_word_size_chip, size),
+                                    fontFamily = JetBrainsMonoFontFamily
+                                )
+                            },
                             modifier = Modifier.testTag("prog_word_$size")
                         )
                     }
@@ -115,7 +123,7 @@ fun ProgrammerScreen(
                         )
                     } else if (state.lastOperation != null) {
                         Text(
-                            text = state.lastOperation,
+                            text = state.lastOperation.asString(),
                             style = MaterialTheme.typography.labelSmall.copy(fontFamily = JetBrainsMonoFontFamily),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.fillMaxWidth(),
@@ -141,7 +149,11 @@ fun ProgrammerScreen(
                     colors = calcSegmentedButtonColors(),
                     modifier = Modifier.testTag("prog_view_keypad")
                 ) {
-                    Text("Teclado HEX/Bitwise")
+                    Text(
+                        text = stringResource(R.string.prog_tab_keypad),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
                 SegmentedButton(
                     selected = showBitGrid,
@@ -150,7 +162,11 @@ fun ProgrammerScreen(
                     colors = calcSegmentedButtonColors(),
                     modifier = Modifier.testTag("prog_view_bits")
                 ) {
-                    Text("Matriz de Bits")
+                    Text(
+                        text = stringResource(R.string.prog_tab_bits),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
             }
 
@@ -433,7 +449,7 @@ private fun ProgrammerKey(
             if (isDelete) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Rounded.Backspace,
-                    contentDescription = "Borrar último dígito",
+                    contentDescription = stringResource(R.string.cd_delete_last_digit),
                     tint = fg,
                     modifier = Modifier.size(20.dp)
                 )
@@ -461,7 +477,7 @@ private fun BitToggleMatrix(
     CalcCard(contentPadding = PaddingValues(12.dp)) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text(
-                text = "Toca cualquier bit para invertirlo (MSB → LSB)",
+                text = stringResource(R.string.prog_bit_matrix_hint),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

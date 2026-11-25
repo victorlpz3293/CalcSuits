@@ -10,10 +10,10 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
@@ -49,10 +49,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.calcsuits.R
 import com.calcsuits.features.finance.ui.viewmodel.CompoundingFrequency
 import com.calcsuits.features.finance.ui.viewmodel.FinanceState
 import com.calcsuits.features.finance.ui.viewmodel.FinanceTab
@@ -63,6 +67,10 @@ import com.calcsuits.ui.components.CalcSuitsHeader
 import com.calcsuits.ui.components.calcSegmentedButtonColors
 import com.calcsuits.ui.theme.CalcSuitsTheme
 import com.calcsuits.ui.theme.JetBrainsMonoFontFamily
+import com.calcsuits.ui.util.currencySymbolFor
+import com.calcsuits.ui.util.formatCurrency
+import com.calcsuits.ui.util.formatPercentInt
+import com.calcsuits.ui.util.rememberCurrentLocale
 import java.util.Locale
 
 @Composable
@@ -81,11 +89,13 @@ fun FinanceScreen(
     onTaxRateChange: (String) -> Unit,
     onTaxIncludedChange: (Boolean) -> Unit
 ) {
+    val locale = rememberCurrentLocale()
+
     Scaffold(
         topBar = {
             CalcSuitsHeader(
-                title = "Finanzas",
-                subtitle = state.selectedTab.label.uppercase(),
+                title = stringResource(R.string.finance),
+                subtitle = stringResource(state.selectedTab.labelRes).uppercase(locale),
                 onMenuClick = onMenuClick
             )
         },
@@ -111,9 +121,13 @@ fun FinanceScreen(
                             count = FinanceTab.entries.size
                         ),
                         colors = calcSegmentedButtonColors(),
-                        modifier = Modifier.testTag("finance_tab_${tab.name.lowercase()}")
+                        modifier = Modifier.testTag("finance_tab_${tab.name.lowercase(Locale.ROOT)}")
                     ) {
-                        Text(tab.label, maxLines = 1)
+                        Text(
+                            text = stringResource(tab.labelRes),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
                     }
                 }
             }
@@ -121,12 +135,14 @@ fun FinanceScreen(
             when (state.selectedTab) {
                 FinanceTab.LOAN -> LoanSection(
                     state = state,
+                    locale = locale,
                     onAmountChange = onAmountChange,
                     onInterestRateChange = onInterestRateChange,
                     onYearsChange = onYearsChange
                 )
                 FinanceTab.INTEREST -> InterestSection(
                     state = state,
+                    locale = locale,
                     onPrincipalChange = onPrincipalChange,
                     onAnnualRateChange = onAnnualRateChange,
                     onTermYearsChange = onTermYearsChange,
@@ -134,6 +150,7 @@ fun FinanceScreen(
                 )
                 FinanceTab.TAX -> TaxSection(
                     state = state,
+                    locale = locale,
                     onTaxBaseChange = onTaxBaseChange,
                     onTaxRateChange = onTaxRateChange,
                     onTaxIncludedChange = onTaxIncludedChange
@@ -147,22 +164,27 @@ fun FinanceScreen(
 @Composable
 private fun LoanSection(
     state: FinanceState,
+    locale: Locale,
     onAmountChange: (String) -> Unit,
     onInterestRateChange: (String) -> Unit,
     onYearsChange: (String) -> Unit
 ) {
     val extColors = CalcSuitsTheme.colors
+    val currencyPrefix = remember(locale) { "${currencySymbolFor(locale)} " }
     var showSchedule by remember { mutableStateOf(false) }
     var showAllPeriods by remember { mutableStateOf(false) }
 
     CalcCard {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("Parámetros del préstamo", style = MaterialTheme.typography.titleMedium)
+            Text(
+                text = stringResource(R.string.finance_loan_params),
+                style = MaterialTheme.typography.titleMedium
+            )
             OutlinedTextField(
                 value = state.amount,
                 onValueChange = onAmountChange,
-                label = { Text("Capital a financiar") },
-                prefix = { Text("$ ", fontFamily = JetBrainsMonoFontFamily) },
+                label = { Text(stringResource(R.string.finance_loan_principal)) },
+                prefix = { Text(currencyPrefix, fontFamily = JetBrainsMonoFontFamily) },
                 modifier = Modifier.fillMaxWidth().testTag("loan_amount_input"),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 singleLine = true,
@@ -172,7 +194,7 @@ private fun LoanSection(
                 OutlinedTextField(
                     value = state.interestRate,
                     onValueChange = onInterestRateChange,
-                    label = { Text("Tasa anual") },
+                    label = { Text(stringResource(R.string.finance_annual_rate)) },
                     suffix = { Text("%") },
                     modifier = Modifier.weight(1f).testTag("loan_rate_input"),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
@@ -182,7 +204,7 @@ private fun LoanSection(
                 OutlinedTextField(
                     value = state.years,
                     onValueChange = onYearsChange,
-                    label = { Text("Plazo (años)") },
+                    label = { Text(stringResource(R.string.finance_term_years)) },
                     modifier = Modifier.weight(1f).testTag("loan_years_input"),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true,
@@ -200,12 +222,12 @@ private fun LoanSection(
             Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 Column {
                     Text(
-                        text = "CUOTA MENSUAL ESTIMADA",
+                        text = stringResource(R.string.finance_monthly_payment_label),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.primary
                     )
                     Text(
-                        text = money(result.monthlyPayment),
+                        text = formatCurrency(result.monthlyPayment, locale),
                         style = MaterialTheme.typography.displayMedium.copy(
                             fontFamily = JetBrainsMonoFontFamily,
                             fontWeight = FontWeight.Bold
@@ -242,18 +264,31 @@ private fun LoanSection(
                     ) {
                         LegendDot(
                             color = MaterialTheme.colorScheme.primary,
-                            label = "Capital (${String.format(Locale.US, "%.0f%%", principalRatio * 100)})"
+                            label = stringResource(
+                                R.string.finance_legend_principal,
+                                formatPercentInt(principalRatio.toDouble(), locale)
+                            )
                         )
                         LegendDot(
                             color = extColors.technicalAccent,
-                            label = "Interés (${String.format(Locale.US, "%.0f%%", (1f - principalRatio) * 100)})"
+                            label = stringResource(
+                                R.string.finance_legend_interest,
+                                formatPercentInt((1f - principalRatio).toDouble(), locale)
+                            )
                         )
                     }
                 }
 
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                FinanceMetricRow("Intereses totales", money(result.totalInterest))
-                FinanceMetricRow("Monto total a pagar", money(result.totalPayment), emphasize = true)
+                FinanceMetricRow(
+                    label = stringResource(R.string.finance_total_interest),
+                    value = formatCurrency(result.totalInterest, locale)
+                )
+                FinanceMetricRow(
+                    label = stringResource(R.string.finance_total_payment),
+                    value = formatCurrency(result.totalPayment, locale),
+                    emphasize = true
+                )
             }
         }
 
@@ -276,8 +311,18 @@ private fun LoanSection(
             )
             Spacer(Modifier.width(8.dp))
             Text(
-                text = if (showSchedule) "Ocultar tabla de amortización" else "Ver tabla de amortización (${result.schedule.size} cuotas)",
-                fontWeight = FontWeight.SemiBold
+                text = if (showSchedule) {
+                    stringResource(R.string.finance_hide_schedule)
+                } else {
+                    pluralStringResource(
+                        R.plurals.finance_show_schedule,
+                        result.schedule.size,
+                        result.schedule.size
+                    )
+                },
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
 
@@ -289,9 +334,30 @@ private fun LoanSection(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text("#", style = MaterialTheme.typography.labelSmall, modifier = Modifier.weight(0.6f))
-                    Text("Capital", style = MaterialTheme.typography.labelSmall, modifier = Modifier.weight(1.2f), textAlign = TextAlign.End)
-                    Text("Interés", style = MaterialTheme.typography.labelSmall, modifier = Modifier.weight(1.2f), textAlign = TextAlign.End)
-                    Text("Saldo", style = MaterialTheme.typography.labelSmall, modifier = Modifier.weight(1.4f), textAlign = TextAlign.End)
+                    Text(
+                        text = stringResource(R.string.finance_col_principal),
+                        style = MaterialTheme.typography.labelSmall,
+                        modifier = Modifier.weight(1.2f),
+                        textAlign = TextAlign.End,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = stringResource(R.string.finance_col_interest),
+                        style = MaterialTheme.typography.labelSmall,
+                        modifier = Modifier.weight(1.2f),
+                        textAlign = TextAlign.End,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = stringResource(R.string.finance_col_balance),
+                        style = MaterialTheme.typography.labelSmall,
+                        modifier = Modifier.weight(1.4f),
+                        textAlign = TextAlign.End,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 rows.forEach { row ->
@@ -307,27 +373,33 @@ private fun LoanSection(
                             modifier = Modifier.weight(0.6f)
                         )
                         Text(
-                            moneyCompact(row.principal),
+                            formatCurrency(row.principal, locale),
                             style = MaterialTheme.typography.bodySmall,
                             fontFamily = JetBrainsMonoFontFamily,
                             modifier = Modifier.weight(1.2f),
-                            textAlign = TextAlign.End
+                            textAlign = TextAlign.End,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                         Text(
-                            moneyCompact(row.interest),
+                            formatCurrency(row.interest, locale),
                             style = MaterialTheme.typography.bodySmall,
                             fontFamily = JetBrainsMonoFontFamily,
                             color = extColors.technicalAccent,
                             modifier = Modifier.weight(1.2f),
-                            textAlign = TextAlign.End
+                            textAlign = TextAlign.End,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                         Text(
-                            moneyCompact(row.balance),
+                            formatCurrency(row.balance, locale),
                             style = MaterialTheme.typography.bodySmall,
                             fontFamily = JetBrainsMonoFontFamily,
                             fontWeight = FontWeight.Medium,
                             modifier = Modifier.weight(1.4f),
-                            textAlign = TextAlign.End
+                            textAlign = TextAlign.End,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
@@ -342,7 +414,17 @@ private fun LoanSection(
                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
                         modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
                     ) {
-                        Text(if (showAllPeriods) "Mostrar primeras 12" else "Mostrar todas (${result.schedule.size})")
+                        Text(
+                            text = if (showAllPeriods) {
+                                stringResource(R.string.finance_show_first_12)
+                            } else {
+                                pluralStringResource(
+                                    R.plurals.finance_show_all_periods,
+                                    result.schedule.size,
+                                    result.schedule.size
+                                )
+                            }
+                        )
                     }
                 }
             }
@@ -354,21 +436,26 @@ private fun LoanSection(
 @Composable
 private fun InterestSection(
     state: FinanceState,
+    locale: Locale,
     onPrincipalChange: (String) -> Unit,
     onAnnualRateChange: (String) -> Unit,
     onTermYearsChange: (String) -> Unit,
     onFrequencyChange: (CompoundingFrequency) -> Unit
 ) {
     val extColors = CalcSuitsTheme.colors
+    val currencyPrefix = remember(locale) { "${currencySymbolFor(locale)} " }
 
     CalcCard {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("Interés simple vs. compuesto", style = MaterialTheme.typography.titleMedium)
+            Text(
+                text = stringResource(R.string.finance_interest_title),
+                style = MaterialTheme.typography.titleMedium
+            )
             OutlinedTextField(
                 value = state.principal,
                 onValueChange = onPrincipalChange,
-                label = { Text("Capital inicial") },
-                prefix = { Text("$ ", fontFamily = JetBrainsMonoFontFamily) },
+                label = { Text(stringResource(R.string.finance_initial_capital)) },
+                prefix = { Text(currencyPrefix, fontFamily = JetBrainsMonoFontFamily) },
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 singleLine = true,
@@ -378,7 +465,7 @@ private fun InterestSection(
                 OutlinedTextField(
                     value = state.annualRate,
                     onValueChange = onAnnualRateChange,
-                    label = { Text("Tasa anual") },
+                    label = { Text(stringResource(R.string.finance_annual_rate)) },
                     suffix = { Text("%") },
                     modifier = Modifier.weight(1f),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
@@ -388,14 +475,18 @@ private fun InterestSection(
                 OutlinedTextField(
                     value = state.termYears,
                     onValueChange = onTermYearsChange,
-                    label = { Text("Años") },
+                    label = { Text(stringResource(R.string.finance_years)) },
                     modifier = Modifier.weight(1f),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true,
                     textStyle = MaterialTheme.typography.titleMedium.copy(fontFamily = JetBrainsMonoFontFamily)
                 )
             }
-            Text("Capitalización", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                text = stringResource(R.string.finance_compounding),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
             FlowRow(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -405,7 +496,13 @@ private fun InterestSection(
                     CalcFilterChip(
                         selected = state.frequency == freq,
                         onClick = { onFrequencyChange(freq) },
-                        label = { Text(freq.label, maxLines = 1) }
+                        label = {
+                            Text(
+                                text = stringResource(freq.labelRes),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
                     )
                 }
             }
@@ -422,13 +519,17 @@ private fun InterestSection(
                 contentPadding = PaddingValues(14.dp)
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("SIMPLE", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(
-                        money(res.simpleTotal),
+                        text = stringResource(R.string.finance_simple),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        formatCurrency(res.simpleTotal, locale),
                         style = MaterialTheme.typography.titleLarge.copy(fontFamily = JetBrainsMonoFontFamily, fontWeight = FontWeight.Bold)
                     )
                     Text(
-                        "+${money(res.simpleInterest)}",
+                        "+${formatCurrency(res.simpleInterest, locale)}",
                         style = MaterialTheme.typography.bodySmall.copy(fontFamily = JetBrainsMonoFontFamily),
                         color = extColors.positive
                     )
@@ -440,14 +541,18 @@ private fun InterestSection(
                 contentPadding = PaddingValues(14.dp)
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("COMPUESTO", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                     Text(
-                        money(res.compoundTotal),
+                        text = stringResource(R.string.finance_compound),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        formatCurrency(res.compoundTotal, locale),
                         style = MaterialTheme.typography.titleLarge.copy(fontFamily = JetBrainsMonoFontFamily, fontWeight = FontWeight.Bold),
                         color = MaterialTheme.colorScheme.primary
                     )
                     Text(
-                        "+${money(res.compoundInterest)}",
+                        "+${formatCurrency(res.compoundInterest, locale)}",
                         style = MaterialTheme.typography.bodySmall.copy(fontFamily = JetBrainsMonoFontFamily),
                         color = extColors.positive
                     )
@@ -463,8 +568,8 @@ private fun InterestSection(
                 contentPadding = PaddingValues(14.dp)
             ) {
                 FinanceMetricRow(
-                    label = "Ventaja del interés compuesto",
-                    value = "+${money(diff)}",
+                    label = stringResource(R.string.finance_compound_advantage),
+                    value = "+${formatCurrency(diff, locale)}",
                     emphasize = true,
                     valueColor = extColors.onPositiveContainer
                 )
@@ -473,35 +578,56 @@ private fun InterestSection(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun TaxSection(
     state: FinanceState,
+    locale: Locale,
     onTaxBaseChange: (String) -> Unit,
     onTaxRateChange: (String) -> Unit,
     onTaxIncludedChange: (Boolean) -> Unit
 ) {
+    val currencyPrefix = remember(locale) { "${currencySymbolFor(locale)} " }
+
     CalcCard {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("Cálculo de IVA / Impuestos", style = MaterialTheme.typography.titleMedium)
+            Text(
+                text = stringResource(R.string.finance_tax_title),
+                style = MaterialTheme.typography.titleMedium
+            )
 
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 CalcFilterChip(
                     selected = !state.taxIncluded,
                     onClick = { onTaxIncludedChange(false) },
-                    label = { Text("Sumar IVA") }
+                    label = { Text(stringResource(R.string.finance_tax_add), maxLines = 1) }
                 )
                 CalcFilterChip(
                     selected = state.taxIncluded,
                     onClick = { onTaxIncludedChange(true) },
-                    label = { Text("Desglosar IVA incluido") }
+                    label = { Text(stringResource(R.string.finance_tax_extract), maxLines = 1) }
                 )
             }
 
             OutlinedTextField(
                 value = state.taxBaseInput,
                 onValueChange = onTaxBaseChange,
-                label = { Text(if (state.taxIncluded) "Monto total (IVA incluido)" else "Monto neto (sin IVA)") },
-                prefix = { Text("$ ", fontFamily = JetBrainsMonoFontFamily) },
+                label = {
+                    Text(
+                        stringResource(
+                            if (state.taxIncluded) {
+                                R.string.finance_tax_total_input
+                            } else {
+                                R.string.finance_tax_net_input
+                            }
+                        )
+                    )
+                },
+                prefix = { Text(currencyPrefix, fontFamily = JetBrainsMonoFontFamily) },
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 singleLine = true,
@@ -511,7 +637,7 @@ private fun TaxSection(
             OutlinedTextField(
                 value = state.taxRatePercent,
                 onValueChange = onTaxRateChange,
-                label = { Text("Tasa de impuesto") },
+                label = { Text(stringResource(R.string.finance_tax_rate_label)) },
                 suffix = { Text("%") },
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
@@ -534,10 +660,20 @@ private fun TaxSection(
     state.taxResult?.let { res ->
         CalcResultCard {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                FinanceMetricRow("Subtotal (base)", money(res.baseAmount))
-                FinanceMetricRow("Impuesto (${state.taxRatePercent}%)", money(res.taxAmount))
+                FinanceMetricRow(
+                    label = stringResource(R.string.finance_tax_subtotal),
+                    value = formatCurrency(res.baseAmount, locale)
+                )
+                FinanceMetricRow(
+                    label = stringResource(R.string.finance_tax_amount, state.taxRatePercent),
+                    value = formatCurrency(res.taxAmount, locale)
+                )
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                FinanceMetricRow("Total final", money(res.totalAmount), emphasize = true)
+                FinanceMetricRow(
+                    label = stringResource(R.string.finance_tax_total),
+                    value = formatCurrency(res.totalAmount, locale),
+                    emphasize = true
+                )
             }
         }
     }
@@ -570,8 +706,10 @@ private fun FinanceMetricRow(
         Text(
             text = label,
             style = if (emphasize) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f)
         )
+        Spacer(Modifier.width(12.dp))
         Text(
             text = value,
             style = (if (emphasize) MaterialTheme.typography.titleLarge else MaterialTheme.typography.titleMedium).copy(
@@ -582,6 +720,3 @@ private fun FinanceMetricRow(
         )
     }
 }
-
-private fun money(value: Double): String = String.format(Locale.US, "$ %,.2f", value)
-private fun moneyCompact(value: Double): String = String.format(Locale.US, "$%.2f", value)

@@ -1,5 +1,7 @@
 package com.calcsuits.model
 
+import com.calcsuits.domain.model.UiText
+
 data class CalculatorHistoryEntry(
     val expression: String,
     val result: String
@@ -11,7 +13,7 @@ data class CalculatorState(
     val operation: CalculatorOperation? = null,
     val previousExpression: String = "",
     val livePreview: String = "",
-    val errorMessage: String? = null,
+    val errorMessage: UiText? = null,
     val memory: String = "0",
     val history: List<CalculatorHistoryEntry> = emptyList(),
     val isScientificExpanded: Boolean = false,

@@ -1,13 +1,354 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- App & Navigation -->
     <string name="app_name">CalcSuits</string>
+    <string name="header_default_subtitle">CALCSUITS</string>
+    <string name="drawer_brand_subtitle">SUITE TÉCNICA DE PRECISIÓN</string>
+    <string name="drawer_section_core">CÁLCULO</string>
+    <string name="drawer_section_technical">HERRAMIENTAS TÉCNICAS</string>
+    <string name="drawer_section_system">SISTEMA</string>
+
     <string name="calculator">Calculadora</string>
     <string name="converter">Conversores</string>
     <string name="finance">Finanzas</string>
     <string name="engineering">Ingeniería</string>
     <string name="programmer">Programador</string>
-    <string name="graphs">Gráficas</string>
+    <string name="graphs">Gráficas 2D</string>
+    <string name="solver">Solucionador</string>
     <string name="settings">Ajustes</string>
     <string name="history">Historial</string>
     <string name="clear_history">Borrar historial</string>
+
+    <string name="drawer_sub_calculator">Básica y científica</string>
+    <string name="drawer_sub_graphs">Plotter interactivo</string>
+    <string name="drawer_sub_solver">Ecuaciones y expresiones</string>
+    <string name="drawer_sub_converter">9 categorías de unidades</string>
+    <string name="drawer_sub_finance">Préstamos, interés e IVA</string>
+    <string name="drawer_sub_engineering">Ohm, potencia e IPv4</string>
+    <string name="drawer_sub_programmer">HEX, BIN y bitwise</string>
+    <string name="drawer_sub_settings">Tema y precisión</string>
+
+    <!-- Common Content Descriptions & Feedback -->
+    <string name="cd_open_modules_menu">Abrir menú de módulos</string>
+    <string name="cd_copy_result">Copiar resultado</string>
+    <string name="cd_delete_last_digit">Borrar último dígito</string>
+    <string name="cd_clear">Limpiar</string>
+    <string name="copied_value_format">Copiado: %1$s</string>
+
+    <!-- Calculator -->
+    <string name="calc_subtitle_scientific">MODO CIENTÍFICO</string>
+    <string name="calc_subtitle_standard">ESTÁNDAR</string>
+    <string name="cd_calc_history">Historial de cálculos</string>
+    <string name="calc_memory_badge">M %1$s</string>
+    <string name="calc_history_subtitle">Toca una operación para reutilizar el resultado</string>
+    <string name="calc_history_clear_action">Borrar</string>
+    <string name="calc_history_empty">Sin operaciones registradas</string>
+
+    <!-- Math & Evaluator Errors -->
+    <string name="error_calculation">Error de cálculo</string>
+    <string name="error_invalid_operation">Operación inválida</string>
+    <string name="error_invalid_first_number">Número 1 inválido</string>
+    <string name="error_second_number_required">Número 2 requerido</string>
+    <string name="error_division_by_zero">División por cero</string>
+    <string name="error_exponent_required">Exponente requerido</string>
+    <string name="error_result_out_of_range">Resultado fuera de rango</string>
+    <string name="error_divisor_required">Divisor requerido</string>
+    <string name="error_modulo_by_zero">Módulo por cero</string>
+    <string name="error_invalid_number">Número inválido</string>
+    <string name="error_undefined_tangent">Tangente indefinida</string>
+    <string name="error_undefined_tangent_deg">Tangente indefinida en %1$s°</string>
+    <string name="error_domain_minus_one_one">Dominio [-1, 1]</string>
+    <string name="error_domain_fn_minus_one_one">Dominio de %1$s: [-1, 1]</string>
+    <string name="error_domain_positive">Dominio &gt; 0</string>
+    <string name="error_log_positive">Logaritmo requiere valor positivo</string>
+    <string name="error_ln_positive">Logaritmo natural requiere valor positivo</string>
+    <string name="error_negative_root">Raíz cuadrada de número negativo</string>
+    <string name="error_unknown_function">Función desconocida: %1$s</string>
+    <string name="error_undefined_result">Resultado no definido</string>
+    <string name="error_factorial_range">Factorial requiere entero entre 0 y 20</string>
+    <string name="error_empty_expression">La expresión está vacía</string>
+    <string name="error_no_valid_tokens">La expresión no contiene tokens válidos</string>
+    <string name="error_invalid_decimal">Número decimal inválido</string>
+    <string name="error_unknown_identifier">Función o identificador desconocido: %1$s</string>
+    <string name="error_invalid_character">Carácter no permitido: %1$s</string>
+    <string name="error_unbalanced_parentheses">Paréntesis desbalanceados</string>
+    <string name="error_unknown_operator">Función u operador desconocido: %1$s</string>
+    <string name="error_missing_negation_operand">Falta un operando para negación</string>
+    <string name="error_missing_operand">Falta un operando para %1$s</string>
+    <string name="error_missing_operands">Faltan operandos para %1$s</string>
+    <string name="error_unsupported_operator">Operador no soportado</string>
+    <string name="error_unknown_token">Token desconocido: %1$s</string>
+    <string name="error_incomplete_expression">Expresión incompleta</string>
+    <string name="error_unsupported_function">Función no soportada: %1$s</string>
+
+    <!-- 2D Graphs -->
+    <string name="graph_subtitle">PLOTTER INTERACTIVO</string>
+    <string name="graph_error_empty">Ingresa una función en términos de x</string>
+    <string name="graph_input_placeholder">Ej. sin(x) + x^2 / 10</string>
+    <string name="graph_range_format">X [%1$s, %2$s] · Y [%3$s, %4$s]</string>
+    <string name="graph_trace_format">x = %1$s,  f(x) = %2$s</string>
+    <string name="cd_graph_zoom_in">Acercar</string>
+    <string name="cd_graph_zoom_out">Alejar</string>
+    <string name="cd_graph_reset">Centrar vista</string>
+    <string name="graph_interaction_hint">Arrastra para mover · Toca la curva para inspeccionar (x, f(x))</string>
+
+    <!-- Local Math Solver -->
+    <string name="solver_subtitle">MOTOR DETERMINISTA PASO A PASO</string>
+    <string name="solver_hero_title">Solucionador Matemático Local</string>
+    <string name="solver_hero_desc">Evalúa expresiones científicas completas, porcentajes, ecuaciones lineales y cuadráticas paso a paso sin depender de internet.</string>
+    <string name="solver_preset_quadratic_title">Ecuación cuadrática</string>
+    <string name="solver_preset_linear_title">Ecuación lineal</string>
+    <string name="solver_preset_percent_title">Porcentaje directo</string>
+    <string name="solver_preset_percent_tag">% de base</string>
+    <string name="solver_example_percent">15% de 480</string>
+    <string name="cd_solver_try_preset">Probar %1$s</string>
+    <string name="solver_input_placeholder">Ej. x^2 - 5x + 6 = 0 o 25% de 400</string>
+    <string name="cd_solver_submit">Resolver expresión</string>
+    <string name="solver_step_percent_decimal">Convertir porcentaje a decimal: %1$s / 100 = %2$s</string>
+    <string name="solver_step_percent_multiply">Multiplicar por la base: %1$s × %2$s = %3$s</string>
+    <string name="solver_step_eval_deg">Expresión evaluada en grados (DEG)</string>
+    <string name="solver_step_eval_exact">Resultado determinista exacto: %1$s</string>
+    <string name="solver_error_eval_headline">No se pudo evaluar</string>
+    <string name="solver_error_syntax_fallback">Revisa la sintaxis. Ejemplos: \'x^2 - 5x + 6 = 0\', \'15% de 480\', \'sqrt(144) + sin(30)*10\'.</string>
+    <string name="solver_error_invalid_equation">Ecuación inválida</string>
+    <string name="solver_error_single_equals">Usa un solo signo \'=\'.</string>
+    <string name="solver_error_poly_degree">Solo se soportan ecuaciones lineales o cuadráticas en x</string>
+    <string name="solver_identity_infinite">Identidad (infinitas soluciones)</string>
+    <string name="solver_no_solution">Sin solución</string>
+    <string name="solver_step_reduced_form">Forma reducida: %1$s = 0</string>
+    <string name="solver_step_linear_standard">Forma estándar: %1$sx + (%2$s) = 0</string>
+    <string name="solver_step_linear_solve">Despejar x: x = -(%1$s) / %2$s = %3$s</string>
+    <string name="solver_step_quad_standard">Forma estándar: (%1$s)x² + (%2$s)x + (%3$s) = 0</string>
+    <string name="solver_step_quad_discriminant">Discriminante Δ = b² - 4ac = %1$s</string>
+    <string name="solver_step_quad_x1">x₁ = (-b + √Δ) / 2a = %1$s</string>
+    <string name="solver_step_quad_x2">x₂ = (-b - √Δ) / 2a = %1$s</string>
+    <string name="solver_step_quad_double">Raíz doble: x = -b / 2a = %1$s</string>
+    <string name="solver_headline_double_root">x = %1$s (doble)</string>
+    <string name="solver_step_quad_complex">Δ &lt; 0 → Raíces complejas conjugadas</string>
+    <string name="solver_error_solve_headline">No se pudo resolver</string>
+    <string name="solver_error_unsupported_equation">Ecuación no soportada</string>
+
+    <!-- Converters -->
+    <string name="converter_from">DESDE</string>
+    <string name="converter_result">RESULTADO</string>
+    <string name="converter_equivalences">EQUIVALENCIAS DIRECTAS</string>
+    <string name="cd_converter_swap">Intercambiar unidades</string>
+    <string name="cd_converter_select_unit">Seleccionar unidad</string>
+
+    <string name="cat_length">Longitud</string>
+    <string name="cat_mass">Masa</string>
+    <string name="cat_temperature">Temperatura</string>
+    <string name="cat_area">Área</string>
+    <string name="cat_volume">Volumen</string>
+    <string name="cat_speed">Velocidad</string>
+    <string name="cat_data">Datos</string>
+    <string name="cat_time">Tiempo</string>
+    <string name="cat_currency">Moneda</string>
+    <string name="cat_currency_note">Tasas de referencia locales aproximadas (base USD)</string>
+
+    <string name="unit_meters">Metros</string>
+    <string name="unit_kilometers">Kilómetros</string>
+    <string name="unit_centimeters">Centímetros</string>
+    <string name="unit_millimeters">Milímetros</string>
+    <string name="unit_miles">Millas</string>
+    <string name="unit_yards">Yardas</string>
+    <string name="unit_feet">Pies</string>
+    <string name="unit_inches">Pulgadas</string>
+
+    <string name="unit_kilograms">Kilogramos</string>
+    <string name="unit_grams">Gramos</string>
+    <string name="unit_milligrams">Miligramos</string>
+    <string name="unit_pounds">Libras</string>
+    <string name="unit_ounces">Onzas</string>
+    <string name="unit_tonnes">Toneladas</string>
+
+    <string name="unit_celsius">Celsius</string>
+    <string name="unit_fahrenheit">Fahrenheit</string>
+    <string name="unit_kelvin">Kelvin</string>
+
+    <string name="unit_sq_meter">Metro cuadrado</string>
+    <string name="unit_sq_kilometer">Kilómetro cuadrado</string>
+    <string name="unit_sq_centimeter">Centímetro cuadrado</string>
+    <string name="unit_hectare">Hectárea</string>
+    <string name="unit_sq_foot">Pie cuadrado</string>
+    <string name="unit_acre">Acre</string>
+
+    <string name="unit_liters">Litros</string>
+    <string name="unit_milliliters">Mililitros</string>
+    <string name="unit_cubic_meter">Metro cúbico</string>
+    <string name="unit_gallon_us">Galón (US)</string>
+    <string name="unit_fluid_ounce">Onza líquida</string>
+
+    <string name="unit_meters_per_sec">Metros / seg</string>
+    <string name="unit_km_per_hour">Kilómetros / hora</string>
+    <string name="unit_miles_per_hour">Millas / hora</string>
+    <string name="unit_knots">Nudos</string>
+
+    <string name="unit_bytes">Bytes</string>
+    <string name="unit_kilobytes">Kilobytes</string>
+    <string name="unit_megabytes">Megabytes</string>
+    <string name="unit_gigabytes">Gigabytes</string>
+    <string name="unit_terabytes">Terabytes</string>
+
+    <string name="unit_seconds">Segundos</string>
+    <string name="unit_milliseconds">Milisegundos</string>
+    <string name="unit_minutes">Minutos</string>
+    <string name="unit_hours">Horas</string>
+    <string name="unit_days">Días</string>
+    <string name="unit_weeks">Semanas</string>
+
+    <string name="unit_usd">Dólar estadounidense</string>
+    <string name="unit_eur">Euro</string>
+    <string name="unit_nio">Córdoba (NI)</string>
+    <string name="unit_mxn">Peso mexicano</string>
+    <string name="unit_crc">Colón (CR)</string>
+    <string name="unit_gbp">Libra esterlina</string>
+
+    <!-- Finance -->
+    <string name="finance_tab_loan">Préstamo</string>
+    <string name="finance_tab_interest">Interés</string>
+    <string name="finance_tab_tax">IVA / Impuestos</string>
+
+    <string name="finance_freq_annual">Anual</string>
+    <string name="finance_freq_semiannual">Semestral</string>
+    <string name="finance_freq_quarterly">Trimestral</string>
+    <string name="finance_freq_monthly">Mensual</string>
+    <string name="finance_freq_daily">Diaria</string>
+
+    <string name="finance_loan_params">Parámetros del préstamo</string>
+    <string name="finance_loan_principal">Capital a financiar</string>
+    <string name="finance_annual_rate">Tasa anual</string>
+    <string name="finance_term_years">Plazo (años)</string>
+    <string name="finance_monthly_payment_label">CUOTA MENSUAL ESTIMADA</string>
+    <string name="finance_legend_principal">Capital (%1$s)</string>
+    <string name="finance_legend_interest">Interés (%1$s)</string>
+    <string name="finance_total_interest">Intereses totales</string>
+    <string name="finance_total_payment">Monto total a pagar</string>
+    <string name="finance_hide_schedule">Ocultar tabla de amortización</string>
+    <plurals name="finance_show_schedule">
+        <item quantity="one">Ver tabla de amortización (%d cuota)</item>
+        <item quantity="other">Ver tabla de amortización (%d cuotas)</item>
+    </plurals>
+    <string name="finance_col_principal">Capital</string>
+    <string name="finance_col_interest">Interés</string>
+    <string name="finance_col_balance">Saldo</string>
+    <string name="finance_show_first_12">Mostrar primeras 12</string>
+    <plurals name="finance_show_all_periods">
+        <item quantity="one">Mostrar todas (%d)</item>
+        <item quantity="other">Mostrar todas (%d)</item>
+    </plurals>
+
+    <string name="finance_interest_title">Interés simple vs. compuesto</string>
+    <string name="finance_initial_capital">Capital inicial</string>
+    <string name="finance_years">Años</string>
+    <string name="finance_compounding">Capitalización</string>
+    <string name="finance_simple">SIMPLE</string>
+    <string name="finance_compound">COMPUESTO</string>
+    <string name="finance_compound_advantage">Ventaja del interés compuesto</string>
+
+    <string name="finance_tax_title">Cálculo de IVA / Impuestos</string>
+    <string name="finance_tax_add">Sumar IVA</string>
+    <string name="finance_tax_extract">Desglosar IVA incluido</string>
+    <string name="finance_tax_total_input">Monto total (IVA incluido)</string>
+    <string name="finance_tax_net_input">Monto neto (sin IVA)</string>
+    <string name="finance_tax_rate_label">Tasa de impuesto</string>
+    <string name="finance_tax_subtotal">Subtotal (base)</string>
+    <string name="finance_tax_amount">Impuesto (%1$s%%)</string>
+    <string name="finance_tax_total">Total final</string>
+
+    <!-- Engineering -->
+    <string name="eng_quick_cidr">CIDR RÁPIDO</string>
+    <string name="eng_calculated_result">RESULTADO CALCULADO</string>
+    <string name="eng_subnet_summary_header">Subnetting IPv4 — %1$s</string>
+    <string name="eng_subnet_copied">Resumen IPv4 copiado</string>
+    <string name="eng_copy_summary">Copiar resumen</string>
+
+    <string name="eng_ohms_law_title">Ley de Ohm</string>
+    <string name="eng_two_values_hint">Ingresa exactamente 2 valores para despejar el tercero</string>
+    <string name="eng_power_title">Potencia Eléctrica</string>
+    <string name="eng_resistors_title">Resistencias</string>
+    <string name="eng_resistors_hint">Calcula equivalente en serie y paralelo</string>
+    <string name="eng_voltage_divider_title">Divisor de Voltaje</string>
+    <string name="eng_voltage_divider_hint">Calcula el voltaje de salida en R2</string>
+    <string name="eng_subnetting_title">Subnetting IPv4</string>
+    <string name="eng_subnetting_equation">Red, Broadcast, Wildcard y Hosts útiles</string>
+    <string name="eng_subnetting_hint">Ej. IP 192.168.1.10 y máscara /24 o 255.255.255.0</string>
+
+    <string name="eng_var_voltage">Voltaje (V)</string>
+    <string name="eng_var_current">Corriente (A)</string>
+    <string name="eng_var_resistance">Resistencia (Ω)</string>
+    <string name="eng_var_power">Potencia (W)</string>
+    <string name="eng_var_r1">R1 (Ω)</string>
+    <string name="eng_var_r2">R2 (Ω)</string>
+    <string name="eng_var_vin">Vin (V)</string>
+    <string name="eng_var_ipv4">Dirección IPv4</string>
+    <string name="eng_var_mask_cidr">Máscara o CIDR</string>
+
+    <string name="eng_detail_formula">Fórmula</string>
+    <string name="eng_detail_power">Potencia asociada</string>
+    <string name="eng_detail_equiv_resistance">Resistencia equiv.</string>
+    <string name="eng_detail_series_equiv">Equivalente en Serie (Rs)</string>
+    <string name="eng_detail_parallel_equiv">Equivalente en Paralelo (Rp)</string>
+    <string name="eng_detail_vout_vin_ratio">Relación Vout / Vin</string>
+    <string name="eng_detail_branch_current">Corriente de rama</string>
+    <string name="eng_detail_network_addr">Dirección de Red</string>
+    <string name="eng_detail_subnet_mask">Máscara de Subred</string>
+    <string name="eng_detail_wildcard">Wildcard</string>
+    <string name="eng_detail_broadcast">Broadcast</string>
+    <string name="eng_detail_first_host">Primer Host</string>
+    <string name="eng_detail_last_host">Último Host</string>
+    <string name="eng_detail_total_addresses">Direcciones Totales</string>
+    <string name="eng_detail_usable_hosts">Hosts Útiles</string>
+
+    <string name="eng_error_leave_one_empty">Deja vacío el valor que deseas calcular</string>
+    <string name="eng_error_resistance_zero">La resistencia no puede ser 0 Ω</string>
+    <string name="eng_error_current_zero">La corriente no puede ser 0 A</string>
+    <string name="eng_error_voltage_zero">El voltaje no puede ser 0 V</string>
+    <string name="eng_error_insufficient_data">Datos insuficientes</string>
+    <string name="eng_error_resistors_positive">Las resistencias deben ser positivas</string>
+    <string name="eng_error_resistor_sum_zero">R1 + R2 debe ser mayor que 0 Ω</string>
+    <string name="eng_error_invalid_ipv4">IPv4 o máscara inválida (ej. 192.168.1.10 y /24)</string>
+
+    <!-- Programmer -->
+    <string name="prog_subtitle">%1$d-BIT · BASE %2$d</string>
+    <string name="prog_word_size_chip">%1$db</string>
+    <string name="prog_tab_keypad">Teclado HEX/Bitwise</string>
+    <string name="prog_tab_bits">Matriz de Bits</string>
+    <string name="prog_bit_matrix_hint">Toca cualquier bit para invertirlo (MSB → LSB)</string>
+    <string name="prog_last_op_toggle_bit">Invertir bit #%1$d</string>
+
+    <!-- Settings -->
+    <string name="theme_system">Sistema</string>
+    <string name="theme_dark">Oscuro Carbono</string>
+    <string name="theme_oled">Negro OLED</string>
+    <string name="theme_light">Claro</string>
+
+    <string name="settings_section_appearance">Apariencia</string>
+    <string name="settings_theme_title">Tema de la interfaz</string>
+    <string name="settings_language_title">Idioma de la aplicación</string>
+    <string name="settings_language_system">Sistema</string>
+    <string name="settings_language_spanish">Español</string>
+    <string name="settings_language_english">English</string>
+    <string name="settings_section_engine">Motor de cálculo</string>
+    <string name="settings_angle_unit_title">Unidad angular</string>
+    <string name="settings_angle_unit_desc">Usada en funciones trigonométricas</string>
+    <string name="settings_decimal_precision">Precisión decimal</string>
+    <plurals name="settings_digits_count">
+        <item quantity="one">%d dígito</item>
+        <item quantity="other">%d dígitos</item>
+    </plurals>
+    <string name="settings_precision_example">Ejemplo: π ≈ %1$s</string>
+    <string name="settings_section_interaction">Interacción y datos</string>
+    <string name="settings_haptic_title">Respuesta háptica</string>
+    <string name="settings_haptic_desc">Vibración sutil al pulsar teclas</string>
+    <string name="settings_clear_history_button">Limpiar historial de cálculos</string>
+    <string name="settings_history_cleared">Historial eliminado correctamente.</string>
+    <string name="settings_section_about">Acerca de</string>
+    <string name="settings_about_tagline">Suite matemática y técnica de precisión</string>
+    <string name="settings_about_author">Desarrollada por %1$s</string>
+    <string name="settings_about_version">Versión %1$s · Motor determinista BigDecimal + Jetpack Compose</string>
+    <string name="settings_clear_dialog_title">¿Borrar todo el historial?</string>
+    <string name="settings_clear_dialog_message">Se eliminarán todas las operaciones guardadas en la base de datos local.</string>
+    <string name="settings_clear_dialog_confirm">Eliminar</string>
+    <string name="settings_clear_dialog_cancel">Cancelar</string>
 </resources>

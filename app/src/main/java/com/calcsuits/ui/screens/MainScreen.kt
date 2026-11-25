@@ -39,11 +39,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.calcsuits.R
 import com.calcsuits.ui.navigation.DrawerSection
 import com.calcsuits.ui.navigation.NavGraph
 import com.calcsuits.ui.navigation.Screen
@@ -98,15 +101,17 @@ fun MainScreen() {
                             }
                             Column {
                                 Text(
-                                    text = "CalcSuits",
+                                    text = stringResource(R.string.app_name),
                                     style = MaterialTheme.typography.titleLarge,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
                                 Text(
-                                    text = "PRECISION TECHNICAL SUITE",
+                                    text = stringResource(R.string.drawer_brand_subtitle),
                                     style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.4.sp),
-                                    color = MaterialTheme.colorScheme.primary
+                                    color = MaterialTheme.colorScheme.primary,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                             }
                         }
@@ -124,7 +129,7 @@ fun MainScreen() {
                                 Spacer(Modifier.height(8.dp))
                             }
                             Text(
-                                text = section.label,
+                                text = stringResource(section.labelRes),
                                 style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.4.sp),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(horizontal = 22.dp, vertical = 6.dp)
@@ -144,18 +149,22 @@ fun MainScreen() {
                                         label = {
                                             Column {
                                                 Text(
-                                                    text = screen.title,
+                                                    text = stringResource(screen.titleRes),
                                                     style = MaterialTheme.typography.titleSmall,
-                                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
+                                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.Ellipsis
                                                 )
                                                 Text(
-                                                    text = screen.subtitle,
+                                                    text = stringResource(screen.subtitleRes),
                                                     style = MaterialTheme.typography.bodySmall,
                                                     color = if (selected) {
                                                         MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f)
                                                     } else {
                                                         MaterialTheme.colorScheme.onSurfaceVariant
-                                                    }
+                                                    },
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.Ellipsis
                                                 )
                                             }
                                         },

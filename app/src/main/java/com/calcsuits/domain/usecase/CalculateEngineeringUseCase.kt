@@ -1,13 +1,21 @@
 package com.calcsuits.domain.usecase
 
+import com.calcsuits.R
+import com.calcsuits.domain.model.UiText
+import java.text.NumberFormat
 import java.util.Locale
 import javax.inject.Inject
 import kotlin.math.pow
 
+data class EngineeringDetail(
+    val label: UiText,
+    val value: UiText
+)
+
 data class EngineeringOutput(
-    val headline: String = "",
-    val details: List<Pair<String, String>> = emptyList(),
-    val error: String? = null
+    val headline: UiText? = null,
+    val details: List<EngineeringDetail> = emptyList(),
+    val error: UiText? = null
 )
 
 class CalculateEngineeringUseCase @Inject constructor() {
@@ -15,75 +23,94 @@ class CalculateEngineeringUseCase @Inject constructor() {
     fun calculateOhmsLaw(v: Double?, i: Double?, r: Double?): EngineeringOutput {
         val provided = listOf(v, i, r).count { it != null }
         if (provided < 2) return EngineeringOutput()
-        if (provided == 3) return EngineeringOutput(error = "Deja vacío el valor que deseas calcular")
+        if (provided == 3) return EngineeringOutput(error = UiText.StringResource(R.string.eng_error_leave_one_empty))
 
         return when {
             v == null && i != null && r != null -> {
                 val resV = i * r
                 val power = resV * i
                 EngineeringOutput(
-                    headline = "V = ${fmt(resV)} V",
-                    details = listOf("Fórmula" to "V = I × R", "Potencia asociada" to "${fmt(power)} W")
+                    headline = UiText.DynamicString("V = ${fmt(resV)} V"),
+                    details = listOf(
+                        EngineeringDetail(UiText.StringResource(R.string.eng_detail_formula), UiText.DynamicString("V = I × R")),
+                        EngineeringDetail(UiText.StringResource(R.string.eng_detail_power), UiText.DynamicString("${fmt(power)} W"))
+                    )
                 )
             }
             i == null && v != null && r != null -> {
-                if (r == 0.0) return EngineeringOutput(error = "La resistencia no puede ser 0 Ω")
+                if (r == 0.0) return EngineeringOutput(error = UiText.StringResource(R.string.eng_error_resistance_zero))
                 val resI = v / r
                 EngineeringOutput(
-                    headline = "I = ${fmt(resI)} A",
-                    details = listOf("Fórmula" to "I = V / R", "Potencia asociada" to "${fmt(v * resI)} W")
+                    headline = UiText.DynamicString("I = ${fmt(resI)} A"),
+                    details = listOf(
+                        EngineeringDetail(UiText.StringResource(R.string.eng_detail_formula), UiText.DynamicString("I = V / R")),
+                        EngineeringDetail(UiText.StringResource(R.string.eng_detail_power), UiText.DynamicString("${fmt(v * resI)} W"))
+                    )
                 )
             }
             r == null && v != null && i != null -> {
-                if (i == 0.0) return EngineeringOutput(error = "La corriente no puede ser 0 A")
+                if (i == 0.0) return EngineeringOutput(error = UiText.StringResource(R.string.eng_error_current_zero))
                 val resR = v / i
                 EngineeringOutput(
-                    headline = "R = ${fmt(resR)} Ω",
-                    details = listOf("Fórmula" to "R = V / I", "Potencia asociada" to "${fmt(v * i)} W")
+                    headline = UiText.DynamicString("R = ${fmt(resR)} Ω"),
+                    details = listOf(
+                        EngineeringDetail(UiText.StringResource(R.string.eng_detail_formula), UiText.DynamicString("R = V / I")),
+                        EngineeringDetail(UiText.StringResource(R.string.eng_detail_power), UiText.DynamicString("${fmt(v * i)} W"))
+                    )
                 )
             }
-            else -> EngineeringOutput(error = "Datos insuficientes")
+            else -> EngineeringOutput(error = UiText.StringResource(R.string.eng_error_insufficient_data))
         }
     }
 
     fun calculatePower(v: Double?, i: Double?, p: Double?): EngineeringOutput {
         val provided = listOf(v, i, p).count { it != null }
         if (provided < 2) return EngineeringOutput()
-        if (provided == 3) return EngineeringOutput(error = "Deja vacío el valor que deseas calcular")
+        if (provided == 3) return EngineeringOutput(error = UiText.StringResource(R.string.eng_error_leave_one_empty))
 
         return when {
             p == null && v != null && i != null -> EngineeringOutput(
-                headline = "P = ${fmt(v * i)} W",
-                details = listOf("Fórmula" to "P = V × I", "Resistencia equiv." to if (i != 0.0) "${fmt(v / i)} Ω" else "—")
+                headline = UiText.DynamicString("P = ${fmt(v * i)} W"),
+                details = listOf(
+                    EngineeringDetail(UiText.StringResource(R.string.eng_detail_formula), UiText.DynamicString("P = V × I")),
+                    EngineeringDetail(
+                        UiText.StringResource(R.string.eng_detail_equiv_resistance),
+                        UiText.DynamicString(if (i != 0.0) "${fmt(v / i)} Ω" else "—")
+                    )
+                )
             )
             v == null && p != null && i != null -> {
-                if (i == 0.0) return EngineeringOutput(error = "La corriente no puede ser 0 A")
+                if (i == 0.0) return EngineeringOutput(error = UiText.StringResource(R.string.eng_error_current_zero))
                 EngineeringOutput(
-                    headline = "V = ${fmt(p / i)} V",
-                    details = listOf("Fórmula" to "V = P / I")
+                    headline = UiText.DynamicString("V = ${fmt(p / i)} V"),
+                    details = listOf(
+                        EngineeringDetail(UiText.StringResource(R.string.eng_detail_formula), UiText.DynamicString("V = P / I"))
+                    )
                 )
             }
             i == null && v != null && p != null -> {
-                if (v == 0.0) return EngineeringOutput(error = "El voltaje no puede ser 0 V")
+                if (v == 0.0) return EngineeringOutput(error = UiText.StringResource(R.string.eng_error_voltage_zero))
                 EngineeringOutput(
-                    headline = "I = ${fmt(p / v)} A",
-                    details = listOf("Fórmula" to "I = P / V")
+                    headline = UiText.DynamicString("I = ${fmt(p / v)} A"),
+                    details = listOf(
+                        EngineeringDetail(UiText.StringResource(R.string.eng_detail_formula), UiText.DynamicString("I = P / V"))
+                    )
                 )
             }
-            else -> EngineeringOutput(error = "Datos insuficientes")
+            else -> EngineeringOutput(error = UiText.StringResource(R.string.eng_error_insufficient_data))
         }
     }
 
     fun calculateResistors(r1: Double?, r2: Double?): EngineeringOutput {
         if (r1 == null || r2 == null) return EngineeringOutput()
-        if (r1 < 0 || r2 < 0) return EngineeringOutput(error = "Las resistencias deben ser positivas")
+        if (r1 < 0 || r2 < 0) return EngineeringOutput(error = UiText.StringResource(R.string.eng_error_resistors_positive))
         val series = r1 + r2
         val parallel = if (series == 0.0) 0.0 else (r1 * r2) / series
         return EngineeringOutput(
-            headline = "Rp = ${fmt(parallel)} Ω",
+            headline = UiText.DynamicString("Rp = ${fmt(parallel)} Ω"),
             details = listOf(
-                "Equivalente en Serie (Rs)" to "${fmt(series)} Ω",
-                "Equivalente en Paralelo (Rp)" to "${fmt(parallel)} Ω"
+                EngineeringDetail(UiText.StringResource(R.string.eng_detail_series_equiv), UiText.DynamicString("${fmt(series)} Ω")),
+                EngineeringDetail(UiText.StringResource(R.string.eng_detail_parallel_equiv), UiText.DynamicString("${fmt(parallel)} Ω"))
             )
         )
     }
@@ -91,15 +118,15 @@ class CalculateEngineeringUseCase @Inject constructor() {
     fun calculateVoltageDivider(vin: Double?, r1: Double?, r2: Double?): EngineeringOutput {
         if (vin == null || r1 == null || r2 == null) return EngineeringOutput()
         if (r1 < 0 || r2 < 0 || (r1 + r2) == 0.0) {
-            return EngineeringOutput(error = "R1 + R2 debe ser mayor que 0 Ω")
+            return EngineeringOutput(error = UiText.StringResource(R.string.eng_error_resistor_sum_zero))
         }
         val vout = vin * (r2 / (r1 + r2))
         val current = vin / (r1 + r2)
         return EngineeringOutput(
-            headline = "Vout = ${fmt(vout)} V",
+            headline = UiText.DynamicString("Vout = ${fmt(vout)} V"),
             details = listOf(
-                "Relación Vout / Vin" to "${fmt((r2 / (r1 + r2)) * 100)} %",
-                "Corriente de rama" to "${fmt(current * 1000)} mA"
+                EngineeringDetail(UiText.StringResource(R.string.eng_detail_vout_vin_ratio), UiText.DynamicString("${fmt((r2 / (r1 + r2)) * 100)} %")),
+                EngineeringDetail(UiText.StringResource(R.string.eng_detail_branch_current), UiText.DynamicString("${fmt(current * 1000)} mA"))
             )
         )
     }
@@ -129,22 +156,23 @@ class CalculateEngineeringUseCase @Inject constructor() {
             val wildcard = maskInt.inv()
             val firstHost = if (cidr <= 30) intToIp(network + 1) else intToIp(network)
             val lastHost = if (cidr <= 30) intToIp(broadcast - 1) else intToIp(broadcast)
+            val intFormatter = NumberFormat.getIntegerInstance(Locale.getDefault())
 
             EngineeringOutput(
-                headline = "${intToIp(network)}/$cidr",
+                headline = UiText.DynamicString("${intToIp(network)}/$cidr"),
                 details = listOf(
-                    "Dirección de Red" to intToIp(network),
-                    "Máscara de Subred" to intToIp(maskInt),
-                    "Wildcard" to intToIp(wildcard),
-                    "Broadcast" to intToIp(broadcast),
-                    "Primer Host" to firstHost,
-                    "Último Host" to lastHost,
-                    "Direcciones Totales" to String.format(Locale.US, "%,d", addresses),
-                    "Hosts Útiles" to String.format(Locale.US, "%,d", usable)
+                    EngineeringDetail(UiText.StringResource(R.string.eng_detail_network_addr), UiText.DynamicString(intToIp(network))),
+                    EngineeringDetail(UiText.StringResource(R.string.eng_detail_subnet_mask), UiText.DynamicString(intToIp(maskInt))),
+                    EngineeringDetail(UiText.StringResource(R.string.eng_detail_wildcard), UiText.DynamicString(intToIp(wildcard))),
+                    EngineeringDetail(UiText.StringResource(R.string.eng_detail_broadcast), UiText.DynamicString(intToIp(broadcast))),
+                    EngineeringDetail(UiText.StringResource(R.string.eng_detail_first_host), UiText.DynamicString(firstHost)),
+                    EngineeringDetail(UiText.StringResource(R.string.eng_detail_last_host), UiText.DynamicString(lastHost)),
+                    EngineeringDetail(UiText.StringResource(R.string.eng_detail_total_addresses), UiText.DynamicString(intFormatter.format(addresses))),
+                    EngineeringDetail(UiText.StringResource(R.string.eng_detail_usable_hosts), UiText.DynamicString(intFormatter.format(usable)))
                 )
             )
         } catch (_: Exception) {
-            EngineeringOutput(error = "IPv4 o máscara inválida (ej. 192.168.1.10 y /24)")
+            EngineeringOutput(error = UiText.StringResource(R.string.eng_error_invalid_ipv4))
         }
     }
 
@@ -159,5 +187,5 @@ class CalculateEngineeringUseCase @Inject constructor() {
     private fun intToIp(ip: Int): String =
         "${(ip ushr 24) and 255}.${(ip ushr 16) and 255}.${(ip ushr 8) and 255}.${ip and 255}"
 
-    private fun fmt(value: Double): String = String.format(Locale.US, "%.6g", value)
+    private fun fmt(value: Double): String = String.format(Locale.getDefault(), "%.6g", value)
 }

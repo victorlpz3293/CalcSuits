@@ -3,8 +3,8 @@ package com.calcsuits.domain.usecase
 import java.math.BigDecimal
 import java.math.MathContext
 import java.util.ArrayDeque
-import kotlin.math.PI
 import kotlin.math.E
+import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.acos
 import kotlin.math.asin
@@ -53,7 +53,9 @@ class MathExpressionEvaluator(
     fun evaluate(expression: String, x: Double): BigDecimal = evaluateInternal(expression, variableX = x)
 
     private fun evaluateInternal(expression: String, variableX: Double?): BigDecimal {
-        require(expression.isNotBlank()) { "La expresión está vacía" }
+        if (expression.isBlank()) {
+            throw MathEvaluationException(MathError.EmptyExpression, "Expression is empty")
+        }
         val normalized = expression
             .replace("×", "*")
             .replace("÷", "/")
@@ -61,7 +63,9 @@ class MathExpressionEvaluator(
             .replace("π", "pi")
             .replace("√", "sqrt")
         val rawTokens = tokenize(normalized, variableX)
-        require(rawTokens.isNotEmpty()) { "La expresión no contiene tokens válidos" }
+        if (rawTokens.isEmpty()) {
+            throw MathEvaluationException(MathError.NoValidTokens, "Expression contains no valid tokens")
+        }
         val tokens = insertImplicitMultiplication(rawTokens)
         return evaluateRpn(shuntingYard(tokens))
     }
@@ -93,9 +97,13 @@ class MathExpressionEvaluator(
                             while (i < expression.length && expression[i].isDigit()) i++
                         }
                     }
-                    require(dots <= 1) { "Número decimal inválido" }
+                    if (dots > 1) {
+                        throw MathEvaluationException(MathError.InvalidDecimal, "Invalid decimal number")
+                    }
                     val number = expression.substring(start, i)
-                    require(number != "." && number.toBigDecimalOrNull() != null) { "Número inválido" }
+                    if (number == "." || number.toBigDecimalOrNull() == null) {
+                        throw MathEvaluationException(MathError.InvalidNumber, "Invalid number")
+                    }
                     tokens.add(number)
                 }
                 c.isLetter() -> {
@@ -108,7 +116,10 @@ class MathExpressionEvaluator(
                         word == "e" -> tokens.add(E.toString())
                         word == "mod" -> tokens.add("%")
                         word in functions -> tokens.add(word)
-                        else -> throw IllegalArgumentException("Función o identificador desconocido: $word")
+                        else -> throw MathEvaluationException(
+                            MathError.UnknownIdentifier(word),
+                            "Unknown function or identifier: $word"
+                        )
                     }
                 }
                 c == '!' -> {
@@ -125,7 +136,10 @@ class MathExpressionEvaluator(
                     }
                     i++
                 }
-                else -> throw IllegalArgumentException("Carácter no permitido: $c")
+                else -> throw MathEvaluationException(
+                    MathError.InvalidCharacter(c.toString()),
+                    "Invalid character: $c"
+                )
             }
         }
         return tokens
@@ -163,11 +177,15 @@ class MathExpressionEvaluator(
                     openParentheses++
                 }
                 token == ")" -> {
-                    require(openParentheses > 0) { "Paréntesis desbalanceados" }
+                    if (openParentheses <= 0) {
+                        throw MathEvaluationException(MathError.UnbalancedParentheses, "Unbalanced parentheses")
+                    }
                     while (operators.isNotEmpty() && operators.peekLast() != "(") {
                         output.add(operators.removeLast())
                     }
-                    require(operators.isNotEmpty()) { "Paréntesis desbalanceados" }
+                    if (operators.isEmpty()) {
+                        throw MathEvaluationException(MathError.UnbalancedParentheses, "Unbalanced parentheses")
+                    }
                     operators.removeLast()
                     openParentheses--
                     if (operators.isNotEmpty() && operators.peekLast() in functions) {
@@ -188,13 +206,20 @@ class MathExpressionEvaluator(
                     }
                     operators.addLast(token)
                 }
-                else -> throw IllegalArgumentException("Función u operador desconocido: $token")
+                else -> throw MathEvaluationException(
+                    MathError.UnknownOperator(token),
+                    "Unknown function or operator: $token"
+                )
             }
         }
-        require(openParentheses == 0) { "Paréntesis desbalanceados" }
+        if (openParentheses != 0) {
+            throw MathEvaluationException(MathError.UnbalancedParentheses, "Unbalanced parentheses")
+        }
         while (operators.isNotEmpty()) {
             val op = operators.removeLast()
-            require(op != "(") { "Paréntesis desbalanceados" }
+            if (op == "(") {
+                throw MathEvaluationException(MathError.UnbalancedParentheses, "Unbalanced parentheses")
+            }
             output.add(op)
         }
         return output
@@ -206,19 +231,27 @@ class MathExpressionEvaluator(
             when {
                 token.isNumber() -> stack.addLast(token.toBigDecimal())
                 token == "u-" -> {
-                    require(stack.isNotEmpty()) { "Falta un operando para negación" }
+                    if (stack.isEmpty()) {
+                        throw MathEvaluationException(MathError.MissingNegationOperand, "Missing operand for negation")
+                    }
                     stack.addLast(stack.removeLast().negate(mathContext))
                 }
                 token in functions -> {
-                    require(stack.isNotEmpty()) { "Falta un operando para $token" }
+                    if (stack.isEmpty()) {
+                        throw MathEvaluationException(MathError.MissingOperand(token), "Missing operand for $token")
+                    }
                     val x = stack.removeLast().toDouble()
                     val result = evaluateFunction(token, x)
-                    require(result.isFinite()) { "Resultado no definido" }
+                    if (!result.isFinite()) {
+                        throw MathArithmeticException(MathError.UndefinedResult, "Undefined result")
+                    }
                     val cleaned = if (abs(result) < 1e-13) 0.0 else result
                     stack.addLast(cleaned.toBigDecimal(mathContext))
                 }
                 token in precedence -> {
-                    require(stack.size >= 2) { "Faltan operandos para $token" }
+                    if (stack.size < 2) {
+                        throw MathEvaluationException(MathError.MissingOperands(token), "Missing operands for $token")
+                    }
                     val b = stack.removeLast()
                     val a = stack.removeLast()
                     val result = when (token) {
@@ -226,26 +259,34 @@ class MathExpressionEvaluator(
                         "-" -> a.subtract(b, mathContext)
                         "*" -> a.multiply(b, mathContext)
                         "/" -> {
-                            require(b.compareTo(BigDecimal.ZERO) != 0) { "División por cero" }
+                            if (b.compareTo(BigDecimal.ZERO) == 0) {
+                                throw MathArithmeticException(MathError.DivisionByZero, "Division by zero")
+                            }
                             a.divide(b, mathContext)
                         }
                         "%" -> {
-                            require(b.compareTo(BigDecimal.ZERO) != 0) { "Módulo por cero" }
+                            if (b.compareTo(BigDecimal.ZERO) == 0) {
+                                throw MathArithmeticException(MathError.ModuloByZero, "Modulo by zero")
+                            }
                             a.remainder(b, mathContext)
                         }
                         "^" -> {
                             val value = a.toDouble().pow(b.toDouble())
-                            require(value.isFinite()) { "Resultado no definido" }
+                            if (!value.isFinite()) {
+                                throw MathArithmeticException(MathError.UndefinedResult, "Undefined result")
+                            }
                             value.toBigDecimal(mathContext)
                         }
-                        else -> error("Operador no soportado")
+                        else -> throw MathEvaluationException(MathError.UnsupportedOperator, "Unsupported operator")
                     }
                     stack.addLast(result)
                 }
-                else -> throw IllegalArgumentException("Token desconocido: $token")
+                else -> throw MathEvaluationException(MathError.UnknownToken(token), "Unknown token: $token")
             }
         }
-        require(stack.size == 1) { "Expresión incompleta" }
+        if (stack.size != 1) {
+            throw MathEvaluationException(MathError.IncompleteExpression, "Incomplete expression")
+        }
         return stack.removeLast()
     }
 
@@ -257,19 +298,28 @@ class MathExpressionEvaluator(
             "tan" -> {
                 if (!useRadians) {
                     val mod = ((x % 180.0) + 180.0) % 180.0
-                    require(abs(mod - 90.0) > 1e-9) { "Tangente indefinida en $x°" }
-                } else {
-                    require(abs(cos(angle)) > 1e-12) { "Tangente indefinida" }
+                    if (abs(mod - 90.0) <= 1e-9) {
+                        throw MathArithmeticException(
+                            MathError.UndefinedTangentAtDegrees(x.toString()),
+                            "Undefined tangent at $x°"
+                        )
+                    }
+                } else if (abs(cos(angle)) <= 1e-12) {
+                    throw MathArithmeticException(MathError.UndefinedTangent, "Undefined tangent")
                 }
                 tan(angle)
             }
             "asin" -> {
-                require(x in -1.0..1.0) { "Dominio de asin: [-1, 1]" }
+                if (x !in -1.0..1.0) {
+                    throw MathEvaluationException(MathError.DomainFnMinusOneOne("asin"), "asin domain: [-1, 1]")
+                }
                 val r = asin(x)
                 if (useRadians) r else Math.toDegrees(r)
             }
             "acos" -> {
-                require(x in -1.0..1.0) { "Dominio de acos: [-1, 1]" }
+                if (x !in -1.0..1.0) {
+                    throw MathEvaluationException(MathError.DomainFnMinusOneOne("acos"), "acos domain: [-1, 1]")
+                }
                 val r = acos(x)
                 if (useRadians) r else Math.toDegrees(r)
             }
@@ -281,29 +331,35 @@ class MathExpressionEvaluator(
             "cosh" -> cosh(x)
             "tanh" -> tanh(x)
             "log" -> {
-                require(x > 0.0) { "Logaritmo requiere valor positivo" }
+                if (x <= 0.0) {
+                    throw MathEvaluationException(MathError.LogPositive, "Logarithm requires a positive value")
+                }
                 log10(x)
             }
             "ln" -> {
-                require(x > 0.0) { "Logaritmo natural requiere valor positivo" }
+                if (x <= 0.0) {
+                    throw MathEvaluationException(MathError.LnPositive, "Natural logarithm requires a positive value")
+                }
                 ln(x)
             }
             "sqrt" -> {
-                require(x >= 0.0) { "Raíz cuadrada de número negativo" }
+                if (x < 0.0) {
+                    throw MathEvaluationException(MathError.NegativeRoot, "Negative square root")
+                }
                 sqrt(x)
             }
             "abs" -> abs(x)
             "exp" -> exp(x)
             "fact" -> {
                 val n = x.roundToLong()
-                require(abs(x - n.toDouble()) < 1e-9 && n in 0L..20L) {
-                    "Factorial requiere entero entre 0 y 20"
+                if (abs(x - n.toDouble()) >= 1e-9 || n !in 0L..20L) {
+                    throw MathEvaluationException(MathError.FactorialRange, "Factorial requires an integer between 0 and 20")
                 }
                 var acc = 1L
                 for (k in 2L..n) acc *= k
                 acc.toDouble()
             }
-            else -> throw IllegalArgumentException("Función no soportada: $fn")
+            else -> throw MathEvaluationException(MathError.UnsupportedFunction(fn), "Unsupported function: $fn")
         }
     }
 

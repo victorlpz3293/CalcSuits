@@ -1,0 +1,93 @@
+package com.calcsuits.ui.util
+
+import android.content.Context
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import com.calcsuits.domain.model.UiText
+import java.text.NumberFormat
+import java.util.Locale
+
+@Composable
+fun UiText.asString(): String = when (this) {
+    is UiText.DynamicString -> value
+    is UiText.StringResource -> {
+        if (args.isEmpty()) {
+            stringResource(resId)
+        } else {
+            stringResource(resId, *args.map { if (it is UiText) it.asString() else it }.toTypedArray())
+        }
+    }
+    is UiText.PluralResource -> {
+        if (args.isEmpty()) {
+            pluralStringResource(resId, count)
+        } else {
+            pluralStringResource(resId, count, *args.map { if (it is UiText) it.asString() else it }.toTypedArray())
+        }
+    }
+}
+
+fun UiText.resolve(context: Context): String = when (this) {
+    is UiText.DynamicString -> value
+    is UiText.StringResource -> {
+        if (args.isEmpty()) {
+            context.getString(resId)
+        } else {
+            context.getString(resId, *args.map { if (it is UiText) it.resolve(context) else it }.toTypedArray())
+        }
+    }
+    is UiText.PluralResource -> {
+        if (args.isEmpty()) {
+            context.resources.getQuantityString(resId, count)
+        } else {
+            context.resources.getQuantityString(resId, count, *args.map { if (it is UiText) it.resolve(context) else it }.toTypedArray())
+        }
+    }
+}
+
+@Composable
+fun rememberCurrentLocale(): Locale {
+    val configuration = LocalConfiguration.current
+    return configuration.locales[0] ?: Locale.getDefault()
+}
+
+fun formatCurrency(value: Double, locale: Locale): String {
+    val currencyLocale = resolveCurrencyLocale(locale)
+    val formatter = NumberFormat.getCurrencyInstance(currencyLocale)
+    val symbol = formatter.currency?.getSymbol(currencyLocale)
+    if (symbol.isNullOrBlank() || symbol == "¤" || formatter.currency?.currencyCode == "XXX") {
+        val numberFormat = NumberFormat.getNumberInstance(locale).apply {
+            minimumFractionDigits = 2
+            maximumFractionDigits = 2
+        }
+        return "$ ${numberFormat.format(value)}"
+    }
+    return formatter.format(value)
+}
+
+fun currencySymbolFor(locale: Locale): String {
+    val currencyLocale = resolveCurrencyLocale(locale)
+    val symbol = NumberFormat.getCurrencyInstance(currencyLocale).currency?.getSymbol(currencyLocale)
+    return if (symbol.isNullOrBlank() || symbol == "¤") "$" else symbol
+}
+
+fun formatPercentInt(ratio: Double, locale: Locale): String =
+    NumberFormat.getPercentInstance(locale).apply {
+        maximumFractionDigits = 0
+    }.format(ratio)
+
+fun formatDecimal(value: Double, locale: Locale, minFraction: Int = 0, maxFraction: Int = 6): String =
+    NumberFormat.getNumberInstance(locale).apply {
+        minimumFractionDigits = minFraction
+        maximumFractionDigits = maxFraction
+        isGroupingUsed = false
+    }.format(value)
+
+private fun resolveCurrencyLocale(locale: Locale): Locale {
+    if (locale.country.isNotEmpty()) return locale
+    return when (locale.language.lowercase(Locale.ROOT)) {
+        "es" -> Locale.forLanguageTag("es-US")
+        else -> Locale.US
+    }
+}

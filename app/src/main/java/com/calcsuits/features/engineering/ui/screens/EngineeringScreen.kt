@@ -6,9 +6,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
@@ -41,11 +41,15 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.calcsuits.R
 import com.calcsuits.domain.model.engineering.EngineeringFormula
 import com.calcsuits.features.engineering.ui.viewmodel.EngineeringState
 import com.calcsuits.ui.components.CalcCard
@@ -54,6 +58,9 @@ import com.calcsuits.ui.components.CalcResultCard
 import com.calcsuits.ui.components.CalcSuitsHeader
 import com.calcsuits.ui.theme.CalcSuitsTheme
 import com.calcsuits.ui.theme.JetBrainsMonoFontFamily
+import com.calcsuits.ui.util.asString
+import com.calcsuits.ui.util.rememberCurrentLocale
+import com.calcsuits.ui.util.resolve
 import kotlinx.coroutines.launch
 
 private val COMMON_CIDR_PRESETS = listOf(
@@ -76,6 +83,8 @@ fun EngineeringScreen(
     val formulas = EngineeringFormula.all
     val extColors = CalcSuitsTheme.colors
     val clipboard = LocalClipboardManager.current
+    val context = LocalContext.current
+    val locale = rememberCurrentLocale()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val isSubnetting = state.selectedFormula == EngineeringFormula.Subnetting
@@ -83,8 +92,8 @@ fun EngineeringScreen(
     Scaffold(
         topBar = {
             CalcSuitsHeader(
-                title = "Ingeniería",
-                subtitle = state.selectedFormula.title.uppercase(),
+                title = stringResource(R.string.engineering),
+                subtitle = stringResource(state.selectedFormula.titleRes).uppercase(locale),
                 onMenuClick = onMenuClick,
                 actions = {
                     IconButton(
@@ -93,7 +102,7 @@ fun EngineeringScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Rounded.RestartAlt,
-                            contentDescription = "Limpiar",
+                            contentDescription = stringResource(R.string.cd_clear),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -118,11 +127,17 @@ fun EngineeringScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                items(formulas, key = { it.title }) { formula ->
+                items(formulas, key = { it.key }) { formula ->
                     CalcFilterChip(
                         selected = state.selectedFormula == formula,
                         onClick = { onFormulaSelected(formula) },
-                        label = { Text(formula.title) },
+                        label = {
+                            Text(
+                                text = stringResource(formula.titleRes),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        },
                         leadingIcon = {
                             Icon(
                                 imageVector = formula.icon,
@@ -130,7 +145,7 @@ fun EngineeringScreen(
                                 modifier = Modifier.size(18.dp)
                             )
                         },
-                        modifier = Modifier.testTag("eng_formula_${formula.title}")
+                        modifier = Modifier.testTag("eng_formula_${formula.key}")
                     )
                 }
             }
@@ -141,7 +156,7 @@ fun EngineeringScreen(
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(
-                        text = state.selectedFormula.equation,
+                        text = state.selectedFormula.equation.asString(),
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontFamily = JetBrainsMonoFontFamily,
                             fontWeight = FontWeight.Bold
@@ -149,7 +164,7 @@ fun EngineeringScreen(
                         color = extColors.technicalAccent
                     )
                     Text(
-                        text = state.selectedFormula.hint,
+                        text = stringResource(state.selectedFormula.hintRes),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -157,11 +172,11 @@ fun EngineeringScreen(
             }
 
             if (isSubnetting) {
-                val maskFieldKey = EngineeringFormula.Subnetting.variables[1]
+                val maskFieldKey = EngineeringFormula.Subnetting.variables[1].key
                 val currentMask = state.inputs[maskFieldKey]?.trim().orEmpty()
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(
-                        text = "CIDR RÁPIDO",
+                        text = stringResource(R.string.eng_quick_cidr),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(horizontal = 18.dp)
@@ -195,12 +210,12 @@ fun EngineeringScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     state.selectedFormula.variables.forEach { variable ->
                         OutlinedTextField(
-                            value = state.inputs[variable] ?: "",
-                            onValueChange = { onInputChange(variable, it) },
-                            label = { Text(variable) },
+                            value = state.inputs[variable.key] ?: "",
+                            onValueChange = { onInputChange(variable.key, it) },
+                            label = { Text(stringResource(variable.labelRes)) },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .testTag("eng_input_$variable"),
+                                .testTag("eng_input_${variable.key}"),
                             keyboardOptions = KeyboardOptions(
                                 keyboardType = if (state.selectedFormula.allowsCidrText) KeyboardType.Text else KeyboardType.Decimal
                             ),
@@ -222,23 +237,23 @@ fun EngineeringScreen(
                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.4f))
                 ) {
                     Text(
-                        text = out.error,
+                        text = out.error.asString(),
                         modifier = Modifier.padding(14.dp),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onErrorContainer,
                         fontWeight = FontWeight.Medium
                     )
                 }
-            } else if (out.headline.isNotBlank()) {
+            } else if (out.headline != null) {
                 CalcResultCard(modifier = Modifier.padding(horizontal = 16.dp)) {
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Text(
-                            text = "RESULTADO CALCULADO",
+                            text = stringResource(R.string.eng_calculated_result),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.primary
                         )
                         Text(
-                            text = out.headline,
+                            text = out.headline.asString(),
                             style = MaterialTheme.typography.headlineMedium.copy(
                                 fontFamily = JetBrainsMonoFontFamily,
                                 fontWeight = FontWeight.Bold
@@ -247,19 +262,21 @@ fun EngineeringScreen(
                         )
                         if (out.details.isNotEmpty()) {
                             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                            out.details.forEach { (label, value) ->
+                            out.details.forEach { detail ->
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Text(
-                                        text = label,
+                                        text = detail.label.asString(),
                                         style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.weight(1f)
                                     )
+                                    Spacer(Modifier.width(12.dp))
                                     Text(
-                                        text = value,
+                                        text = detail.value.asString(),
                                         style = MaterialTheme.typography.titleSmall.copy(
                                             fontFamily = JetBrainsMonoFontFamily,
                                             fontWeight = FontWeight.SemiBold
@@ -274,15 +291,23 @@ fun EngineeringScreen(
                             Spacer(Modifier.height(4.dp))
                             OutlinedButton(
                                 onClick = {
+                                    val headlineText = out.headline.resolve(context)
                                     val summary = buildString {
-                                        appendLine("Subnetting IPv4 — ${out.headline}")
-                                        out.details.forEach { (label, value) ->
-                                            appendLine("$label: $value")
+                                        appendLine(
+                                            context.getString(
+                                                R.string.eng_subnet_summary_header,
+                                                headlineText
+                                            )
+                                        )
+                                        out.details.forEach { detail ->
+                                            appendLine("${detail.label.resolve(context)}: ${detail.value.resolve(context)}")
                                         }
                                     }.trim()
                                     clipboard.setText(AnnotatedString(summary))
                                     scope.launch {
-                                        snackbarHostState.showSnackbar("Resumen IPv4 copiado")
+                                        snackbarHostState.showSnackbar(
+                                            context.getString(R.string.eng_subnet_copied)
+                                        )
                                     }
                                 },
                                 shape = MaterialTheme.shapes.medium,
@@ -301,7 +326,10 @@ fun EngineeringScreen(
                                     modifier = Modifier.size(18.dp)
                                 )
                                 Spacer(Modifier.width(8.dp))
-                                Text("Copiar resumen", fontWeight = FontWeight.SemiBold)
+                                Text(
+                                    text = stringResource(R.string.eng_copy_summary),
+                                    fontWeight = FontWeight.SemiBold
+                                )
                             }
                         }
                     }

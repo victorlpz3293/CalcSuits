@@ -1,5 +1,6 @@
 package com.calcsuits.domain.model.engineering
 
+import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.ElectricBolt
@@ -7,53 +8,84 @@ import androidx.compose.material.icons.filled.Lan
 import androidx.compose.material.icons.filled.LinearScale
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.ui.graphics.vector.ImageVector
+import com.calcsuits.R
+import com.calcsuits.domain.model.UiText
+
+data class EngineeringVariable(
+    val key: String,
+    @StringRes val labelRes: Int
+)
 
 sealed class EngineeringFormula(
-    val title: String,
-    val equation: String,
-    val hint: String,
+    val key: String,
+    @StringRes val titleRes: Int,
+    val equation: UiText,
+    @StringRes val hintRes: Int,
     val icon: ImageVector,
-    val variables: List<String>,
+    val variables: List<EngineeringVariable>,
     val allowsCidrText: Boolean = false
 ) {
     object OhmsLaw : EngineeringFormula(
-        title = "Ley de Ohm",
-        equation = "V = I × R",
-        hint = "Ingresa exactamente 2 valores para despejar el tercero",
+        key = "ohms_law",
+        titleRes = R.string.eng_ohms_law_title,
+        equation = UiText.DynamicString("V = I × R"),
+        hintRes = R.string.eng_two_values_hint,
         icon = Icons.Default.ElectricBolt,
-        variables = listOf("Voltaje (V)", "Corriente (A)", "Resistencia (Ω)")
+        variables = listOf(
+            EngineeringVariable("v", R.string.eng_var_voltage),
+            EngineeringVariable("i", R.string.eng_var_current),
+            EngineeringVariable("r", R.string.eng_var_resistance)
+        )
     )
 
     object Power : EngineeringFormula(
-        title = "Potencia Eléctrica",
-        equation = "P = V × I",
-        hint = "Ingresa exactamente 2 valores para despejar el tercero",
+        key = "power",
+        titleRes = R.string.eng_power_title,
+        equation = UiText.DynamicString("P = V × I"),
+        hintRes = R.string.eng_two_values_hint,
         icon = Icons.Default.Bolt,
-        variables = listOf("Voltaje (V)", "Corriente (A)", "Potencia (W)")
+        variables = listOf(
+            EngineeringVariable("v", R.string.eng_var_voltage),
+            EngineeringVariable("i", R.string.eng_var_current),
+            EngineeringVariable("p", R.string.eng_var_power)
+        )
     )
 
     object Resistors : EngineeringFormula(
-        title = "Resistencias",
-        equation = "Rs = R1 + R2  |  Rp = (R1·R2)/(R1+R2)",
-        hint = "Calcula equivalente en serie y paralelo",
+        key = "resistors",
+        titleRes = R.string.eng_resistors_title,
+        equation = UiText.DynamicString("Rs = R1 + R2  |  Rp = (R1·R2)/(R1+R2)"),
+        hintRes = R.string.eng_resistors_hint,
         icon = Icons.Default.LinearScale,
-        variables = listOf("R1 (Ω)", "R2 (Ω)")
+        variables = listOf(
+            EngineeringVariable("r1", R.string.eng_var_r1),
+            EngineeringVariable("r2", R.string.eng_var_r2)
+        )
     )
 
     object VoltageDivider : EngineeringFormula(
-        title = "Divisor de Voltaje",
-        equation = "Vout = Vin × R2 / (R1 + R2)",
-        hint = "Calcula el voltaje de salida en R2",
+        key = "voltage_divider",
+        titleRes = R.string.eng_voltage_divider_title,
+        equation = UiText.DynamicString("Vout = Vin × R2 / (R1 + R2)"),
+        hintRes = R.string.eng_voltage_divider_hint,
         icon = Icons.Default.Tune,
-        variables = listOf("Vin (V)", "R1 (Ω)", "R2 (Ω)")
+        variables = listOf(
+            EngineeringVariable("vin", R.string.eng_var_vin),
+            EngineeringVariable("r1", R.string.eng_var_r1),
+            EngineeringVariable("r2", R.string.eng_var_r2)
+        )
     )
 
     object Subnetting : EngineeringFormula(
-        title = "Subnetting IPv4",
-        equation = "Red, Broadcast, Wildcard y Hosts útiles",
-        hint = "Ej. IP 192.168.1.10 y máscara /24 o 255.255.255.0",
+        key = "subnetting",
+        titleRes = R.string.eng_subnetting_title,
+        equation = UiText.StringResource(R.string.eng_subnetting_equation),
+        hintRes = R.string.eng_subnetting_hint,
         icon = Icons.Default.Lan,
-        variables = listOf("Dirección IPv4", "Máscara o CIDR"),
+        variables = listOf(
+            EngineeringVariable("ip", R.string.eng_var_ipv4),
+            EngineeringVariable("mask", R.string.eng_var_mask_cidr)
+        ),
         allowsCidrText = true
     )
 

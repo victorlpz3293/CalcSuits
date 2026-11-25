@@ -8,6 +8,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import java.util.Locale
 import javax.inject.Inject
 
 data class UnitConversionPreview(
@@ -31,8 +32,17 @@ class ConverterViewModel @Inject constructor(
     private val _state = MutableStateFlow(ConverterState())
     val state = _state.asStateFlow()
 
+    private var currentLocale: Locale = Locale.getDefault()
+
     init {
         calculateConversion()
+    }
+
+    fun updateLocale(locale: Locale) {
+        if (currentLocale != locale) {
+            currentLocale = locale
+            calculateConversion()
+        }
     }
 
     fun onCategorySelected(category: ConversionCategory) {
@@ -52,9 +62,9 @@ class ConverterViewModel @Inject constructor(
             value.forEachIndexed { idx, c ->
                 when {
                     c.isDigit() -> append(c)
-                    c == '.' && !dotSeen -> {
+                    (c == '.' || c == ',') && !dotSeen -> {
                         dotSeen = true
-                        append(c)
+                        append('.')
                     }
                     c == '-' && idx == 0 -> append(c)
                 }
@@ -82,13 +92,13 @@ class ConverterViewModel @Inject constructor(
             return
         }
         val fixedDecimals = if (current.selectedCategory == ConversionCategory.Currency) 2 else null
-        val result = convertUseCase(value, current.fromUnit, current.toUnit, fixedDecimals)
+        val result = convertUseCase(value, current.fromUnit, current.toUnit, fixedDecimals, currentLocale)
         val previews = current.selectedCategory.units
             .filter { it.symbol != current.fromUnit.symbol }
             .map { target ->
                 UnitConversionPreview(
                     unit = target,
-                    formattedValue = convertUseCase(value, current.fromUnit, target, fixedDecimals)
+                    formattedValue = convertUseCase(value, current.fromUnit, target, fixedDecimals, currentLocale)
                 )
             }
         _state.update { it.copy(toValue = result, allUnitPreviews = previews) }

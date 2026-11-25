@@ -1,5 +1,6 @@
 package com.calcsuits.ui.navigation
 
+import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ShowChart
 import androidx.compose.material.icons.filled.Calculate
@@ -10,30 +11,31 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.ui.graphics.vector.ImageVector
+import com.calcsuits.R
 
-enum class DrawerSection(val label: String) {
-    CORE("CÁLCULO"),
-    TECHNICAL("HERRAMIENTAS TÉCNICAS"),
-    SYSTEM("SISTEMA")
+enum class DrawerSection(@StringRes val labelRes: Int) {
+    CORE(R.string.drawer_section_core),
+    TECHNICAL(R.string.drawer_section_technical),
+    SYSTEM(R.string.drawer_section_system)
 }
 
 sealed class Screen(
     val route: String,
-    val title: String,
-    val subtitle: String,
+    @StringRes val titleRes: Int,
+    @StringRes val subtitleRes: Int,
     val icon: ImageVector,
     val section: DrawerSection
 ) {
-    object Calculator : Screen("calculator", "Calculadora", "Básica y científica", Icons.Default.Calculate, DrawerSection.CORE)
-    object Graph : Screen("graph", "Gráficas 2D", "Plotter interactivo", Icons.AutoMirrored.Filled.ShowChart, DrawerSection.CORE)
-    object Ai : Screen("ai_assistant", "Solucionador", "Ecuaciones y expresiones", Icons.Default.Functions, DrawerSection.CORE)
+    object Calculator : Screen("calculator", R.string.calculator, R.string.drawer_sub_calculator, Icons.Default.Calculate, DrawerSection.CORE)
+    object Graph : Screen("graph", R.string.graphs, R.string.drawer_sub_graphs, Icons.AutoMirrored.Filled.ShowChart, DrawerSection.CORE)
+    object Ai : Screen("ai_assistant", R.string.solver, R.string.drawer_sub_solver, Icons.Default.Functions, DrawerSection.CORE)
 
-    object Converter : Screen("converter", "Conversores", "9 categorías de unidades", Icons.Default.SwapHoriz, DrawerSection.TECHNICAL)
-    object Finance : Screen("finance", "Finanzas", "Préstamos, interés e IVA", Icons.Default.Payments, DrawerSection.TECHNICAL)
-    object Engineering : Screen("engineering", "Ingeniería", "Ohm, potencia e IPv4", Icons.Default.Engineering, DrawerSection.TECHNICAL)
-    object Programmer : Screen("programmer", "Programador", "HEX, BIN y bitwise", Icons.Default.Terminal, DrawerSection.TECHNICAL)
+    object Converter : Screen("converter", R.string.converter, R.string.drawer_sub_converter, Icons.Default.SwapHoriz, DrawerSection.TECHNICAL)
+    object Finance : Screen("finance", R.string.finance, R.string.drawer_sub_finance, Icons.Default.Payments, DrawerSection.TECHNICAL)
+    object Engineering : Screen("engineering", R.string.engineering, R.string.drawer_sub_engineering, Icons.Default.Engineering, DrawerSection.TECHNICAL)
+    object Programmer : Screen("programmer", R.string.programmer, R.string.drawer_sub_programmer, Icons.Default.Terminal, DrawerSection.TECHNICAL)
 
-    object Settings : Screen("settings", "Ajustes", "Tema y precisión", Icons.Default.Settings, DrawerSection.SYSTEM)
+    object Settings : Screen("settings", R.string.settings, R.string.drawer_sub_settings, Icons.Default.Settings, DrawerSection.SYSTEM)
 
     companion object {
         val items: List<Screen> by lazy {

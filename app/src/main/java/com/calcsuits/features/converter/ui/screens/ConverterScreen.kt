@@ -7,9 +7,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
@@ -50,12 +50,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.calcsuits.R
 import com.calcsuits.domain.model.converter.ConversionCategory
 import com.calcsuits.domain.model.converter.ConversionUnit
 import com.calcsuits.features.converter.ui.viewmodel.ConverterState
@@ -64,6 +68,7 @@ import com.calcsuits.ui.components.CalcFilterChip
 import com.calcsuits.ui.components.CalcResultCard
 import com.calcsuits.ui.components.CalcSuitsHeader
 import com.calcsuits.ui.theme.JetBrainsMonoFontFamily
+import com.calcsuits.ui.util.rememberCurrentLocale
 import kotlinx.coroutines.launch
 
 @Composable
@@ -77,14 +82,16 @@ fun ConverterScreen(
 ) {
     val categories = ConversionCategory.all
     val clipboard = LocalClipboardManager.current
+    val context = LocalContext.current
+    val locale = rememberCurrentLocale()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
     Scaffold(
         topBar = {
             CalcSuitsHeader(
-                title = "Conversores",
-                subtitle = state.selectedCategory.title.uppercase(),
+                title = stringResource(R.string.converter),
+                subtitle = stringResource(state.selectedCategory.titleRes).uppercase(locale),
                 onMenuClick = onMenuClick
             )
         },
@@ -106,11 +113,17 @@ fun ConverterScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                items(categories, key = { it.title }) { category ->
+                items(categories, key = { it.key }) { category ->
                     CalcFilterChip(
                         selected = state.selectedCategory == category,
                         onClick = { onCategorySelected(category) },
-                        label = { Text(category.title) },
+                        label = {
+                            Text(
+                                text = stringResource(category.titleRes),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        },
                         leadingIcon = {
                             Icon(
                                 imageVector = category.icon,
@@ -118,7 +131,7 @@ fun ConverterScreen(
                                 modifier = Modifier.size(18.dp)
                             )
                         },
-                        modifier = Modifier.testTag("converter_cat_${category.title}")
+                        modifier = Modifier.testTag("converter_cat_${category.key}")
                     )
                 }
             }
@@ -137,15 +150,17 @@ fun ConverterScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = "DESDE",
+                                    text = stringResource(R.string.converter_from),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
+                                Spacer(Modifier.width(8.dp))
                                 UnitDropdownPill(
                                     selected = state.fromUnit,
                                     units = state.selectedCategory.units,
                                     onSelected = { onUnitChange(true, it) },
-                                    tag = "converter_from_unit"
+                                    tag = "converter_from_unit",
+                                    modifier = Modifier.weight(1f, fill = false)
                                 )
                             }
 
@@ -183,15 +198,17 @@ fun ConverterScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = "RESULTADO",
+                                    text = stringResource(R.string.converter_result),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.primary
                                 )
+                                Spacer(Modifier.width(8.dp))
                                 UnitDropdownPill(
                                     selected = state.toUnit,
                                     units = state.selectedCategory.units,
                                     onSelected = { onUnitChange(false, it) },
-                                    tag = "converter_to_unit"
+                                    tag = "converter_to_unit",
+                                    modifier = Modifier.weight(1f, fill = false)
                                 )
                             }
 
@@ -210,7 +227,7 @@ fun ConverterScreen(
                                         color = MaterialTheme.colorScheme.onSurface
                                     )
                                     Text(
-                                        text = state.toUnit.name,
+                                        text = stringResource(state.toUnit.nameRes),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -220,14 +237,19 @@ fun ConverterScreen(
                                         onClick = {
                                             clipboard.setText(AnnotatedString(state.toValue))
                                             scope.launch {
-                                                snackbarHostState.showSnackbar("Copiado: ${state.toValue} ${state.toUnit.symbol}")
+                                                snackbarHostState.showSnackbar(
+                                                    context.getString(
+                                                        R.string.copied_value_format,
+                                                        "${state.toValue} ${state.toUnit.symbol}"
+                                                    )
+                                                )
                                             }
                                         },
                                         modifier = Modifier.testTag("converter_copy_button")
                                     ) {
                                         Icon(
                                             imageVector = Icons.Default.ContentCopy,
-                                            contentDescription = "Copiar resultado",
+                                            contentDescription = stringResource(R.string.cd_copy_result),
                                             tint = MaterialTheme.colorScheme.primary
                                         )
                                     }
@@ -251,12 +273,12 @@ fun ConverterScreen(
                 ) {
                     Icon(
                         imageVector = Icons.Default.SwapVert,
-                        contentDescription = "Intercambiar unidades"
+                        contentDescription = stringResource(R.string.cd_converter_swap)
                     )
                 }
             }
 
-            state.selectedCategory.note?.let { note ->
+            state.selectedCategory.noteRes?.let { noteRes ->
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -271,7 +293,7 @@ fun ConverterScreen(
                         modifier = Modifier.size(16.dp)
                     )
                     Text(
-                        text = note,
+                        text = stringResource(noteRes),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -286,7 +308,7 @@ fun ConverterScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        text = "EQUIVALENCIAS DIRECTAS",
+                        text = stringResource(R.string.converter_equivalences),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Bold
@@ -300,11 +322,13 @@ fun ConverterScreen(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Column {
+                                Column(modifier = Modifier.weight(1f)) {
                                     Text(
-                                        text = preview.unit.name,
+                                        text = stringResource(preview.unit.nameRes),
                                         style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.Medium
+                                        fontWeight = FontWeight.Medium,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
                                     )
                                     Text(
                                         text = preview.unit.symbol,
@@ -312,6 +336,7 @@ fun ConverterScreen(
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
+                                Spacer(Modifier.width(12.dp))
                                 Text(
                                     text = "${preview.formattedValue} ${preview.unit.symbol}",
                                     style = MaterialTheme.typography.titleSmall.copy(
@@ -344,10 +369,11 @@ private fun UnitDropdownPill(
     selected: ConversionUnit,
     units: List<ConversionUnit>,
     onSelected: (ConversionUnit) -> Unit,
-    tag: String
+    tag: String,
+    modifier: Modifier = Modifier
 ) {
     var expanded by remember { mutableStateOf(false) }
-    Box {
+    Box(modifier = modifier) {
         Surface(
             onClick = { expanded = true },
             shape = RoundedCornerShape(10.dp),
@@ -360,14 +386,17 @@ private fun UnitDropdownPill(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "${selected.name} (${selected.symbol})",
+                    text = "${stringResource(selected.nameRes)} (${selected.symbol})",
                     style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false)
                 )
                 Spacer(Modifier.width(4.dp))
                 Icon(
                     imageVector = Icons.Default.ArrowDropDown,
-                    contentDescription = "Seleccionar unidad",
+                    contentDescription = stringResource(R.string.cd_converter_select_unit),
                     modifier = Modifier.size(18.dp)
                 )
             }
@@ -375,7 +404,7 @@ private fun UnitDropdownPill(
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             units.forEach { unit ->
                 DropdownMenuItem(
-                    text = { Text("${unit.name} (${unit.symbol})") },
+                    text = { Text("${stringResource(unit.nameRes)} (${unit.symbol})") },
                     onClick = {
                         expanded = false
                         onSelected(unit)

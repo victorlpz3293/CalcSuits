@@ -15,13 +15,15 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
+import androidx.annotation.StringRes
 import androidx.core.view.WindowCompat
+import com.calcsuits.R
 
-enum class AppThemeMode(val storageKey: String, val label: String) {
-    SYSTEM("system", "Sistema"),
-    DARK("dark", "Oscuro Carbono"),
-    OLED("oled", "Negro OLED"),
-    LIGHT("light", "Claro");
+enum class AppThemeMode(val storageKey: String, @StringRes val labelRes: Int) {
+    SYSTEM("system", R.string.theme_system),
+    DARK("dark", R.string.theme_dark),
+    OLED("oled", R.string.theme_oled),
+    LIGHT("light", R.string.theme_light);
 
     companion object {
         fun fromKey(key: String?): AppThemeMode =

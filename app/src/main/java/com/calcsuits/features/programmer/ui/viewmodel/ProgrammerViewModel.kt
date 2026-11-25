@@ -1,6 +1,8 @@
 package com.calcsuits.features.programmer.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
+import com.calcsuits.R
+import com.calcsuits.domain.model.UiText
 import com.calcsuits.domain.usecase.programmer.ConvertBaseUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,7 +22,7 @@ data class ProgrammerState(
     val pendingOperand: Long? = null,
     val pendingOperator: String? = null,
     val pendingExpression: String = "",
-    val lastOperation: String? = null
+    val lastOperation: UiText? = null
 )
 
 @HiltViewModel
@@ -90,7 +92,7 @@ class ProgrammerViewModel @Inject constructor(
         if (bitIndex !in 0 until current.wordSize) return
         val flipped = current.rawValue xor (1L shl bitIndex)
         val normalized = convertBaseUseCase.normalizeSigned(flipped, current.wordSize)
-        updateFromValue(normalized, lastOp = "Toggle bit #$bitIndex")
+        updateFromValue(normalized, lastOp = UiText.StringResource(R.string.prog_last_op_toggle_bit, bitIndex))
     }
 
     fun onBitwise(operation: String) {
@@ -98,16 +100,16 @@ class ProgrammerViewModel @Inject constructor(
         when (operation) {
             "NOT" -> {
                 val res = convertBaseUseCase.normalizeSigned(current.rawValue.inv(), current.wordSize)
-                updateFromValue(res, lastOp = "NOT")
+                updateFromValue(res, lastOp = UiText.DynamicString("NOT"))
             }
             "SHL" -> {
                 val res = convertBaseUseCase.normalizeSigned(current.rawValue shl 1, current.wordSize)
-                updateFromValue(res, lastOp = "<< 1")
+                updateFromValue(res, lastOp = UiText.DynamicString("<< 1"))
             }
             "SHR" -> {
                 val masked = if (current.wordSize == 64) current.rawValue else current.rawValue and convertBaseUseCase.maskFor(current.wordSize)
                 val res = convertBaseUseCase.normalizeSigned(masked ushr 1, current.wordSize)
-                updateFromValue(res, lastOp = ">> 1")
+                updateFromValue(res, lastOp = UiText.DynamicString(">> 1"))
             }
             "AND", "OR", "XOR", "NAND", "NOR" -> {
                 val left = if (current.pendingOperand != null && current.pendingOperator != null) {
@@ -139,7 +141,7 @@ class ProgrammerViewModel @Inject constructor(
                 _state.update {
                     it.copy(pendingOperand = null, pendingOperator = null, pendingExpression = "")
                 }
-                updateFromValue(res, lastOp = "$leftStr $op $rightStr")
+                updateFromValue(res, lastOp = UiText.DynamicString("$leftStr $op $rightStr"))
             }
         }
     }
@@ -161,7 +163,7 @@ class ProgrammerViewModel @Inject constructor(
         size: Int = _state.value.wordSize,
         base: Int = _state.value.activeBase,
         explicitInput: String? = null,
-        lastOp: String? = _state.value.lastOperation
+        lastOp: UiText? = _state.value.lastOperation
     ) {
         val rawInput = explicitInput ?: convertBaseUseCase.encodeRaw(value, base, size)
         _state.update {

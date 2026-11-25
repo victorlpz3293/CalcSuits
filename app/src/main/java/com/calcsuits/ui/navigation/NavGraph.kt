@@ -1,12 +1,14 @@
 package com.calcsuits.ui.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import com.calcsuits.ui.util.rememberCurrentLocale
 import com.calcsuits.features.ai.ui.screens.AiAssistantScreen
 import com.calcsuits.features.converter.ui.screens.ConverterScreen
 import com.calcsuits.features.converter.ui.viewmodel.ConverterViewModel
@@ -37,6 +39,8 @@ fun NavGraph(navController: NavHostController, onOpenDrawer: () -> Unit) {
         composable(Screen.Converter.route) {
             val vm: ConverterViewModel = hiltViewModel()
             val state by vm.state.collectAsStateWithLifecycle()
+            val locale = rememberCurrentLocale()
+            LaunchedEffect(locale) { vm.updateLocale(locale) }
             ConverterScreen(
                 state = state,
                 onMenuClick = onOpenDrawer,
@@ -83,6 +87,8 @@ fun NavGraph(navController: NavHostController, onOpenDrawer: () -> Unit) {
         composable(Screen.Engineering.route) {
             val vm: EngineeringViewModel = hiltViewModel()
             val state by vm.state.collectAsStateWithLifecycle()
+            val locale = rememberCurrentLocale()
+            LaunchedEffect(locale) { vm.recalculate() }
             EngineeringScreen(
                 state = state,
                 onMenuClick = onOpenDrawer,

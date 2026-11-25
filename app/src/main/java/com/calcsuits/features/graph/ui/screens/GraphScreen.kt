@@ -11,9 +11,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
@@ -55,14 +55,21 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.calcsuits.R
+import com.calcsuits.domain.model.UiText
 import com.calcsuits.domain.usecase.MathExpressionEvaluator
+import com.calcsuits.domain.usecase.toMathUiText
 import com.calcsuits.ui.components.CalcFilterChip
 import com.calcsuits.ui.components.CalcSuitsHeader
 import com.calcsuits.ui.theme.CalcSuitsTheme
 import com.calcsuits.ui.theme.JetBrainsMonoFontFamily
+import com.calcsuits.ui.util.asString
+import com.calcsuits.ui.util.formatDecimal
+import com.calcsuits.ui.util.rememberCurrentLocale
 import java.math.MathContext
 import java.util.Locale
 import kotlin.math.abs
@@ -76,6 +83,7 @@ import kotlin.math.pow
 fun GraphScreen(onMenuClick: () -> Unit) {
     val extColors = CalcSuitsTheme.colors
     val density = LocalDensity.current
+    val locale = rememberCurrentLocale()
     var expression by remember { mutableStateOf("sin(x)") }
     var useRadians by remember { mutableStateOf(true) }
     var centerX by remember { mutableDoubleStateOf(0.0) }
@@ -106,16 +114,21 @@ fun GraphScreen(onMenuClick: () -> Unit) {
     val minY = centerY - spanY / 2.0
     val maxY = centerY + spanY / 2.0
 
-    val syntaxError = remember(expression, useRadians) {
-        if (expression.isBlank()) "Ingresa una función en términos de x"
-        else runCatching { evaluator.evaluate(expression, 1.234) }.exceptionOrNull()?.message
+    val syntaxError: UiText? = remember(expression, useRadians) {
+        if (expression.isBlank()) {
+            UiText.StringResource(R.string.graph_error_empty)
+        } else {
+            runCatching { evaluator.evaluate(expression, 1.234) }
+                .exceptionOrNull()
+                ?.toMathUiText()
+        }
     }
 
     Scaffold(
         topBar = {
             CalcSuitsHeader(
-                title = "Gráficas 2D",
-                subtitle = "PLOTTER INTERACTIVO",
+                title = stringResource(R.string.graphs),
+                subtitle = stringResource(R.string.graph_subtitle),
                 onMenuClick = onMenuClick,
                 actions = {
                     Surface(
@@ -154,14 +167,14 @@ fun GraphScreen(onMenuClick: () -> Unit) {
                     tracedPoint = null
                 },
                 label = { Text("f(x) =") },
-                placeholder = { Text("Ej. sin(x) + x^2 / 10") },
+                placeholder = { Text(stringResource(R.string.graph_input_placeholder)) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)
                     .testTag("graph_expression_input"),
                 singleLine = true,
                 isError = syntaxError != null,
-                supportingText = syntaxError?.let { msg -> { Text(msg) } },
+                supportingText = syntaxError?.let { msg -> { Text(msg.asString()) } },
                 textStyle = MaterialTheme.typography.titleMedium.copy(fontFamily = JetBrainsMonoFontFamily)
             )
 
@@ -339,7 +352,7 @@ fun GraphScreen(onMenuClick: () -> Unit) {
                                         drawLine(axisColor, Offset(xPos, zy - tickHalf), Offset(xPos, zy + tickHalf), strokeWidth = 1.5f)
                                     }
                                     drawContext.canvas.nativeCanvas.drawText(
-                                        fmtAxisTick(gxVal, stepX),
+                                        fmtAxisTick(gxVal, stepX, locale),
                                         xPos,
                                         xBaselineY,
                                         axisPaint
@@ -363,7 +376,7 @@ fun GraphScreen(onMenuClick: () -> Unit) {
                                         drawLine(axisColor, Offset(zx - tickHalf, yPos), Offset(zx + tickHalf, yPos), strokeWidth = 1.5f)
                                     }
                                     drawContext.canvas.nativeCanvas.drawText(
-                                        fmtAxisTick(gyVal, stepY),
+                                        fmtAxisTick(gyVal, stepY, locale),
                                         yLabelX,
                                         yPos + labelTextSizePx * 0.35f,
                                         axisPaint
@@ -438,7 +451,13 @@ fun GraphScreen(onMenuClick: () -> Unit) {
                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
                     ) {
                         Text(
-                            text = "X [${fmtRange(minX)}, ${fmtRange(maxX)}] · Y [${fmtRange(minY)}, ${fmtRange(maxY)}]",
+                            text = stringResource(
+                                R.string.graph_range_format,
+                                fmtRange(minX, locale),
+                                fmtRange(maxX, locale),
+                                fmtRange(minY, locale),
+                                fmtRange(maxY, locale)
+                            ),
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                             style = MaterialTheme.typography.labelSmall.copy(fontFamily = JetBrainsMonoFontFamily),
                             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -455,7 +474,11 @@ fun GraphScreen(onMenuClick: () -> Unit) {
                             border = BorderStroke(1.dp, extColors.technicalAccent.copy(alpha = 0.5f))
                         ) {
                             Text(
-                                text = "x = ${fmtCoord(tx)},  f(x) = ${fmtCoord(ty)}",
+                                text = stringResource(
+                                    R.string.graph_trace_format,
+                                    fmtCoord(tx, locale),
+                                    fmtCoord(ty, locale)
+                                ),
                                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
                                 style = MaterialTheme.typography.labelMedium.copy(fontFamily = JetBrainsMonoFontFamily),
                                 color = extColors.onTechnicalContainer,
@@ -483,7 +506,7 @@ fun GraphScreen(onMenuClick: () -> Unit) {
                             colors = zoomColors,
                             modifier = Modifier.size(40.dp).testTag("graph_zoom_in")
                         ) {
-                            Icon(Icons.Default.Add, contentDescription = "Acercar")
+                            Icon(Icons.Default.Add, contentDescription = stringResource(R.string.cd_graph_zoom_in))
                         }
                         FilledTonalIconButton(
                             onClick = {
@@ -493,7 +516,7 @@ fun GraphScreen(onMenuClick: () -> Unit) {
                             colors = zoomColors,
                             modifier = Modifier.size(40.dp).testTag("graph_zoom_out")
                         ) {
-                            Icon(Icons.Default.Remove, contentDescription = "Alejar")
+                            Icon(Icons.Default.Remove, contentDescription = stringResource(R.string.cd_graph_zoom_out))
                         }
                         FilledTonalIconButton(
                             onClick = {
@@ -506,14 +529,14 @@ fun GraphScreen(onMenuClick: () -> Unit) {
                             colors = zoomColors,
                             modifier = Modifier.size(40.dp).testTag("graph_reset")
                         ) {
-                            Icon(Icons.Default.CenterFocusStrong, contentDescription = "Centrar vista")
+                            Icon(Icons.Default.CenterFocusStrong, contentDescription = stringResource(R.string.cd_graph_reset))
                         }
                     }
                 }
             }
 
             Text(
-                text = "Arrastra para mover · Toca la curva para inspeccionar (x, f(x))",
+                text = stringResource(R.string.graph_interaction_hint),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 18.dp)
@@ -537,14 +560,17 @@ private fun niceTickStep(span: Double, targetTicks: Int): Double {
     return niceResidual * magnitude
 }
 
-private fun fmtAxisTick(value: Double, step: Double): String {
+private fun fmtAxisTick(value: Double, step: Double, locale: Locale): String {
     val cleaned = if (abs(value) < 1e-9) 0.0 else value
     return when {
         step >= 1.0 && abs(cleaned - cleaned.toLong()) < 1e-6 -> cleaned.toLong().toString()
-        step >= 0.1 -> String.format(Locale.US, "%.1f", cleaned).trimEnd('0').trimEnd('.')
-        else -> String.format(Locale.US, "%.2f", cleaned).trimEnd('0').trimEnd('.')
+        step >= 0.1 -> formatDecimal(cleaned, locale, minFraction = 0, maxFraction = 1)
+        else -> formatDecimal(cleaned, locale, minFraction = 0, maxFraction = 2)
     }
 }
 
-private fun fmtRange(v: Double): String = String.format(Locale.US, "%.1f", v)
-private fun fmtCoord(v: Double): String = String.format(Locale.US, "%.3f", v)
+private fun fmtRange(v: Double, locale: Locale): String =
+    formatDecimal(v, locale, minFraction = 1, maxFraction = 1)
+
+private fun fmtCoord(v: Double, locale: Locale): String =
+    formatDecimal(v, locale, minFraction = 3, maxFraction = 3)

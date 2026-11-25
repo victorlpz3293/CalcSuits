@@ -1,5 +1,7 @@
 package com.calcsuits.features.settings.ui.screens
 
+import androidx.annotation.StringRes
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -33,6 +35,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
@@ -52,13 +57,21 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.os.LocaleListCompat
+import com.calcsuits.BuildConfig
+import com.calcsuits.R
 import com.calcsuits.data.local.datastore.AppSettings
 import com.calcsuits.ui.components.CalcCard
 import com.calcsuits.ui.components.CalcFilterChip
 import com.calcsuits.ui.components.CalcSuitsHeader
+import com.calcsuits.ui.components.calcSegmentedButtonColors
 import com.calcsuits.ui.theme.AppThemeMode
 import com.calcsuits.ui.theme.BraunOrange
 import com.calcsuits.ui.theme.CalcSuitsTheme
@@ -66,8 +79,22 @@ import com.calcsuits.ui.theme.CarbonSurface
 import com.calcsuits.ui.theme.JetBrainsMonoFontFamily
 import com.calcsuits.ui.theme.OledBackground
 import com.calcsuits.ui.theme.PaperBackground
+import com.calcsuits.ui.util.formatDecimal
+import com.calcsuits.ui.util.rememberCurrentLocale
+import java.util.Locale
 import kotlin.math.PI
 import kotlin.math.roundToInt
+
+private const val AUTHOR_NAME = "Victor R. Lopez"
+
+private enum class AppLanguageOption(
+    val tag: String,
+    @StringRes val labelRes: Int
+) {
+    SYSTEM("", R.string.settings_language_system),
+    SPANISH("es", R.string.settings_language_spanish),
+    ENGLISH("en", R.string.settings_language_english)
+}
 
 @Composable
 fun SettingsScreen(
@@ -82,12 +109,24 @@ fun SettingsScreen(
     var showClearDialog by remember { mutableStateOf(false) }
     var historyClearedFeedback by remember { mutableStateOf(false) }
     val extColors = CalcSuitsTheme.colors
+    val locale = rememberCurrentLocale()
+    val configuration = LocalConfiguration.current
+
+    val selectedLanguage = remember(configuration) {
+        val currentLocales = AppCompatDelegate.getApplicationLocales()
+        when {
+            currentLocales.isEmpty -> AppLanguageOption.SYSTEM
+            currentLocales[0]?.language == "es" -> AppLanguageOption.SPANISH
+            currentLocales[0]?.language == "en" -> AppLanguageOption.ENGLISH
+            else -> AppLanguageOption.SYSTEM
+        }
+    }
 
     Scaffold(
         topBar = {
             CalcSuitsHeader(
-                title = "Ajustes",
-                subtitle = "CALCSUITS",
+                title = stringResource(R.string.settings),
+                subtitle = stringResource(R.string.header_default_subtitle),
                 onMenuClick = onMenuClick
             )
         },
@@ -102,11 +141,15 @@ fun SettingsScreen(
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            SectionHeader(icon = Icons.Default.Palette, title = "Apariencia")
+            SectionHeader(
+                icon = Icons.Default.Palette,
+                title = stringResource(R.string.settings_section_appearance),
+                locale = locale
+            )
             CalcCard {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text(
-                        text = "Tema de la interfaz",
+                        text = stringResource(R.string.settings_theme_title),
                         style = MaterialTheme.typography.titleSmall,
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -127,10 +170,51 @@ fun SettingsScreen(
                             }
                         }
                     }
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+                    Text(
+                        text = stringResource(R.string.settings_language_title),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                        AppLanguageOption.entries.forEachIndexed { index, option ->
+                            SegmentedButton(
+                                selected = selectedLanguage == option,
+                                onClick = {
+                                    val targetLocales = if (option.tag.isEmpty()) {
+                                        LocaleListCompat.getEmptyLocaleList()
+                                    } else {
+                                        LocaleListCompat.forLanguageTags(option.tag)
+                                    }
+                                    AppCompatDelegate.setApplicationLocales(targetLocales)
+                                },
+                                shape = SegmentedButtonDefaults.itemShape(
+                                    index = index,
+                                    count = AppLanguageOption.entries.size
+                                ),
+                                colors = calcSegmentedButtonColors(),
+                                modifier = Modifier.testTag(
+                                    "settings_lang_${option.tag.ifEmpty { "system" }}"
+                                )
+                            ) {
+                                Text(
+                                    text = stringResource(option.labelRes),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+                    }
                 }
             }
 
-            SectionHeader(icon = Icons.Default.Tune, title = "Motor de cálculo")
+            SectionHeader(
+                icon = Icons.Default.Tune,
+                title = stringResource(R.string.settings_section_engine),
+                locale = locale
+            )
             CalcCard {
                 Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     Row(
@@ -139,9 +223,12 @@ fun SettingsScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
-                            Text("Unidad angular", style = MaterialTheme.typography.titleSmall)
                             Text(
-                                "Usada en funciones trigonométricas",
+                                text = stringResource(R.string.settings_angle_unit_title),
+                                style = MaterialTheme.typography.titleSmall
+                            )
+                            Text(
+                                text = stringResource(R.string.settings_angle_unit_desc),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -170,14 +257,21 @@ fun SettingsScreen(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("Precisión decimal", style = MaterialTheme.typography.titleSmall)
+                            Text(
+                                text = stringResource(R.string.settings_decimal_precision),
+                                style = MaterialTheme.typography.titleSmall
+                            )
                             Surface(
                                 shape = RoundedCornerShape(8.dp),
                                 color = extColors.technicalContainer,
                                 border = BorderStroke(1.dp, extColors.technicalAccent.copy(alpha = 0.4f))
                             ) {
                                 Text(
-                                    text = "${settings.decimalPrecision} dígitos",
+                                    text = pluralStringResource(
+                                        R.plurals.settings_digits_count,
+                                        settings.decimalPrecision,
+                                        settings.decimalPrecision
+                                    ),
                                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                                     style = MaterialTheme.typography.labelMedium,
                                     color = extColors.onTechnicalContainer
@@ -198,9 +292,14 @@ fun SettingsScreen(
                             ),
                             modifier = Modifier.testTag("settings_precision_slider")
                         )
-                        val preview = "%.${settings.decimalPrecision}f".format(java.util.Locale.US, PI)
+                        val preview = formatDecimal(
+                            value = PI,
+                            locale = locale,
+                            minFraction = settings.decimalPrecision,
+                            maxFraction = settings.decimalPrecision
+                        )
                         Text(
-                            text = "Ejemplo: π ≈ $preview",
+                            text = stringResource(R.string.settings_precision_example, preview),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontFamily = JetBrainsMonoFontFamily
@@ -209,7 +308,11 @@ fun SettingsScreen(
                 }
             }
 
-            SectionHeader(icon = Icons.Default.Vibration, title = "Interacción y datos")
+            SectionHeader(
+                icon = Icons.Default.Vibration,
+                title = stringResource(R.string.settings_section_interaction),
+                locale = locale
+            )
             CalcCard {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Row(
@@ -218,9 +321,12 @@ fun SettingsScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
-                            Text("Respuesta háptica", style = MaterialTheme.typography.titleSmall)
                             Text(
-                                "Vibración sutil al pulsar teclas",
+                                text = stringResource(R.string.settings_haptic_title),
+                                style = MaterialTheme.typography.titleSmall
+                            )
+                            Text(
+                                text = stringResource(R.string.settings_haptic_desc),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -257,12 +363,16 @@ fun SettingsScreen(
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(Modifier.size(8.dp))
-                        Text("Limpiar historial de cálculos")
+                        Text(
+                            text = stringResource(R.string.settings_clear_history_button),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
                     }
 
                     if (historyClearedFeedback) {
                         Text(
-                            text = "Historial eliminado correctamente.",
+                            text = stringResource(R.string.settings_history_cleared),
                             style = MaterialTheme.typography.bodySmall,
                             color = extColors.positive
                         )
@@ -270,30 +380,34 @@ fun SettingsScreen(
                 }
             }
 
-            SectionHeader(icon = Icons.Default.Info, title = "Acerca de")
+            SectionHeader(
+                icon = Icons.Default.Info,
+                title = stringResource(R.string.settings_section_about),
+                locale = locale
+            )
             CalcCard(
                 containerColor = MaterialTheme.colorScheme.surface
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(
-                        text = "CalcSuits",
+                        text = stringResource(R.string.app_name),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary
                     )
                     Text(
-                        text = "Suite matemática y técnica de precisión",
+                        text = stringResource(R.string.settings_about_tagline),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = "Desarrollada por Victor R. Lopez",
+                        text = stringResource(R.string.settings_about_author, AUTHOR_NAME),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        text = "Versión 1.0 · Motor determinista BigDecimal + Jetpack Compose",
+                        text = stringResource(R.string.settings_about_version, BuildConfig.VERSION_NAME),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -307,8 +421,8 @@ fun SettingsScreen(
         AlertDialog(
             onDismissRequest = { showClearDialog = false },
             containerColor = MaterialTheme.colorScheme.surface,
-            title = { Text("¿Borrar todo el historial?") },
-            text = { Text("Se eliminarán todas las operaciones guardadas en la base de datos local.") },
+            title = { Text(stringResource(R.string.settings_clear_dialog_title)) },
+            text = { Text(stringResource(R.string.settings_clear_dialog_message)) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -317,12 +431,15 @@ fun SettingsScreen(
                         historyClearedFeedback = true
                     }
                 ) {
-                    Text("Eliminar", color = extColors.destructiveText)
+                    Text(
+                        text = stringResource(R.string.settings_clear_dialog_confirm),
+                        color = extColors.destructiveText
+                    )
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showClearDialog = false }) {
-                    Text("Cancelar")
+                    Text(stringResource(R.string.settings_clear_dialog_cancel))
                 }
             }
         )
@@ -332,7 +449,8 @@ fun SettingsScreen(
 @Composable
 private fun SectionHeader(
     icon: ImageVector,
-    title: String
+    title: String,
+    locale: Locale
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -345,7 +463,7 @@ private fun SectionHeader(
             modifier = Modifier.size(18.dp)
         )
         Text(
-            text = title.uppercase(),
+            text = title.uppercase(locale),
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.primary,
             fontWeight = FontWeight.Bold
@@ -437,11 +555,12 @@ private fun ThemeOptionTile(
                 }
             }
             Text(
-                text = mode.label,
+                text = stringResource(mode.labelRes),
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
                 color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-                maxLines = 1
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }

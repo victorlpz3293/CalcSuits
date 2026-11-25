@@ -5,8 +5,8 @@ import java.math.BigDecimal
 import java.math.MathContext
 import java.math.RoundingMode
 import javax.inject.Inject
-import kotlin.math.PI
 import kotlin.math.E
+import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.acos
 import kotlin.math.asin
@@ -46,35 +46,48 @@ class CalculateExpressionUseCase @Inject constructor() {
         operation: CalculatorOperation,
         maxDecimals: Int = 10
     ): Result<String> = try {
-        val n1 = number1.toBigDecimalOrNull() ?: throw IllegalArgumentException("Número 1 inválido")
+        val n1 = number1.toBigDecimalOrNull()
+            ?: throw MathEvaluationException(MathError.InvalidFirstNumber, "Invalid first number")
 
         val result = when (operation) {
             is CalculatorOperation.Add -> {
-                val n2 = number2?.toBigDecimalOrNull() ?: throw IllegalArgumentException("Número 2 requerido")
+                val n2 = number2?.toBigDecimalOrNull()
+                    ?: throw MathEvaluationException(MathError.SecondNumberRequired, "Second number required")
                 n1.add(n2, mathContext)
             }
             is CalculatorOperation.Subtract -> {
-                val n2 = number2?.toBigDecimalOrNull() ?: throw IllegalArgumentException("Número 2 requerido")
+                val n2 = number2?.toBigDecimalOrNull()
+                    ?: throw MathEvaluationException(MathError.SecondNumberRequired, "Second number required")
                 n1.subtract(n2, mathContext)
             }
             is CalculatorOperation.Multiply -> {
-                val n2 = number2?.toBigDecimalOrNull() ?: throw IllegalArgumentException("Número 2 requerido")
+                val n2 = number2?.toBigDecimalOrNull()
+                    ?: throw MathEvaluationException(MathError.SecondNumberRequired, "Second number required")
                 n1.multiply(n2, mathContext)
             }
             is CalculatorOperation.Divide -> {
-                val n2 = number2?.toBigDecimalOrNull() ?: throw IllegalArgumentException("Número 2 requerido")
-                if (n2.compareTo(BigDecimal.ZERO) == 0) throw ArithmeticException("División por cero")
+                val n2 = number2?.toBigDecimalOrNull()
+                    ?: throw MathEvaluationException(MathError.SecondNumberRequired, "Second number required")
+                if (n2.compareTo(BigDecimal.ZERO) == 0) {
+                    throw MathArithmeticException(MathError.DivisionByZero, "Division by zero")
+                }
                 n1.divide(n2, mathContext)
             }
             is CalculatorOperation.Power -> {
-                val n2 = number2?.toDoubleOrNull() ?: throw IllegalArgumentException("Exponente requerido")
+                val n2 = number2?.toDoubleOrNull()
+                    ?: throw MathEvaluationException(MathError.ExponentRequired, "Exponent required")
                 val value = n1.toDouble().pow(n2)
-                if (!value.isFinite()) throw ArithmeticException("Resultado fuera de rango")
+                if (!value.isFinite()) {
+                    throw MathArithmeticException(MathError.ResultOutOfRange, "Result out of range")
+                }
                 BigDecimal(value, mathContext)
             }
             is CalculatorOperation.Modulo -> {
-                val n2 = number2?.toBigDecimalOrNull() ?: throw IllegalArgumentException("Divisor requerido")
-                if (n2.compareTo(BigDecimal.ZERO) == 0) throw ArithmeticException("Módulo por cero")
+                val n2 = number2?.toBigDecimalOrNull()
+                    ?: throw MathEvaluationException(MathError.DivisorRequired, "Divisor required")
+                if (n2.compareTo(BigDecimal.ZERO) == 0) {
+                    throw MathArithmeticException(MathError.ModuloByZero, "Modulo by zero")
+                }
                 n1.remainder(n2, mathContext)
             }
         }
@@ -90,7 +103,8 @@ class CalculateExpressionUseCase @Inject constructor() {
         useRadians: Boolean = false,
         maxDecimals: Int = 10
     ): Result<String> = try {
-        val valDouble = number.toDoubleOrNull() ?: throw IllegalArgumentException("Número inválido")
+        val valDouble = number.toDoubleOrNull()
+            ?: throw MathEvaluationException(MathError.InvalidNumber, "Invalid number")
         val angle = if (useRadians) valDouble else Math.toRadians(valDouble)
 
         val resDouble = when (function) {
@@ -99,19 +113,25 @@ class CalculateExpressionUseCase @Inject constructor() {
             "tan" -> {
                 if (!useRadians) {
                     val mod = ((valDouble % 180.0) + 180.0) % 180.0
-                    if (abs(mod - 90.0) <= 1e-9) throw ArithmeticException("Tangente indefinida")
+                    if (abs(mod - 90.0) <= 1e-9) {
+                        throw MathArithmeticException(MathError.UndefinedTangent, "Undefined tangent")
+                    }
                 } else if (abs(cos(angle)) <= 1e-12) {
-                    throw ArithmeticException("Tangente indefinida")
+                    throw MathArithmeticException(MathError.UndefinedTangent, "Undefined tangent")
                 }
                 tan(angle)
             }
             "asin" -> {
-                if (valDouble !in -1.0..1.0) throw IllegalArgumentException("Dominio [-1, 1]")
+                if (valDouble !in -1.0..1.0) {
+                    throw MathEvaluationException(MathError.DomainMinusOneOne, "Domain [-1, 1]")
+                }
                 val r = asin(valDouble)
                 if (useRadians) r else Math.toDegrees(r)
             }
             "acos" -> {
-                if (valDouble !in -1.0..1.0) throw IllegalArgumentException("Dominio [-1, 1]")
+                if (valDouble !in -1.0..1.0) {
+                    throw MathEvaluationException(MathError.DomainMinusOneOne, "Domain [-1, 1]")
+                }
                 val r = acos(valDouble)
                 if (useRadians) r else Math.toDegrees(r)
             }
@@ -123,28 +143,38 @@ class CalculateExpressionUseCase @Inject constructor() {
             "cosh" -> cosh(valDouble)
             "tanh" -> tanh(valDouble)
             "log" -> {
-                if (valDouble <= 0.0) throw IllegalArgumentException("Dominio > 0")
+                if (valDouble <= 0.0) {
+                    throw MathEvaluationException(MathError.DomainPositive, "Domain > 0")
+                }
                 log10(valDouble)
             }
             "ln" -> {
-                if (valDouble <= 0.0) throw IllegalArgumentException("Dominio > 0")
+                if (valDouble <= 0.0) {
+                    throw MathEvaluationException(MathError.DomainPositive, "Domain > 0")
+                }
                 ln(valDouble)
             }
             "sqrt" -> {
-                if (valDouble < 0.0) throw IllegalArgumentException("Raíz negativa")
+                if (valDouble < 0.0) {
+                    throw MathEvaluationException(MathError.NegativeRoot, "Negative square root")
+                }
                 sqrt(valDouble)
             }
             "exp" -> exp(valDouble)
             "inv" -> {
-                if (valDouble == 0.0) throw ArithmeticException("División por cero")
+                if (valDouble == 0.0) {
+                    throw MathArithmeticException(MathError.DivisionByZero, "Division by zero")
+                }
                 1.0 / valDouble
             }
             "abs" -> abs(valDouble)
             "fact" -> factorial(valDouble).toDouble()
-            else -> throw IllegalArgumentException("Función desconocida: $function")
+            else -> throw MathEvaluationException(MathError.UnknownFunction(function), "Unknown function: $function")
         }
 
-        if (!resDouble.isFinite()) throw ArithmeticException("Resultado no definido")
+        if (!resDouble.isFinite()) {
+            throw MathArithmeticException(MathError.UndefinedResult, "Undefined result")
+        }
         val cleaned = if (abs(resDouble) < 1e-13) 0.0 else resDouble
 
         Result.success(formatResult(cleaned.toBigDecimal(mathContext), maxDecimals))
@@ -161,7 +191,7 @@ class CalculateExpressionUseCase @Inject constructor() {
     private fun factorial(x: Double): Long {
         val n = x.roundToLong()
         if (abs(x - n.toDouble()) > 1e-9 || n < 0 || n > 20) {
-            throw IllegalArgumentException("Factorial requiere entero 0..20")
+            throw MathEvaluationException(MathError.FactorialRange, "Factorial requires an integer between 0 and 20")
         }
         var res = 1L
         for (i in 2L..n) res *= i
