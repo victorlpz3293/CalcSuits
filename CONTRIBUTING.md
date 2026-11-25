@@ -62,6 +62,32 @@ Lineamientos de implementación:
 
 ---
 
-## 5. Licencia de las contribuciones
+## 5. Versionado y generación del AAB de release
+
+### Cómo actualizar la versión en cada release
+
+La versión de la app se define en un único lugar: `app/build.gradle.kts`, dentro de `android.defaultConfig`:
+
+```kotlin
+versionCode = 1
+versionName = "1.0.0"
+```
+
+- **`versionCode`:** debe ser siempre un número entero estrictamente creciente en cada publicación (`1`, `2`, `3`, …). Google Play rechaza cualquier AAB cuyo `versionCode` sea menor o igual al de un lanzamiento anterior.
+- **`versionName`:** sigue Versionado Semántico (`MAJOR.MINOR.PATCH`, por ejemplo `"1.0.0"`, `"1.0.1"`, `"1.1.0"`). La pantalla **Ajustes → Acerca de** lee este valor automáticamente desde `BuildConfig.VERSION_NAME`.
+
+### Cómo generar el AAB de release
+
+El paquete firmado para Google Play se genera exclusivamente mediante GitHub Actions usando el workflow `.github/workflows/release.yml`:
+
+1. En GitHub, abre **Actions → Release → Run workflow** (o haz push de un tag con prefijo `v*`, por ejemplo `v1.0.0`).
+2. El workflow ejecuta las pruebas unitarias (`testDebugUnitTest`), compila y firma el bundle (`bundleRelease`), verifica la firma con `jarsigner` y muestra la huella pública SHA-256 del certificado.
+3. Al finalizar en verde, entra en la ejecución del workflow y descarga los artefactos (`release-aab` con el archivo `.aab` firmado y `release-mapping` con `mapping.txt`, disponibles durante 30 días).
+
+> **Advertencia de seguridad:** el keystore de subida (`.jks` / `.keystore`) y sus contraseñas **jamás deben subirse al repositorio**, ni incluirse en commits, PRs, logs o artefactos. Toda la firma de producción depende únicamente de los secretos configurados en GitHub Actions (`KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS` y `KEY_PASSWORD`).
+
+---
+
+## 6. Licencia de las contribuciones
 
 Al enviar una contribución a **CalcSuits**, aceptas que tu código se distribuya bajo la misma licencia del proyecto: **GNU General Public License v3.0 (GPL-3.0)** (ver [LICENSE](LICENSE)).

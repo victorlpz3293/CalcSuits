@@ -1,0 +1,100 @@
+name: Release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  release-aab:
+    name: Build & Sign Release AAB
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Make Gradle wrapper executable
+        run: chmod +x ./gradlew
+
+      - name: Generate debug keystore
+        run: |
+          keytool -genkeypair -v -keystore debug.keystore -storepass android -keypass android -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+
+      - name: Decode upload keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          KEYSTORE_PATH="${RUNNER_TEMP}/upload-key.jks"
+          if [ -z "${KEYSTORE_BASE64}" ] || [ -z "${KEYSTORE_PASSWORD}" ] || [ -z "${KEY_ALIAS}" ] || [ -z "${KEY_PASSWORD}" ]; then
+            echo "::error::Missing required signing secrets (KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD)."
+            exit 1
+          fi
+          printf '%s' "${KEYSTORE_BASE64}" | tr -d '\r\n ' | base64 --decode > "${KEYSTORE_PATH}"
+          chmod 600 "${KEYSTORE_PATH}"
+          {
+            printf 'SIGNING_KEYSTORE_PATH=%s\n' "${KEYSTORE_PATH}"
+            printf 'SIGNING_KEYSTORE_PASSWORD=%s\n' "${KEYSTORE_PASSWORD}"
+            printf 'SIGNING_KEY_ALIAS=%s\n' "${KEY_ALIAS}"
+            printf 'SIGNING_KEY_PASSWORD=%s\n' "${KEY_PASSWORD}"
+          } >> "${GITHUB_ENV}"
+
+      - name: Run Unit Tests and Build Release AAB
+        run: ./gradlew testDebugUnitTest bundleRelease --stacktrace
+
+      - name: Verify AAB signature and print SHA-256 fingerprint
+        run: |
+          set -euo pipefail
+          AAB_FILE=$(find app/build/outputs/bundle/release -maxdepth 1 -name '*.aab' | head -n 1)
+          if [ -z "${AAB_FILE}" ] || [ ! -f "${AAB_FILE}" ]; then
+            echo "::error::Release AAB not found in app/build/outputs/bundle/release/."
+            exit 1
+          fi
+          VERIFY_OUTPUT=$(jarsigner -verify "${AAB_FILE}")
+          echo "${VERIFY_OUTPUT}"
+          echo "${VERIFY_OUTPUT}" | grep -q "jar verified."
+          echo "Upload certificate SHA-256 fingerprint:"
+          LC_ALL=C keytool -list -v \
+            -keystore "${SIGNING_KEYSTORE_PATH}" \
+            -alias "${SIGNING_KEY_ALIAS}" \
+            -storepass:env SIGNING_KEYSTORE_PASSWORD \
+            | grep -iE "SHA-?256:"
+
+      - name: Upload Release AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-aab
+          path: app/build/outputs/bundle/release/*.aab
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Upload ProGuard/R8 Mapping
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-mapping
+          path: app/build/outputs/mapping/release/mapping.txt
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Clean up decoded keystore
+        if: always()
+        run: |
+          rm -f "${RUNNER_TEMP}/upload-key.jks"
+          rm -f debug.keystore
