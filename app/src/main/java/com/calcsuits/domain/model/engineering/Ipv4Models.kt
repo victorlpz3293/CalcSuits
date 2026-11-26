@@ -52,6 +52,12 @@ data class Ipv4AnalysisResult(
     val cidrNotation: String
         get() = "$networkAddress/$prefixLength"
 
+    val hasConventionalBroadcast: Boolean
+        get() = prefixLength <= 30
+
+    val effectiveBroadcastAddress: String?
+        get() = if (hasConventionalBroadcast) broadcastAddress else null
+
     val isSpecialOrReservedRange: Boolean
         get() = scope != Ipv4AddressScope.PUBLIC_GLOBAL && scope != Ipv4AddressScope.PRIVATE_RFC1918
 }
@@ -83,6 +89,12 @@ data class SubnetAllocation(
 ) {
     val cidrNotation: String
         get() = "$networkAddress/$prefixLength"
+
+    val hasConventionalBroadcast: Boolean
+        get() = prefixLength <= 30
+
+    val effectiveBroadcastAddress: String?
+        get() = if (hasConventionalBroadcast) broadcastAddress else null
 }
 
 data class FlsmDesignResult(
@@ -128,6 +140,7 @@ sealed class Ipv4Error {
         val availableAddresses: Long
     ) : Ipv4Error()
     data object NoVlsmRequirements : Ipv4Error()
+    data class EmptyVlsmRequirementName(val position: Int) : Ipv4Error()
     data class InvalidVlsmRequirement(val requirementName: String) : Ipv4Error()
 }
 

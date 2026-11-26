@@ -396,9 +396,10 @@ private fun NetworkingEngineeringView(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         pinnedPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-        contentPadding = PaddingValues(top = 6.dp, bottom = 12.dp),
-        contentSpacing = 14.dp,
+        contentPadding = if (isIpv4Analysis) PaddingValues(top = 6.dp, bottom = 12.dp) else PaddingValues(0.dp),
+        contentSpacing = if (isIpv4Analysis) 14.dp else 0.dp,
         scrollState = scrollState,
+        enableContentScroll = isIpv4Analysis,
         compactHeightThreshold = 200.dp,
         pinnedContent = {
             SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {

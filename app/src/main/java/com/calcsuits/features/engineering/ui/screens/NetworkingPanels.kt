@@ -4,15 +4,19 @@ import android.content.Context
 import androidx.annotation.StringRes
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -48,6 +52,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -236,9 +241,28 @@ private fun Ipv4AnalysisResultCards(
             DetailKeyValueRow(stringResource(R.string.eng_detail_cidr_prefix), "/${result.prefixLength}")
             DetailKeyValueRow(stringResource(R.string.eng_detail_subnet_mask), result.subnetMask)
             DetailKeyValueRow(stringResource(R.string.eng_detail_wildcard), result.wildcardMask)
-            DetailKeyValueRow(stringResource(R.string.eng_detail_broadcast), result.broadcastAddress)
-            DetailKeyValueRow(stringResource(R.string.eng_detail_first_host), result.firstUsableHost)
-            DetailKeyValueRow(stringResource(R.string.eng_detail_last_host), result.lastUsableHost)
+            when (result.specialPrefixKind) {
+                SpecialPrefixKind.POINT_TO_POINT_31 -> {
+                    DetailKeyValueRow(
+                        stringResource(R.string.eng_detail_broadcast),
+                        stringResource(R.string.eng_broadcast_na_31)
+                    )
+                    DetailKeyValueRow(stringResource(R.string.eng_detail_p2p_endpoint_1), result.firstUsableHost)
+                    DetailKeyValueRow(stringResource(R.string.eng_detail_p2p_endpoint_2), result.lastUsableHost)
+                }
+                SpecialPrefixKind.HOST_ROUTE_32 -> {
+                    DetailKeyValueRow(
+                        stringResource(R.string.eng_detail_broadcast),
+                        stringResource(R.string.eng_broadcast_na_32)
+                    )
+                    DetailKeyValueRow(stringResource(R.string.eng_detail_host_address), result.firstUsableHost)
+                }
+                else -> {
+                    DetailKeyValueRow(stringResource(R.string.eng_detail_broadcast), result.broadcastAddress)
+                    DetailKeyValueRow(stringResource(R.string.eng_detail_first_host), result.firstUsableHost)
+                    DetailKeyValueRow(stringResource(R.string.eng_detail_last_host), result.lastUsableHost)
+                }
+            }
             DetailKeyValueRow(stringResource(R.string.eng_detail_total_addresses), intFormat.format(result.totalAddresses))
             DetailKeyValueRow(stringResource(R.string.eng_detail_usable_hosts), intFormat.format(result.usableHosts))
 
@@ -299,11 +323,12 @@ private fun Ipv4AnalysisResultCards(
                 color = extColors.technicalAccent,
                 fontWeight = FontWeight.Bold
             )
-            DetailKeyValueRow(
+            DetailStackedRow(
                 label = stringResource(R.string.eng_detail_iana_scope),
                 value = stringResource(scopeLabelRes(result.scope))
             )
-            DetailKeyValueRow(
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            DetailStackedRow(
                 label = stringResource(R.string.eng_detail_historical_class),
                 value = stringResource(historicalClassLabelRes(result.historicalClass))
             )
@@ -417,7 +442,173 @@ internal fun SubnetDesignPanel(
     val clipboard = LocalClipboardManager.current
     val scope = rememberCoroutineScope()
 
-    // Mode selector: FLSM | VLSM inside the same Subnet Design tool
+    val onCopyFlsm: (FlsmDesignResult) -> Unit = { result ->
+        clipboard.setText(AnnotatedString(formatFlsmSummary(context, result, intFormat)))
+        scope.launch {
+            snackbarHostState.showSnackbar(context.getString(R.string.eng_flsm_copied))
+        }
+    }
+    val onCopyVlsm: (VlsmDesignResult) -> Unit = { result ->
+        clipboard.setText(AnnotatedString(formatVlsmSummary(context, result, intFormat, locale)))
+        scope.launch {
+            snackbarHostState.showSnackbar(context.getString(R.string.eng_vlsm_copied))
+        }
+    }
+    val onAddReq: () -> Unit = {
+        val nextIndex = state.vlsmRequirements.size + 1
+        onAddVlsmRequirement(context.getString(R.string.eng_vlsm_default_prefix_name, nextIndex))
+    }
+
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        if (constraints.hasBoundedHeight) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(top = 6.dp, bottom = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                item(key = "design_mode_selector") {
+                    SubnetDesignModeSelector(
+                        selectedMode = state.subnetDesignMode,
+                        onModeSelected = onModeSelected
+                    )
+                }
+                item(key = "design_quick_cidr") {
+                    QuickCidrChipStrip(
+                        presets = DESIGN_CIDR_PRESETS,
+                        currentCidr = state.designBaseMask,
+                        tagPrefix = "eng_design_cidr_",
+                        onSelect = onBaseMaskChange
+                    )
+                }
+                item(key = "design_base_network") {
+                    BaseNetworkCard(
+                        baseIp = state.designBaseIp,
+                        baseMask = state.designBaseMask,
+                        onBaseIpChange = onBaseIpChange,
+                        onBaseMaskChange = onBaseMaskChange
+                    )
+                }
+
+                if (state.subnetDesignMode == SubnetDesignMode.FLSM) {
+                    flsmLazyItems(
+                        state = state,
+                        intFormat = intFormat,
+                        locale = locale,
+                        onCriteriaSelected = onFlsmCriteriaSelected,
+                        onTargetChange = onFlsmTargetChange,
+                        onCopyTable = onCopyFlsm
+                    )
+                } else {
+                    vlsmLazyItems(
+                        state = state,
+                        intFormat = intFormat,
+                        locale = locale,
+                        onAddRequirement = onAddReq,
+                        onUpdateName = onUpdateVlsmRequirementName,
+                        onUpdateHosts = onUpdateVlsmRequirementHosts,
+                        onRemove = onRemoveVlsmRequirement,
+                        onCopyTable = onCopyVlsm
+                    )
+                }
+            }
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 6.dp, bottom = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                SubnetDesignModeSelector(
+                    selectedMode = state.subnetDesignMode,
+                    onModeSelected = onModeSelected
+                )
+                QuickCidrChipStrip(
+                    presets = DESIGN_CIDR_PRESETS,
+                    currentCidr = state.designBaseMask,
+                    tagPrefix = "eng_design_cidr_",
+                    onSelect = onBaseMaskChange
+                )
+                BaseNetworkCard(
+                    baseIp = state.designBaseIp,
+                    baseMask = state.designBaseMask,
+                    onBaseIpChange = onBaseIpChange,
+                    onBaseMaskChange = onBaseMaskChange
+                )
+                if (state.subnetDesignMode == SubnetDesignMode.FLSM) {
+                    FlsmControlsCard(
+                        criteria = state.flsmCriteria,
+                        targetInput = state.flsmTargetInput,
+                        onCriteriaSelected = onFlsmCriteriaSelected,
+                        onTargetChange = onFlsmTargetChange
+                    )
+                    when (val outcome = state.flsmOutcome) {
+                        is FlsmOutcome.Failure -> {
+                            if (outcome.error != Ipv4Error.MissingInput) {
+                                Ipv4ErrorBanner(error = outcome.error, locale = locale)
+                            }
+                        }
+                        is FlsmOutcome.Success -> {
+                            val res = outcome.result
+                            FlsmSummaryCard(result = res, intFormat = intFormat, onCopyTable = { onCopyFlsm(res) })
+                            FlsmTableHeader(result = res, intFormat = intFormat)
+                            res.subnets.forEach { allocation ->
+                                SubnetAllocationCard(
+                                    allocation = allocation,
+                                    title = stringResource(R.string.eng_subnet_number_format, allocation.index),
+                                    intFormat = intFormat
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    VlsmRequirementsCard(
+                        state = state,
+                        onAddRequirement = onAddReq,
+                        onUpdateName = onUpdateVlsmRequirementName,
+                        onUpdateHosts = onUpdateVlsmRequirementHosts,
+                        onRemove = onRemoveVlsmRequirement
+                    )
+                    when (val outcome = state.vlsmOutcome) {
+                        is VlsmOutcome.Failure -> {
+                            if (outcome.error != Ipv4Error.MissingInput) {
+                                Ipv4ErrorBanner(error = outcome.error, locale = locale)
+                            }
+                        }
+                        is VlsmOutcome.Success -> {
+                            val res = outcome.result
+                            VlsmSummaryCard(
+                                result = res,
+                                intFormat = intFormat,
+                                locale = locale,
+                                onCopyTable = { onCopyVlsm(res) }
+                            )
+                            Text(
+                                text = stringResource(R.string.eng_vlsm_table_title),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 18.dp)
+                            )
+                            res.allocations.forEach { allocation ->
+                                SubnetAllocationCard(
+                                    allocation = allocation,
+                                    title = "#${allocation.index} · ${allocation.name}",
+                                    intFormat = intFormat
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SubnetDesignModeSelector(
+    selectedMode: SubnetDesignMode,
+    onModeSelected: (SubnetDesignMode) -> Unit
+) {
     SingleChoiceSegmentedButtonRow(
         modifier = Modifier
             .fillMaxWidth()
@@ -430,7 +621,7 @@ internal fun SubnetDesignPanel(
                 R.string.eng_design_mode_vlsm
             }
             SegmentedButton(
-                selected = state.subnetDesignMode == mode,
+                selected = selectedMode == mode,
                 onClick = { onModeSelected(mode) },
                 shape = SegmentedButtonDefaults.itemShape(index, SubnetDesignMode.entries.size),
                 colors = calcSegmentedButtonColors(),
@@ -446,15 +637,15 @@ internal fun SubnetDesignPanel(
             }
         }
     }
+}
 
-    QuickCidrChipStrip(
-        presets = DESIGN_CIDR_PRESETS,
-        currentCidr = state.designBaseMask,
-        tagPrefix = "eng_design_cidr_",
-        onSelect = onBaseMaskChange
-    )
-
-    // Base network card shared by FLSM and VLSM
+@Composable
+private fun BaseNetworkCard(
+    baseIp: String,
+    baseMask: String,
+    onBaseIpChange: (String) -> Unit,
+    onBaseMaskChange: (String) -> Unit
+) {
     CalcCard(modifier = Modifier.padding(horizontal = 16.dp)) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text(
@@ -468,7 +659,7 @@ internal fun SubnetDesignPanel(
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 OutlinedTextField(
-                    value = state.designBaseIp,
+                    value = baseIp,
                     onValueChange = onBaseIpChange,
                     label = {
                         Text(
@@ -485,7 +676,7 @@ internal fun SubnetDesignPanel(
                     textStyle = MaterialTheme.typography.titleMedium.copy(fontFamily = JetBrainsMonoFontFamily)
                 )
                 OutlinedTextField(
-                    value = state.designBaseMask,
+                    value = baseMask,
                     onValueChange = onBaseMaskChange,
                     label = {
                         Text(
@@ -504,47 +695,9 @@ internal fun SubnetDesignPanel(
             }
         }
     }
-
-    if (state.subnetDesignMode == SubnetDesignMode.FLSM) {
-        FlsmSection(
-            state = state,
-            intFormat = intFormat,
-            locale = locale,
-            onCriteriaSelected = onFlsmCriteriaSelected,
-            onTargetChange = onFlsmTargetChange,
-            onCopyTable = { result ->
-                clipboard.setText(AnnotatedString(formatFlsmSummary(context, result, intFormat)))
-                scope.launch {
-                    snackbarHostState.showSnackbar(context.getString(R.string.eng_flsm_copied))
-                }
-            }
-        )
-    } else {
-        VlsmSection(
-            state = state,
-            intFormat = intFormat,
-            locale = locale,
-            onAddRequirement = {
-                val nextIndex = state.vlsmRequirements.size + 1
-                onAddVlsmRequirement(context.getString(R.string.eng_vlsm_default_prefix_name, nextIndex))
-            },
-            onUpdateName = onUpdateVlsmRequirementName,
-            onUpdateHosts = onUpdateVlsmRequirementHosts,
-            onRemove = onRemoveVlsmRequirement,
-            onCopyTable = { result ->
-                clipboard.setText(AnnotatedString(formatVlsmSummary(context, result, intFormat)))
-                scope.launch {
-                    snackbarHostState.showSnackbar(context.getString(R.string.eng_vlsm_copied))
-                }
-            }
-        )
-    }
-
-    Spacer(Modifier.height(12.dp))
 }
 
-@Composable
-private fun FlsmSection(
+private fun LazyListScope.flsmLazyItems(
     state: EngineeringState,
     intFormat: NumberFormat,
     locale: Locale,
@@ -552,8 +705,54 @@ private fun FlsmSection(
     onTargetChange: (String) -> Unit,
     onCopyTable: (FlsmDesignResult) -> Unit
 ) {
-    val extColors = CalcSuitsTheme.colors
+    item(key = "flsm_controls") {
+        FlsmControlsCard(
+            criteria = state.flsmCriteria,
+            targetInput = state.flsmTargetInput,
+            onCriteriaSelected = onCriteriaSelected,
+            onTargetChange = onTargetChange
+        )
+    }
 
+    when (val outcome = state.flsmOutcome) {
+        is FlsmOutcome.Failure -> {
+            if (outcome.error != Ipv4Error.MissingInput) {
+                item(key = "flsm_error") {
+                    Ipv4ErrorBanner(error = outcome.error, locale = locale)
+                }
+            }
+        }
+        is FlsmOutcome.Success -> {
+            val res = outcome.result
+            item(key = "flsm_summary") {
+                FlsmSummaryCard(
+                    result = res,
+                    intFormat = intFormat,
+                    onCopyTable = { onCopyTable(res) }
+                )
+            }
+            item(key = "flsm_table_header") {
+                FlsmTableHeader(result = res, intFormat = intFormat)
+            }
+            items(res.subnets, key = { "flsm_${it.index}" }) { allocation ->
+                SubnetAllocationCard(
+                    allocation = allocation,
+                    title = stringResource(R.string.eng_subnet_number_format, allocation.index),
+                    intFormat = intFormat
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun FlsmControlsCard(
+    criteria: FlsmCriteria,
+    targetInput: String,
+    onCriteriaSelected: (FlsmCriteria) -> Unit,
+    onTargetChange: (String) -> Unit
+) {
+    val extColors = CalcSuitsTheme.colors
     CalcCard(modifier = Modifier.padding(horizontal = 16.dp)) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text(
@@ -567,7 +766,7 @@ private fun FlsmSection(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 CalcFilterChip(
-                    selected = state.flsmCriteria == FlsmCriteria.BY_SUBNET_COUNT,
+                    selected = criteria == FlsmCriteria.BY_SUBNET_COUNT,
                     onClick = { onCriteriaSelected(FlsmCriteria.BY_SUBNET_COUNT) },
                     label = {
                         Text(
@@ -581,7 +780,7 @@ private fun FlsmSection(
                         .testTag("eng_flsm_by_subnets")
                 )
                 CalcFilterChip(
-                    selected = state.flsmCriteria == FlsmCriteria.BY_HOSTS_PER_SUBNET,
+                    selected = criteria == FlsmCriteria.BY_HOSTS_PER_SUBNET,
                     onClick = { onCriteriaSelected(FlsmCriteria.BY_HOSTS_PER_SUBNET) },
                     label = {
                         Text(
@@ -596,14 +795,14 @@ private fun FlsmSection(
                 )
             }
 
-            val inputLabelRes = if (state.flsmCriteria == FlsmCriteria.BY_SUBNET_COUNT) {
+            val inputLabelRes = if (criteria == FlsmCriteria.BY_SUBNET_COUNT) {
                 R.string.eng_flsm_subnets_input
             } else {
                 R.string.eng_flsm_hosts_input
             }
 
             OutlinedTextField(
-                value = state.flsmTargetInput,
+                value = targetInput,
                 onValueChange = onTargetChange,
                 label = { Text(stringResource(inputLabelRes)) },
                 modifier = Modifier
@@ -615,90 +814,112 @@ private fun FlsmSection(
             )
         }
     }
+}
 
-    when (val outcome = state.flsmOutcome) {
-        is FlsmOutcome.Failure -> {
-            if (outcome.error != Ipv4Error.MissingInput) {
-                Ipv4ErrorBanner(error = outcome.error, locale = locale)
-            }
-        }
-        is FlsmOutcome.Success -> {
-            val res = outcome.result
-            CalcResultCard(modifier = Modifier.padding(horizontal = 16.dp)) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        text = stringResource(R.string.eng_flsm_summary_title),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Text(
-                        text = "${res.baseNetwork.cidrNotation} → /${res.newPrefix}",
-                        style = MaterialTheme.typography.headlineSmall.copy(
-                            fontFamily = JetBrainsMonoFontFamily,
-                            fontWeight = FontWeight.Bold
-                        ),
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                    DetailKeyValueRow(stringResource(R.string.eng_flsm_new_prefix), "/${res.newPrefix} (${res.subnetMask})")
-                    DetailKeyValueRow(stringResource(R.string.eng_flsm_borrowed_bits), "+${res.borrowedBits}")
-                    DetailKeyValueRow(stringResource(R.string.eng_flsm_generated_subnets), intFormat.format(res.totalSubnets))
-                    DetailKeyValueRow(stringResource(R.string.eng_flsm_capacity_per_subnet), intFormat.format(res.capacityPerSubnet))
-                    DetailKeyValueRow(stringResource(R.string.eng_flsm_usable_per_subnet), intFormat.format(res.usableHostsPerSubnet))
+@Composable
+private fun FlsmSummaryCard(
+    result: FlsmDesignResult,
+    intFormat: NumberFormat,
+    onCopyTable: () -> Unit
+) {
+    val extColors = CalcSuitsTheme.colors
+    CalcResultCard(modifier = Modifier.padding(horizontal = 16.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+                text = stringResource(R.string.eng_flsm_summary_title),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Text(
+                text = "${result.baseNetwork.cidrNotation} → /${result.newPrefix}",
+                style = MaterialTheme.typography.headlineSmall.copy(
+                    fontFamily = JetBrainsMonoFontFamily,
+                    fontWeight = FontWeight.Bold
+                ),
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            DetailKeyValueRow(stringResource(R.string.eng_flsm_new_prefix), "/${result.newPrefix} (${result.subnetMask})")
+            DetailKeyValueRow(stringResource(R.string.eng_flsm_borrowed_bits), "+${result.borrowedBits}")
+            DetailKeyValueRow(stringResource(R.string.eng_flsm_generated_subnets), intFormat.format(result.totalSubnets))
+            DetailKeyValueRow(stringResource(R.string.eng_flsm_capacity_per_subnet), intFormat.format(result.capacityPerSubnet))
+            DetailKeyValueRow(stringResource(R.string.eng_flsm_usable_per_subnet), intFormat.format(result.usableHostsPerSubnet))
 
-                    if (res.isTruncated) {
+            if (result.isTruncated) {
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = extColors.technicalContainer,
+                    border = BorderStroke(1.dp, extColors.technicalAccent.copy(alpha = 0.5f)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("eng_flsm_truncated_banner")
+                ) {
+                    Row(
+                        modifier = Modifier.padding(10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.WarningAmber,
+                            contentDescription = null,
+                            tint = extColors.technicalAccent,
+                            modifier = Modifier.size(18.dp)
+                        )
                         Text(
                             text = stringResource(
                                 R.string.eng_flsm_truncated_note,
-                                intFormat.format(res.subnets.size),
-                                intFormat.format(res.totalSubnets)
+                                intFormat.format(result.subnets.size),
+                                intFormat.format(result.totalSubnets)
                             ),
                             style = MaterialTheme.typography.bodySmall,
-                            color = extColors.technicalAccent
+                            color = extColors.onTechnicalContainer
                         )
-                    }
-
-                    Spacer(Modifier.height(4.dp))
-                    OutlinedButton(
-                        onClick = { onCopyTable(res) },
-                        shape = MaterialTheme.shapes.medium,
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            containerColor = MaterialTheme.colorScheme.surface,
-                            contentColor = MaterialTheme.colorScheme.primary
-                        ),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag("eng_flsm_copy_table")
-                    ) {
-                        Icon(Icons.Rounded.ContentCopy, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text(stringResource(R.string.eng_copy_summary), fontWeight = FontWeight.SemiBold)
                     }
                 }
             }
 
-            Text(
-                text = stringResource(R.string.eng_flsm_table_title),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(horizontal = 18.dp)
-            )
-
-            res.subnets.forEach { allocation ->
-                SubnetAllocationCard(
-                    allocation = allocation,
-                    title = stringResource(R.string.eng_subnet_number_format, allocation.index),
-                    intFormat = intFormat
-                )
+            Spacer(Modifier.height(4.dp))
+            OutlinedButton(
+                onClick = onCopyTable,
+                shape = MaterialTheme.shapes.medium,
+                colors = ButtonDefaults.outlinedButtonColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    contentColor = MaterialTheme.colorScheme.primary
+                ),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("eng_flsm_copy_table")
+            ) {
+                Icon(Icons.Rounded.ContentCopy, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.eng_copy_summary), fontWeight = FontWeight.SemiBold)
             }
         }
     }
 }
 
 @Composable
-private fun VlsmSection(
+private fun FlsmTableHeader(result: FlsmDesignResult, intFormat: NumberFormat) {
+    val headerText = if (result.isTruncated) {
+        stringResource(
+            R.string.eng_flsm_table_title_truncated,
+            intFormat.format(result.subnets.size),
+            intFormat.format(result.totalSubnets)
+        )
+    } else {
+        stringResource(R.string.eng_flsm_table_title)
+    }
+    Text(
+        text = headerText,
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        fontWeight = FontWeight.Bold,
+        modifier = Modifier.padding(horizontal = 18.dp)
+    )
+}
+
+private fun LazyListScope.vlsmLazyItems(
     state: EngineeringState,
     intFormat: NumberFormat,
     locale: Locale,
@@ -708,8 +929,63 @@ private fun VlsmSection(
     onRemove: (Long) -> Unit,
     onCopyTable: (VlsmDesignResult) -> Unit
 ) {
-    val extColors = CalcSuitsTheme.colors
+    item(key = "vlsm_requirements") {
+        VlsmRequirementsCard(
+            state = state,
+            onAddRequirement = onAddRequirement,
+            onUpdateName = onUpdateName,
+            onUpdateHosts = onUpdateHosts,
+            onRemove = onRemove
+        )
+    }
 
+    when (val outcome = state.vlsmOutcome) {
+        is VlsmOutcome.Failure -> {
+            if (outcome.error != Ipv4Error.MissingInput) {
+                item(key = "vlsm_error") {
+                    Ipv4ErrorBanner(error = outcome.error, locale = locale)
+                }
+            }
+        }
+        is VlsmOutcome.Success -> {
+            val res = outcome.result
+            item(key = "vlsm_summary") {
+                VlsmSummaryCard(
+                    result = res,
+                    intFormat = intFormat,
+                    locale = locale,
+                    onCopyTable = { onCopyTable(res) }
+                )
+            }
+            item(key = "vlsm_table_header") {
+                Text(
+                    text = stringResource(R.string.eng_vlsm_table_title),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 18.dp)
+                )
+            }
+            items(res.allocations, key = { "vlsm_${it.index}_${it.networkLong}" }) { allocation ->
+                SubnetAllocationCard(
+                    allocation = allocation,
+                    title = "#${allocation.index} · ${allocation.name}",
+                    intFormat = intFormat
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun VlsmRequirementsCard(
+    state: EngineeringState,
+    onAddRequirement: () -> Unit,
+    onUpdateName: (Long, String) -> Unit,
+    onUpdateHosts: (Long, String) -> Unit,
+    onRemove: (Long) -> Unit
+) {
+    val extColors = CalcSuitsTheme.colors
     CalcCard(modifier = Modifier.padding(horizontal = 16.dp)) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text(
@@ -728,7 +1004,13 @@ private fun VlsmSection(
                     OutlinedTextField(
                         value = req.name,
                         onValueChange = { onUpdateName(req.id, it) },
-                        label = { Text(stringResource(R.string.eng_vlsm_req_name)) },
+                        label = {
+                            Text(
+                                text = stringResource(R.string.eng_vlsm_req_name),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        },
                         modifier = Modifier
                             .weight(0.54f)
                             .testTag("eng_vlsm_name_$idx"),
@@ -738,7 +1020,13 @@ private fun VlsmSection(
                     OutlinedTextField(
                         value = req.hostsInput,
                         onValueChange = { onUpdateHosts(req.id, it) },
-                        label = { Text(stringResource(R.string.eng_vlsm_req_hosts)) },
+                        label = {
+                            Text(
+                                text = stringResource(R.string.eng_vlsm_req_hosts),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        },
                         modifier = Modifier
                             .weight(0.34f)
                             .testTag("eng_vlsm_hosts_$idx"),
@@ -773,105 +1061,88 @@ private fun VlsmSection(
             }
         }
     }
+}
 
-    when (val outcome = state.vlsmOutcome) {
-        is VlsmOutcome.Failure -> {
-            if (outcome.error != Ipv4Error.MissingInput) {
-                Ipv4ErrorBanner(error = outcome.error, locale = locale)
-            }
-        }
-        is VlsmOutcome.Success -> {
-            val res = outcome.result
-            CalcResultCard(modifier = Modifier.padding(horizontal = 16.dp)) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+@Composable
+private fun VlsmSummaryCard(
+    result: VlsmDesignResult,
+    intFormat: NumberFormat,
+    locale: Locale,
+    onCopyTable: () -> Unit
+) {
+    val extColors = CalcSuitsTheme.colors
+    CalcResultCard(modifier = Modifier.padding(horizontal = 16.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+                text = stringResource(R.string.eng_vlsm_summary_title),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Text(
+                text = result.baseNetwork.cidrNotation,
+                style = MaterialTheme.typography.headlineSmall.copy(
+                    fontFamily = JetBrainsMonoFontFamily,
+                    fontWeight = FontWeight.Bold
+                ),
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            val progress = (result.utilizationPercent / 100.0).toFloat().coerceIn(0f, 1f)
+            LinearProgressIndicator(
+                progress = { progress },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(6.dp),
+                color = MaterialTheme.colorScheme.primary,
+                trackColor = MaterialTheme.colorScheme.outlineVariant
+            )
+
+            DetailKeyValueRow(
+                stringResource(R.string.eng_vlsm_allocated_addresses),
+                "${intFormat.format(result.allocatedAddresses)} / ${intFormat.format(result.totalBaseAddresses)}"
+            )
+            DetailKeyValueRow(
+                stringResource(R.string.eng_vlsm_remaining_addresses),
+                intFormat.format(result.remainingAddresses)
+            )
+            DetailKeyValueRow(
+                stringResource(R.string.eng_vlsm_utilization),
+                String.format(locale, "%.1f%%", result.utilizationPercent)
+            )
+            if (result.remainingCidrBlocks.isNotEmpty()) {
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(
-                        text = stringResource(R.string.eng_vlsm_summary_title),
+                        text = stringResource(R.string.eng_vlsm_remaining_blocks),
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = res.baseNetwork.cidrNotation,
-                        style = MaterialTheme.typography.headlineSmall.copy(
+                        text = result.remainingCidrBlocks.joinToString(" · "),
+                        style = MaterialTheme.typography.bodySmall.copy(
                             fontFamily = JetBrainsMonoFontFamily,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Medium
                         ),
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = extColors.technicalAccent
                     )
-
-                    val progress = (res.utilizationPercent / 100.0).toFloat().coerceIn(0f, 1f)
-                    LinearProgressIndicator(
-                        progress = { progress },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(6.dp),
-                        color = MaterialTheme.colorScheme.primary,
-                        trackColor = MaterialTheme.colorScheme.outlineVariant
-                    )
-
-                    DetailKeyValueRow(
-                        stringResource(R.string.eng_vlsm_allocated_addresses),
-                        "${intFormat.format(res.allocatedAddresses)} / ${intFormat.format(res.totalBaseAddresses)}"
-                    )
-                    DetailKeyValueRow(
-                        stringResource(R.string.eng_vlsm_remaining_addresses),
-                        intFormat.format(res.remainingAddresses)
-                    )
-                    DetailKeyValueRow(
-                        stringResource(R.string.eng_vlsm_utilization),
-                        String.format(locale, "%.1f%%", res.utilizationPercent)
-                    )
-                    if (res.remainingCidrBlocks.isNotEmpty()) {
-                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                            Text(
-                                text = stringResource(R.string.eng_vlsm_remaining_blocks),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Text(
-                                text = res.remainingCidrBlocks.joinToString(" · "),
-                                style = MaterialTheme.typography.bodySmall.copy(
-                                    fontFamily = JetBrainsMonoFontFamily,
-                                    fontWeight = FontWeight.Medium
-                                ),
-                                color = extColors.technicalAccent
-                            )
-                        }
-                    }
-
-                    Spacer(Modifier.height(4.dp))
-                    OutlinedButton(
-                        onClick = { onCopyTable(res) },
-                        shape = MaterialTheme.shapes.medium,
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            containerColor = MaterialTheme.colorScheme.surface,
-                            contentColor = MaterialTheme.colorScheme.primary
-                        ),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag("eng_vlsm_copy_table")
-                    ) {
-                        Icon(Icons.Rounded.ContentCopy, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text(stringResource(R.string.eng_copy_summary), fontWeight = FontWeight.SemiBold)
-                    }
                 }
             }
 
-            Text(
-                text = stringResource(R.string.eng_vlsm_table_title),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(horizontal = 18.dp)
-            )
-
-            res.allocations.forEach { allocation ->
-                SubnetAllocationCard(
-                    allocation = allocation,
-                    title = "#${allocation.index} · ${allocation.name}",
-                    intFormat = intFormat
-                )
+            Spacer(Modifier.height(4.dp))
+            OutlinedButton(
+                onClick = onCopyTable,
+                shape = MaterialTheme.shapes.medium,
+                colors = ButtonDefaults.outlinedButtonColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    contentColor = MaterialTheme.colorScheme.primary
+                ),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("eng_vlsm_copy_table")
+            ) {
+                Icon(Icons.Rounded.ContentCopy, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.eng_copy_summary), fontWeight = FontWeight.SemiBold)
             }
         }
     }
@@ -937,9 +1208,28 @@ private fun SubnetAllocationCard(
 
             DetailKeyValueRow(stringResource(R.string.eng_detail_network_addr), allocation.networkAddress)
             DetailKeyValueRow(stringResource(R.string.eng_detail_subnet_mask), "${allocation.subnetMask} (/${allocation.prefixLength})")
-            DetailKeyValueRow(stringResource(R.string.eng_detail_broadcast), allocation.broadcastAddress)
-            DetailKeyValueRow(stringResource(R.string.eng_detail_first_host), allocation.firstUsableHost)
-            DetailKeyValueRow(stringResource(R.string.eng_detail_last_host), allocation.lastUsableHost)
+            when (allocation.prefixLength) {
+                31 -> {
+                    DetailKeyValueRow(
+                        stringResource(R.string.eng_detail_broadcast),
+                        stringResource(R.string.eng_broadcast_na_31)
+                    )
+                    DetailKeyValueRow(stringResource(R.string.eng_detail_p2p_endpoint_1), allocation.firstUsableHost)
+                    DetailKeyValueRow(stringResource(R.string.eng_detail_p2p_endpoint_2), allocation.lastUsableHost)
+                }
+                32 -> {
+                    DetailKeyValueRow(
+                        stringResource(R.string.eng_detail_broadcast),
+                        stringResource(R.string.eng_broadcast_na_32)
+                    )
+                    DetailKeyValueRow(stringResource(R.string.eng_detail_host_address), allocation.firstUsableHost)
+                }
+                else -> {
+                    DetailKeyValueRow(stringResource(R.string.eng_detail_broadcast), allocation.broadcastAddress)
+                    DetailKeyValueRow(stringResource(R.string.eng_detail_first_host), allocation.firstUsableHost)
+                    DetailKeyValueRow(stringResource(R.string.eng_detail_last_host), allocation.lastUsableHost)
+                }
+            }
             DetailKeyValueRow(
                 stringResource(R.string.eng_detail_total_addresses),
                 "${intFormat.format(allocation.totalCapacity)} (${stringResource(R.string.eng_subnet_usable_short)}: ${intFormat.format(allocation.usableHosts)})"
@@ -999,12 +1289,33 @@ private fun DetailKeyValueRow(label: String, value: String) {
             text = label,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.weight(1f)
+            modifier = Modifier.weight(0.46f)
         )
-        Spacer(Modifier.width(12.dp))
+        Spacer(Modifier.width(10.dp))
         Text(
             text = value,
             style = MaterialTheme.typography.titleSmall.copy(
+                fontFamily = JetBrainsMonoFontFamily,
+                fontWeight = FontWeight.SemiBold
+            ),
+            color = MaterialTheme.colorScheme.onSurface,
+            textAlign = TextAlign.End,
+            modifier = Modifier.weight(0.54f)
+        )
+    }
+}
+
+@Composable
+private fun DetailStackedRow(label: String, value: String) {
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium.copy(
                 fontFamily = JetBrainsMonoFontFamily,
                 fontWeight = FontWeight.SemiBold
             ),
@@ -1030,6 +1341,10 @@ private fun Ipv4ErrorBanner(error: Ipv4Error, locale: Locale) {
             intFormat.format(error.availableAddresses)
         )
         Ipv4Error.NoVlsmRequirements -> stringResource(R.string.eng_error_no_vlsm_reqs)
+        is Ipv4Error.EmptyVlsmRequirementName -> stringResource(
+            R.string.eng_error_empty_vlsm_name,
+            error.position
+        )
         is Ipv4Error.InvalidVlsmRequirement -> stringResource(
             R.string.eng_error_invalid_vlsm_req,
             error.requirementName
@@ -1089,9 +1404,22 @@ private fun formatIpv4Summary(
     appendLine("${context.getString(R.string.eng_detail_cidr_prefix)}: /${result.prefixLength}")
     appendLine("${context.getString(R.string.eng_detail_subnet_mask)}: ${result.subnetMask}")
     appendLine("${context.getString(R.string.eng_detail_wildcard)}: ${result.wildcardMask}")
-    appendLine("${context.getString(R.string.eng_detail_broadcast)}: ${result.broadcastAddress}")
-    appendLine("${context.getString(R.string.eng_detail_first_host)}: ${result.firstUsableHost}")
-    appendLine("${context.getString(R.string.eng_detail_last_host)}: ${result.lastUsableHost}")
+    when (result.specialPrefixKind) {
+        SpecialPrefixKind.POINT_TO_POINT_31 -> {
+            appendLine("${context.getString(R.string.eng_detail_broadcast)}: ${context.getString(R.string.eng_broadcast_na_31)}")
+            appendLine("${context.getString(R.string.eng_detail_p2p_endpoint_1)}: ${result.firstUsableHost}")
+            appendLine("${context.getString(R.string.eng_detail_p2p_endpoint_2)}: ${result.lastUsableHost}")
+        }
+        SpecialPrefixKind.HOST_ROUTE_32 -> {
+            appendLine("${context.getString(R.string.eng_detail_broadcast)}: ${context.getString(R.string.eng_broadcast_na_32)}")
+            appendLine("${context.getString(R.string.eng_detail_host_address)}: ${result.firstUsableHost}")
+        }
+        else -> {
+            appendLine("${context.getString(R.string.eng_detail_broadcast)}: ${result.broadcastAddress}")
+            appendLine("${context.getString(R.string.eng_detail_first_host)}: ${result.firstUsableHost}")
+            appendLine("${context.getString(R.string.eng_detail_last_host)}: ${result.lastUsableHost}")
+        }
+    }
     appendLine("${context.getString(R.string.eng_detail_total_addresses)}: ${intFormat.format(result.totalAddresses)}")
     appendLine("${context.getString(R.string.eng_detail_usable_hosts)}: ${intFormat.format(result.usableHosts)}")
     appendLine("${context.getString(R.string.eng_detail_ip_binary)}: ${result.ipBinary}")
@@ -1100,26 +1428,69 @@ private fun formatIpv4Summary(
     appendLine("${context.getString(R.string.eng_detail_historical_class)}: ${context.getString(historicalClassLabelRes(result.historicalClass))}")
 }.trim()
 
+private fun formatBroadcastForSummary(context: Context, allocation: SubnetAllocation): String = when (allocation.prefixLength) {
+    31 -> context.getString(R.string.eng_broadcast_na_31)
+    32 -> context.getString(R.string.eng_broadcast_na_32)
+    else -> allocation.broadcastAddress
+}
+
 private fun formatFlsmSummary(
     context: Context,
     result: FlsmDesignResult,
     intFormat: NumberFormat
 ): String = buildString {
-    appendLine("FLSM — ${result.baseNetwork.cidrNotation} → /${result.newPrefix} (${result.subnetMask})")
+    val bcastLabel = context.getString(R.string.eng_summary_bcast_short)
+    val usableLabel = context.getString(R.string.eng_subnet_usable_short)
+    appendLine(
+        context.getString(
+            R.string.eng_summary_flsm_header,
+            result.baseNetwork.cidrNotation,
+            result.newPrefix,
+            result.subnetMask
+        )
+    )
     appendLine("${context.getString(R.string.eng_flsm_generated_subnets)}: ${intFormat.format(result.totalSubnets)}")
+    if (result.isTruncated) {
+        appendLine(
+            context.getString(
+                R.string.eng_flsm_truncated_note,
+                intFormat.format(result.subnets.size),
+                intFormat.format(result.totalSubnets)
+            )
+        )
+    }
     result.subnets.forEach { s ->
-        appendLine("#${s.index} ${s.cidrNotation} | ${s.firstUsableHost}–${s.lastUsableHost} | Bcast: ${s.broadcastAddress} | Usable: ${intFormat.format(s.usableHosts)}")
+        val bcastValue = formatBroadcastForSummary(context, s)
+        appendLine("#${s.index} ${s.cidrNotation} | ${s.firstUsableHost}–${s.lastUsableHost} | $bcastLabel: $bcastValue | $usableLabel: ${intFormat.format(s.usableHosts)}")
     }
 }.trim()
 
 private fun formatVlsmSummary(
     context: Context,
     result: VlsmDesignResult,
-    intFormat: NumberFormat
+    intFormat: NumberFormat,
+    locale: Locale
 ): String = buildString {
-    appendLine("VLSM — ${result.baseNetwork.cidrNotation} (${intFormat.format(result.allocatedAddresses)}/${intFormat.format(result.totalBaseAddresses)})")
+    val bcastLabel = context.getString(R.string.eng_summary_bcast_short)
+    val usableLabel = context.getString(R.string.eng_subnet_usable_short)
+    appendLine(
+        context.getString(
+            R.string.eng_summary_vlsm_header,
+            result.baseNetwork.cidrNotation,
+            intFormat.format(result.allocatedAddresses),
+            intFormat.format(result.totalBaseAddresses)
+        )
+    )
+    appendLine(
+        "${context.getString(R.string.eng_vlsm_utilization)}: ${String.format(locale, "%.1f%%", result.utilizationPercent)}"
+    )
     result.allocations.forEach { s ->
-        appendLine("#${s.index} ${s.name} (req ${s.requestedHosts}): ${s.cidrNotation} | ${s.firstUsableHost}–${s.lastUsableHost} | Bcast: ${s.broadcastAddress} | Usable: ${intFormat.format(s.usableHosts)}")
+        val reqText = context.getString(R.string.eng_summary_req_short, intFormat.format(s.requestedHosts ?: 0L))
+        val bcastValue = formatBroadcastForSummary(context, s)
+        appendLine("#${s.index} ${s.name} ($reqText): ${s.cidrNotation} | ${s.firstUsableHost}–${s.lastUsableHost} | $bcastLabel: $bcastValue | $usableLabel: ${intFormat.format(s.usableHosts)}")
     }
     appendLine("${context.getString(R.string.eng_vlsm_remaining_addresses)}: ${intFormat.format(result.remainingAddresses)}")
+    if (result.remainingCidrBlocks.isNotEmpty()) {
+        appendLine("${context.getString(R.string.eng_vlsm_remaining_blocks)}: ${result.remainingCidrBlocks.joinToString(", ")}")
+    }
 }.trim()

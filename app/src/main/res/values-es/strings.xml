@@ -275,9 +275,6 @@
     <string name="eng_specialty_networking_desc">Análisis IPv4 (CIDR, binario y alcance) y diseño de subredes FLSM/VLSM.</string>
     <string name="eng_tool_ipv4_analysis">Análisis IPv4</string>
     <string name="eng_tool_subnet_design">Diseño de subredes</string>
-    <string name="eng_subnet_design_badge">ESPACIO PREPARADO</string>
-    <string name="eng_subnet_design_title">Diseño de subredes FLSM y VLSM</string>
-    <string name="eng_subnet_design_desc">Este espacio queda preparado para integrar el diseño estructurado de subredes IPv4 (FLSM y VLSM) en la siguiente fase. Mientras tanto, puedes usar Análisis IPv4 para inspeccionar cualquier red y máscara.</string>
     <string name="eng_specialty_digital_electronics">Electrónica Digital y Sistemas Numéricos</string>
     <string name="eng_specialty_digital_electronics_desc">Conversiones BIN, DEC, HEX y OCT, lógica bitwise (NAND/NOR), desplazamientos y matriz interactiva de bits (8–64 bits).</string>
     <string name="eng_tool_digital_logic">Calculadora de sistemas numéricos y lógica digital</string>
@@ -319,6 +316,11 @@
     <string name="eng_special_prefix_32">Ruta de host /32: identifica una única dirección IPv4 (1 dirección útil).</string>
     <string name="eng_special_prefix_0">Ruta por defecto /0: abarca todo el espacio de direcciones IPv4 de 32 bits.</string>
     <string name="eng_special_range_warning">Rango IPv4 especial o reservado — no enrutable globalmente en Internet público.</string>
+    <string name="eng_detail_p2p_endpoint_1">Extremo 1 (RFC 3021)</string>
+    <string name="eng_detail_p2p_endpoint_2">Extremo 2 (RFC 3021)</string>
+    <string name="eng_detail_host_address">Dirección de Host (/32)</string>
+    <string name="eng_broadcast_na_31">N/A (RFC 3021 P2P)</string>
+    <string name="eng_broadcast_na_32">N/A (Ruta host /32)</string>
 
     <string name="eng_error_invalid_ip_only">Dirección IPv4 inválida (4 octetos entre 0 y 255, ej. 192.168.1.10).</string>
     <string name="eng_error_prefix_out_of_range">El prefijo CIDR debe ser un entero entre /0 y /32.</string>
@@ -328,6 +330,7 @@
     <string name="eng_error_invalid_host_count">Ingresa una cantidad válida de hosts requeridos (al menos 1).</string>
     <string name="eng_error_insufficient_capacity">Capacidad insuficiente en la red principal: se requieren %1$s direcciones y solo hay %2$s disponibles.</string>
     <string name="eng_error_no_vlsm_reqs">Agrega al menos un requerimiento de subred para calcular VLSM.</string>
+    <string name="eng_error_empty_vlsm_name">Ingresa un nombre para el requerimiento #%1$d.</string>
     <string name="eng_error_invalid_vlsm_req">Ingresa una cantidad positiva válida de hosts para %1$s.</string>
 
     <string name="eng_design_mode_flsm">FLSM</string>
@@ -348,6 +351,7 @@
     <string name="eng_flsm_usable_per_subnet">Hosts útiles por subred</string>
     <string name="eng_flsm_truncated_note">Mostrando las primeras %1$s de %2$s subredes generadas por rendimiento visual.</string>
     <string name="eng_flsm_table_title">SUBREDES GENERADAS</string>
+    <string name="eng_flsm_table_title_truncated">SUBREDES GENERADAS (PRIMERAS %1$s DE %2$s)</string>
     <string name="eng_flsm_copied">Tabla FLSM copiada</string>
     <string name="eng_vlsm_reqs_title">REQUERIMIENTOS DE SUBRED</string>
     <string name="eng_vlsm_req_name">Nombre</string>
@@ -365,6 +369,10 @@
     <string name="eng_subnet_number_format">Subred #%1$d</string>
     <string name="eng_subnet_usable_short">Útiles</string>
     <string name="eng_vlsm_default_prefix_name">Subred %1$d</string>
+    <string name="eng_summary_bcast_short">Broadcast</string>
+    <string name="eng_summary_req_short">req %1$s</string>
+    <string name="eng_summary_flsm_header">FLSM — %1$s → /%2$d (%3$s)</string>
+    <string name="eng_summary_vlsm_header">VLSM — %1$s (%2$s / %3$s)</string>
 
     <string name="eng_quick_cidr">CIDR RÁPIDO</string>
     <string name="eng_calculated_result">RESULTADO CALCULADO</string>
@@ -424,6 +432,8 @@
     <string name="prog_tab_keypad">Teclado HEX/Bitwise</string>
     <string name="prog_tab_bits">Matriz de Bits</string>
     <string name="prog_bit_matrix_hint">Toca cualquier bit para invertirlo (MSB → LSB)</string>
+    <string name="prog_bit_matrix_count">%1$d bits</string>
+    <string name="prog_bit_byte_range">Byte %1$d · bits %2$d–%3$d</string>
     <string name="prog_last_op_toggle_bit">Invertir bit #%1$d</string>
 
     <!-- Settings -->

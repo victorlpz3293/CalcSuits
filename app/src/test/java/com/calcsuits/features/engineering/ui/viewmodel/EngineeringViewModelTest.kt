@@ -169,4 +169,72 @@ class EngineeringViewModelTest {
         assertEquals("8", viewModel.state.value.inputs["r"])
         assertTrue((viewModel.state.value.output.headline as UiText.DynamicString).value.startsWith("I = 3"))
     }
+
+    @Test
+    fun decimalMaskFieldDoesNotFalselySyncBareCidrInteger() {
+        viewModel.onSpecialtySelected(EngineeringSpecialty.NETWORKING)
+        viewModel.onIpv4CidrChange("/26")
+        assertEquals("/26", viewModel.state.value.ipv4CidrInput)
+
+        // Typing bare "24" into the decimal mask field must fail as InvalidSubnetMask and NOT overwrite CIDR
+        viewModel.onIpv4DecimalMaskChange("24")
+        assertEquals("/26", viewModel.state.value.ipv4CidrInput)
+        assertEquals(Ipv4AnalysisOutcome.Failure(Ipv4Error.InvalidSubnetMask), viewModel.state.value.ipv4Analysis)
+    }
+
+    @Test
+    fun switchingBetweenFlsmAndVlsmKeepsStatesIsolatedAndPreservesFlsmCriteriaInputs() {
+        viewModel.onSpecialtySelected(EngineeringSpecialty.NETWORKING)
+        viewModel.onNetworkingToolSelected(NetworkingTool.SUBNET_DESIGN)
+
+        // Configure FLSM on 10.0.0.0/16 with 8 subnets
+        viewModel.onSubnetDesignModeSelected(SubnetDesignMode.FLSM)
+        viewModel.onDesignBaseIpChange("10.0.0.0")
+        viewModel.onDesignBaseMaskChange("/16")
+        viewModel.onFlsmTargetChange("8")
+        val flsmBefore = viewModel.state.value.flsmOutcome as FlsmOutcome.Success
+        assertEquals("10.0.0.0/16", flsmBefore.result.baseNetwork.cidrNotation)
+        assertEquals(19, flsmBefore.result.newPrefix)
+
+        // Switching criteria to hosts & back preserves user-entered values
+        viewModel.onFlsmCriteriaSelected(FlsmCriteria.BY_HOSTS_PER_SUBNET)
+        viewModel.onFlsmTargetChange("500")
+        assertEquals(23, (viewModel.state.value.flsmOutcome as FlsmOutcome.Success).result.newPrefix)
+
+        viewModel.onFlsmCriteriaSelected(FlsmCriteria.BY_SUBNET_COUNT)
+        assertEquals("8", viewModel.state.value.flsmTargetInput)
+        assertEquals(19, (viewModel.state.value.flsmOutcome as FlsmOutcome.Success).result.newPrefix)
+
+        // Tapping already-active criteria does not wipe user input
+        viewModel.onFlsmCriteriaSelected(FlsmCriteria.BY_SUBNET_COUNT)
+        assertEquals("8", viewModel.state.value.flsmTargetInput)
+
+        // Switch to VLSM and set a DIFFERENT base network + invalid blank name -> must NOT affect FLSM
+        viewModel.onSubnetDesignModeSelected(SubnetDesignMode.VLSM)
+        assertEquals("192.168.1.0", viewModel.state.value.designBaseIp)
+        assertEquals("/24", viewModel.state.value.designBaseMask)
+
+        viewModel.onDesignBaseIpChange("172.16.0.0")
+        viewModel.onDesignBaseMaskChange("/20")
+        val firstReqId = viewModel.state.value.vlsmRequirements.first().id
+        viewModel.onUpdateVlsmRequirementName(firstReqId, "   ")
+        assertEquals(
+            VlsmOutcome.Failure(Ipv4Error.EmptyVlsmRequirementName(1)),
+            viewModel.state.value.vlsmOutcome
+        )
+        viewModel.onUpdateVlsmRequirementName(firstReqId, "Campus")
+        assertTrue(viewModel.state.value.vlsmOutcome is VlsmOutcome.Success)
+
+        // Clearing VLSM clears ONLY VLSM; switching back to FLSM restores 10.0.0.0/16 & 8 subnets intact
+        viewModel.clearInputs()
+        assertEquals(VlsmOutcome.Failure(Ipv4Error.NoVlsmRequirements), viewModel.state.value.vlsmOutcome)
+
+        viewModel.onSubnetDesignModeSelected(SubnetDesignMode.FLSM)
+        assertEquals("10.0.0.0", viewModel.state.value.designBaseIp)
+        assertEquals("/16", viewModel.state.value.designBaseMask)
+        assertEquals("8", viewModel.state.value.flsmTargetInput)
+        val flsmAfter = viewModel.state.value.flsmOutcome as FlsmOutcome.Success
+        assertEquals("10.0.0.0/16", flsmAfter.result.baseNetwork.cidrNotation)
+        assertEquals(19, flsmAfter.result.newPrefix)
+    }
 }

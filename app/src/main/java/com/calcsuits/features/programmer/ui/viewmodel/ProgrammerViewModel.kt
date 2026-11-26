@@ -39,6 +39,7 @@ class ProgrammerViewModel @Inject constructor(
     }
 
     fun selectWordSize(size: Int) {
+        if (size !in setOf(8, 16, 32, 64)) return
         val current = _state.value
         val normalized = convertBaseUseCase.normalizeSigned(current.rawValue, size)
         updateFromValue(normalized, size = size, base = current.activeBase)
@@ -64,7 +65,8 @@ class ProgrammerViewModel @Inject constructor(
 
     fun onBackspace() {
         val current = _state.value
-        val next = current.input.dropLast(1).ifEmpty { "0" }
+        val dropped = current.input.dropLast(1)
+        val next = if (dropped.isEmpty() || dropped == "-") "0" else dropped
         val decoded = convertBaseUseCase.decode(next, current.activeBase) ?: 0L
         val normalized = convertBaseUseCase.normalizeSigned(decoded, current.wordSize)
         updateFromValue(normalized, explicitInput = next)

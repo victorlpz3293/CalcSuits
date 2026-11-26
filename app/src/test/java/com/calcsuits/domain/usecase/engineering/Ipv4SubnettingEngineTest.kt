@@ -379,14 +379,191 @@ class Ipv4SubnettingEngineTest {
         assertEquals(0L, exactFill.remainingAddresses)
         assertTrue(exactFill.remainingCidrBlocks.isEmpty())
 
-        // Empty list & zero host requirement
+        // Empty list, blank name & zero host requirement
         assertEquals(
             VlsmOutcome.Failure(Ipv4Error.NoVlsmRequirements),
             engine.designVlsm("192.168.1.0", "/24", emptyList())
         )
         assertEquals(
+            VlsmOutcome.Failure(Ipv4Error.EmptyVlsmRequirementName(1)),
+            engine.designVlsm("192.168.1.0", "/24", listOf(VlsmRequirement(1L, "   ", 10L)))
+        )
+        assertEquals(
             VlsmOutcome.Failure(Ipv4Error.InvalidVlsmRequirement("Bad")),
             engine.designVlsm("192.168.1.0", "/24", listOf(VlsmRequirement(1L, "Bad", 0L)))
         )
+    }
+
+    @Test
+    fun analyzeSlash1Slash30Rfc3021BroadcastSemanticsAndStrictLeadingZeroValidation() {
+        // /1 upper half (128.0.0.0/1) verified independently
+        val s1 = (engine.analyze("192.168.1.1", "/1") as Ipv4AnalysisOutcome.Success).result
+        assertEquals("128.0.0.0", s1.networkAddress)
+        assertEquals("255.255.255.255", s1.broadcastAddress)
+        assertEquals("128.0.0.0", s1.subnetMask)
+        assertEquals("127.255.255.255", s1.wildcardMask)
+        assertEquals("128.0.0.1", s1.firstUsableHost)
+        assertEquals("255.255.255.254", s1.lastUsableHost)
+        assertEquals(2_147_483_648L, s1.totalAddresses)
+        assertEquals(2_147_483_646L, s1.usableHosts)
+        assertTrue(s1.hasConventionalBroadcast)
+
+        // /30 classic point-to-point subnet
+        val s30 = (engine.analyze("172.16.0.6", "/30") as Ipv4AnalysisOutcome.Success).result
+        assertEquals("172.16.0.4", s30.networkAddress)
+        assertEquals("172.16.0.7", s30.broadcastAddress)
+        assertEquals("172.16.0.5", s30.firstUsableHost)
+        assertEquals("172.16.0.6", s30.lastUsableHost)
+        assertEquals(4L, s30.totalAddresses)
+        assertEquals(2L, s30.usableHosts)
+        assertTrue(s30.hasConventionalBroadcast)
+        assertEquals("172.16.0.7", s30.effectiveBroadcastAddress)
+
+        // /31 (RFC 3021) and /32 MUST NOT expose conventional broadcast
+        val s31 = (engine.analyze("10.0.0.1", "/31") as Ipv4AnalysisOutcome.Success).result
+        assertFalse(s31.hasConventionalBroadcast)
+        assertEquals(null, s31.effectiveBroadcastAddress)
+        assertEquals("10.0.0.0", s31.firstUsableHost)
+        assertEquals("10.0.0.1", s31.lastUsableHost)
+
+        val s32 = (engine.analyze("0.0.0.0", "/32") as Ipv4AnalysisOutcome.Success).result
+        assertFalse(s32.hasConventionalBroadcast)
+        assertEquals(null, s32.effectiveBroadcastAddress)
+        assertEquals("0.0.0.0", s32.firstUsableHost)
+
+        // Strict validation rejects leading zeros, sign prefixes, and malformed masks
+        assertEquals(Ipv4AnalysisOutcome.Failure(Ipv4Error.InvalidIpAddress), engine.analyze("010.0.0.1", "/8"))
+        assertEquals(Ipv4AnalysisOutcome.Failure(Ipv4Error.InvalidIpAddress), engine.analyze("192.168.01.10", "/24"))
+        assertEquals(Ipv4AnalysisOutcome.Failure(Ipv4Error.InvalidIpAddress), engine.analyze("192.168.1.00", "/24"))
+        assertEquals(Ipv4AnalysisOutcome.Failure(Ipv4Error.PrefixOutOfRange), engine.analyze("192.168.1.1", "/+24"))
+        assertEquals(Ipv4AnalysisOutcome.Failure(Ipv4Error.PrefixOutOfRange), engine.analyze("192.168.1.1", "/08"))
+        assertEquals(Ipv4AnalysisOutcome.Failure(Ipv4Error.PrefixOutOfRange), engine.analyze("192.168.1.1", "/-0"))
+        assertEquals(Ipv4AnalysisOutcome.Failure(Ipv4Error.NonContiguousMask), engine.analyzeWithDecimalMask("10.0.0.1", "255.255.255.253"))
+        assertEquals(Ipv4AnalysisOutcome.Failure(Ipv4Error.NonContiguousMask), engine.analyzeWithDecimalMask("10.0.0.1", "127.0.0.0"))
+        assertEquals(Ipv4AnalysisOutcome.Failure(Ipv4Error.InvalidSubnetMask), engine.analyzeWithDecimalMask("10.0.0.1", "255.255.00.0"))
+
+        // Decimal-mask-only resolver accepts valid dotted masks (/0, /1, /31, /32) and rejects bare integers
+        assertEquals(0, engine.resolveDecimalMaskPrefixOrNull("0.0.0.0"))
+        assertEquals(1, engine.resolveDecimalMaskPrefixOrNull("128.0.0.0"))
+        assertEquals(31, engine.resolveDecimalMaskPrefixOrNull("255.255.255.254"))
+        assertEquals(32, engine.resolveDecimalMaskPrefixOrNull("255.255.255.255"))
+        assertEquals(null, engine.resolveDecimalMaskPrefixOrNull("24"))
+        assertEquals(null, engine.resolveDecimalMaskPrefixOrNull("/24"))
+        assertEquals(null, engine.resolveDecimalMaskPrefixOrNull("255.0.255.0"))
+    }
+
+    @Test
+    fun flsmEnforcesExact1024MaterializationLimitAndTruncatesLargeDivisionsAccurately() {
+        // Exactly 1,024 subnets: 10.0.0.0/16 -> 1024 x /26 -> NOT truncated
+        val exact1024 = (engine.designFlsm(
+            baseIp = "10.0.0.0",
+            basePrefixOrMask = "/16",
+            criteria = FlsmCriteria.BY_SUBNET_COUNT,
+            targetValue = 1_024L
+        ) as FlsmOutcome.Success).result
+        assertEquals(26, exact1024.newPrefix)
+        assertEquals(10, exact1024.borrowedBits)
+        assertEquals(1_024L, exact1024.totalSubnets)
+        assertEquals(1_024, exact1024.subnets.size)
+        assertFalse(exact1024.isTruncated)
+        assertEquals("10.0.255.192", exact1024.subnets.last().networkAddress)
+        assertEquals("10.0.255.255", exact1024.subnets.last().broadcastAddress)
+
+        // 1,025 requested -> rounds to 2,048 x /27 -> IS truncated at 1,024 materialized subnets
+        val truncated2048 = (engine.designFlsm(
+            baseIp = "10.0.0.0",
+            basePrefixOrMask = "/16",
+            criteria = FlsmCriteria.BY_SUBNET_COUNT,
+            targetValue = 1_025L
+        ) as FlsmOutcome.Success).result
+        assertEquals(27, truncated2048.newPrefix)
+        assertEquals(11, truncated2048.borrowedBits)
+        assertEquals(2_048L, truncated2048.totalSubnets)
+        assertEquals(Ipv4SubnettingEngine.MAX_GENERATED_FLSM_SUBNETS, truncated2048.subnets.size)
+        assertTrue(truncated2048.isTruncated)
+        // First 1,024 subnets of 10.0.0.0/16 divided into /27 (size 32) span 0..(1024*32 - 1) = 0..32767 = 10.0.127.255
+        assertEquals("10.0.0.0", truncated2048.subnets.first().networkAddress)
+        assertEquals("10.0.127.224", truncated2048.subnets.last().networkAddress)
+        assertEquals("10.0.127.255", truncated2048.subnets.last().broadcastAddress)
+
+        // Large /8 network by hosts (2 hosts -> /30 -> 4,194,304 subnets) without OOM or overflow
+        val largeByHosts = (engine.designFlsm(
+            baseIp = "10.0.0.0",
+            basePrefixOrMask = "/8",
+            criteria = FlsmCriteria.BY_HOSTS_PER_SUBNET,
+            targetValue = 2L
+        ) as FlsmOutcome.Success).result
+        assertEquals(30, largeByHosts.newPrefix)
+        assertEquals(4_194_304L, largeByHosts.totalSubnets)
+        assertEquals(1_024, largeByHosts.subnets.size)
+        assertTrue(largeByHosts.isTruncated)
+
+        // Long.MAX_VALUE hosts must fail cleanly with InsufficientCapacity without Long overflow
+        val hugeHosts = engine.designFlsm("10.0.0.0", "/8", FlsmCriteria.BY_HOSTS_PER_SUBNET, Long.MAX_VALUE)
+        assertTrue(hugeHosts is FlsmOutcome.Failure)
+        val err = (hugeHosts as FlsmOutcome.Failure).error as Ipv4Error.InsufficientCapacity
+        assertTrue(err.requiredAddresses > 0L)
+    }
+
+    @Test
+    fun vlsmPreservesOrderStabilityForEqualBlocksAndMathematicallyPartitionsEntireBaseSpace() {
+        // Equal-sized blocks (10 hosts -> /28 each) mixed with larger & smaller blocks on 172.16.0.0/22 (1024 addrs)
+        val reqs = listOf(
+            VlsmRequirement(1L, "Branch-1", 10L),
+            VlsmRequirement(2L, "Core", 250L),      // /24 (256)
+            VlsmRequirement(3L, "Branch-2", 10L),
+            VlsmRequirement(4L, "Link-A", 2L),      // /30 (4)
+            VlsmRequirement(5L, "Branch-3", 10L),
+            VlsmRequirement(6L, "WiFi", 120L)       // /25 (128)
+        )
+        val res = (engine.designVlsm("172.16.0.0", "/22", reqs) as VlsmOutcome.Success).result
+
+        // Verify descending block order and strict relative stability for equal requirements Branch-1, Branch-2, Branch-3
+        assertEquals(
+            listOf("Core", "WiFi", "Branch-1", "Branch-2", "Branch-3", "Link-A"),
+            res.allocations.map { it.name }
+        )
+        assertEquals(listOf(24, 25, 28, 28, 28, 30), res.allocations.map { it.prefixLength })
+
+        // Independent mathematical partition proof:
+        // Every address in [baseStart, baseEnd] must belong to EXACTLY ONE block in (allocations U remainingCidrBlocks)
+        val baseStart = res.baseNetwork.networkLong
+        val baseEnd = res.baseNetwork.broadcastLong
+        val allocatedIntervals = res.allocations.map { it.networkLong to it.broadcastLong }
+        val remainingIntervals = res.remainingCidrBlocks.map { parseCidrIntervalIndependently(it) }
+
+        val remainingSumFromBlocks = remainingIntervals.sumOf { (s, e) -> e - s + 1L }
+        assertEquals(
+            "Sum of remainingCidrBlocks must exactly equal remainingAddresses",
+            res.remainingAddresses,
+            remainingSumFromBlocks
+        )
+
+        val allIntervals = (allocatedIntervals + remainingIntervals).sortedBy { it.first }
+        assertEquals("Partition must start at base network", baseStart, allIntervals.first().first)
+        assertEquals("Partition must end at base broadcast", baseEnd, allIntervals.last().second)
+        for (i in 1 until allIntervals.size) {
+            val prevEnd = allIntervals[i - 1].second
+            val currStart = allIntervals[i].first
+            assertEquals(
+                "Intervals must tile contiguously with zero gaps and zero overlaps",
+                prevEnd + 1L,
+                currStart
+            )
+        }
+        assertEquals(
+            res.totalBaseAddresses,
+            allIntervals.sumOf { (s, e) -> e - s + 1L }
+        )
+    }
+
+    private fun parseCidrIntervalIndependently(cidr: String): Pair<Long, Long> {
+        val (ipStr, prefixStr) = cidr.split("/")
+        val prefix = prefixStr.toInt()
+        val octets = ipStr.split(".").map { it.toLong() }
+        val start = (octets[0] shl 24) or (octets[1] shl 16) or (octets[2] shl 8) or octets[3]
+        val size = 1L shl (32 - prefix)
+        assertEquals("Remaining CIDR block $cidr must be power-of-2 aligned", 0L, start % size)
+        return start to (start + size - 1L)
     }
 }

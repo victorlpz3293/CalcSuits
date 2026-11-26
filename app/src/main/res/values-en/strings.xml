@@ -275,9 +275,6 @@
     <string name="eng_specialty_networking_desc">IPv4 analysis (CIDR, binary &amp; scope) and FLSM/VLSM subnet design.</string>
     <string name="eng_tool_ipv4_analysis">IPv4 Analysis</string>
     <string name="eng_tool_subnet_design">Subnet Design</string>
-    <string name="eng_subnet_design_badge">INTEGRATION SPACE</string>
-    <string name="eng_subnet_design_title">FLSM &amp; VLSM Subnet Design</string>
-    <string name="eng_subnet_design_desc">This space is prepared to integrate structured IPv4 subnetting (FLSM and VLSM) in the next phase. Meanwhile, you can use IPv4 Analysis to inspect any network and mask.</string>
     <string name="eng_specialty_digital_electronics">Digital Electronics &amp; Number Systems</string>
     <string name="eng_specialty_digital_electronics_desc">BIN, DEC, HEX &amp; OCT conversions, bitwise logic (NAND/NOR), shifts &amp; interactive bit matrix (8–64 bit).</string>
     <string name="eng_tool_digital_logic">Number Systems &amp; Digital Logic Calculator</string>
@@ -319,6 +316,11 @@
     <string name="eng_special_prefix_32">/32 Host route: identifies a single IPv4 host address (1 usable address).</string>
     <string name="eng_special_prefix_0">/0 Default route: covers the entire 32-bit IPv4 address space.</string>
     <string name="eng_special_range_warning">Special or reserved IPv4 range — not globally routable on the public Internet.</string>
+    <string name="eng_detail_p2p_endpoint_1">Endpoint 1 (RFC 3021)</string>
+    <string name="eng_detail_p2p_endpoint_2">Endpoint 2 (RFC 3021)</string>
+    <string name="eng_detail_host_address">Host Address (/32)</string>
+    <string name="eng_broadcast_na_31">N/A (RFC 3021 P2P)</string>
+    <string name="eng_broadcast_na_32">N/A (Host route /32)</string>
 
     <string name="eng_error_invalid_ip_only">Invalid IPv4 address (4 octets between 0 and 255, e.g. 192.168.1.10).</string>
     <string name="eng_error_prefix_out_of_range">CIDR prefix must be an integer between /0 and /32.</string>
@@ -328,6 +330,7 @@
     <string name="eng_error_invalid_host_count">Enter a valid required hosts count (at least 1).</string>
     <string name="eng_error_insufficient_capacity">Insufficient network capacity: requires %1$s addresses, only %2$s available in the base network.</string>
     <string name="eng_error_no_vlsm_reqs">Add at least one subnet requirement to compute VLSM.</string>
+    <string name="eng_error_empty_vlsm_name">Enter a name for subnet requirement #%1$d.</string>
     <string name="eng_error_invalid_vlsm_req">Enter a valid positive host count for %1$s.</string>
 
     <string name="eng_design_mode_flsm">FLSM</string>
@@ -348,6 +351,7 @@
     <string name="eng_flsm_usable_per_subnet">Usable hosts per subnet</string>
     <string name="eng_flsm_truncated_note">Showing first %1$s of %2$s generated subnets for display performance.</string>
     <string name="eng_flsm_table_title">GENERATED SUBNETS</string>
+    <string name="eng_flsm_table_title_truncated">GENERATED SUBNETS (FIRST %1$s OF %2$s)</string>
     <string name="eng_flsm_copied">FLSM table copied</string>
     <string name="eng_vlsm_reqs_title">SUBNET REQUIREMENTS</string>
     <string name="eng_vlsm_req_name">Subnet name</string>
@@ -365,6 +369,10 @@
     <string name="eng_subnet_number_format">Subnet #%1$d</string>
     <string name="eng_subnet_usable_short">Usable</string>
     <string name="eng_vlsm_default_prefix_name">Subnet %1$d</string>
+    <string name="eng_summary_bcast_short">Broadcast</string>
+    <string name="eng_summary_req_short">req %1$s</string>
+    <string name="eng_summary_flsm_header">FLSM — %1$s → /%2$d (%3$s)</string>
+    <string name="eng_summary_vlsm_header">VLSM — %1$s (%2$s / %3$s)</string>
 
     <string name="eng_quick_cidr">QUICK CIDR</string>
     <string name="eng_calculated_result">CALCULATED RESULT</string>
@@ -424,6 +432,8 @@
     <string name="prog_tab_keypad">HEX/Bitwise</string>
     <string name="prog_tab_bits">Bit Matrix</string>
     <string name="prog_bit_matrix_hint">Tap any bit to toggle it (MSB → LSB)</string>
+    <string name="prog_bit_matrix_count">%1$d bits</string>
+    <string name="prog_bit_byte_range">Byte %1$d · bits %2$d–%3$d</string>
     <string name="prog_last_op_toggle_bit">Toggle bit #%1$d</string>
 
     <!-- Settings -->

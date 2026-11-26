@@ -91,6 +91,17 @@ class Ipv4SubnettingEngine @Inject constructor() {
         }
 
     /**
+     * Parses a strict dotted-decimal subnet mask ("255.255.255.0") and returns its CIDR prefix (0..32),
+     * or null if invalid or non-contiguous. Rejects bare CIDR integers so decimal-mask inputs
+     * do not falsely synchronize as prefixes.
+     */
+    fun resolveDecimalMaskPrefixOrNull(decimalMask: String): Int? =
+        when (val res = parseDecimalMask(decimalMask.trim())) {
+            is PrefixParseResult.Valid -> res.prefix
+            is PrefixParseResult.Invalid -> null
+        }
+
+    /**
      * Designs Fixed-Length Subnet Mask (FLSM) blocks for [baseIp] / [basePrefixOrMask].
      *
      * - [FlsmCriteria.BY_SUBNET_COUNT]: borrows the minimum bits b where 2^b >= targetValue.
@@ -147,7 +158,7 @@ class Ipv4SubnettingEngine @Inject constructor() {
                 val hostBits = requiredHostBitsForStandardSubnet(targetValue)
                     ?: return FlsmOutcome.Failure(
                         Ipv4Error.InsufficientCapacity(
-                            requiredAddresses = targetValue + 2L,
+                            requiredAddresses = saturatingAdd(targetValue, 2L),
                             availableAddresses = baseTotal
                         )
                     )
@@ -232,25 +243,27 @@ class Ipv4SubnettingEngine @Inject constructor() {
         var totalRequiredAddresses = 0L
 
         for ((idx, req) in requirements.withIndex()) {
+            val trimmedName = req.name.trim()
+            if (trimmedName.isEmpty()) {
+                return VlsmOutcome.Failure(Ipv4Error.EmptyVlsmRequirementName(idx + 1))
+            }
             if (req.requiredHosts <= 0L) {
-                return VlsmOutcome.Failure(Ipv4Error.InvalidVlsmRequirement(req.name))
+                return VlsmOutcome.Failure(Ipv4Error.InvalidVlsmRequirement(trimmedName))
             }
             val hostBits = requiredHostBitsForStandardSubnet(req.requiredHosts)
                 ?: return VlsmOutcome.Failure(
                     Ipv4Error.InsufficientCapacity(
-                        requiredAddresses = req.requiredHosts + 2L,
+                        requiredAddresses = saturatingAdd(req.requiredHosts, 2L),
                         availableAddresses = baseAnalysis.totalAddresses
                     )
                 )
             val prefix = 32 - hostBits
             val blockSize = 1L shl hostBits
-            if (totalRequiredAddresses <= TOTAL_IPV4_SPACE) {
-                totalRequiredAddresses += blockSize
-            }
+            totalRequiredAddresses = saturatingAdd(totalRequiredAddresses, blockSize)
             sizedReqs.add(
                 SizedVlsmReq(
                     originalIndex = idx,
-                    requirement = req,
+                    requirement = req.copy(name = trimmedName),
                     prefixLength = prefix,
                     blockSize = blockSize
                 )
@@ -277,12 +290,17 @@ class Ipv4SubnettingEngine @Inject constructor() {
         val baseEnd = baseAnalysis.broadcastLong
         var cursor = baseStart
         val allocations = ArrayList<SubnetAllocation>(sorted.size)
+        val remainingBlocks = mutableListOf<String>()
 
         for ((idx, item) in sorted.withIndex()) {
             val blockSize = item.blockSize
             // Enforce strict power-of-2 CIDR boundary alignment
             if (cursor % blockSize != 0L) {
-                cursor = ((cursor / blockSize) + 1L) * blockSize
+                val aligned = ((cursor / blockSize) + 1L) * blockSize
+                if (aligned > cursor) {
+                    remainingBlocks.addAll(summarizeCidrRange(cursor, minOf(aligned - 1L, baseEnd)))
+                }
+                cursor = aligned
             }
             val endAddr = cursor + blockSize - 1L
             if (endAddr > baseEnd) {
@@ -296,12 +314,11 @@ class Ipv4SubnettingEngine @Inject constructor() {
 
             val maskStr = longToIp(prefixToMaskLong(item.prefixLength))
             val usable = usableHostsForPrefix(item.prefixLength)
-            val label = item.requirement.name.trim().ifEmpty { "#${idx + 1}" }
 
             allocations.add(
                 buildAllocation(
                     index = idx + 1,
-                    name = label,
+                    name = item.requirement.name,
                     requestedHosts = item.requirement.requiredHosts,
                     networkLong = cursor,
                     broadcastLong = endAddr,
@@ -314,9 +331,9 @@ class Ipv4SubnettingEngine @Inject constructor() {
             cursor = endAddr + 1L
         }
 
+        remainingBlocks.addAll(summarizeCidrRange(cursor, baseEnd))
         val allocatedAddresses = allocations.sumOf { it.totalCapacity }
         val remainingAddresses = baseAnalysis.totalAddresses - allocatedAddresses
-        val remainingBlocks = summarizeCidrRange(cursor, baseEnd)
         val utilization = (allocatedAddresses.toDouble() / baseAnalysis.totalAddresses.toDouble()) * 100.0
 
         return VlsmOutcome.Success(
@@ -439,12 +456,16 @@ class Ipv4SubnettingEngine @Inject constructor() {
         else -> ((1L shl (32 - prefix)) - 2L).coerceAtLeast(0L)
     }
 
+    private fun saturatingAdd(a: Long, b: Long): Long =
+        if (a > Long.MAX_VALUE - b) Long.MAX_VALUE else a + b
+
     private fun parseIpv4(raw: String): Long? {
         val parts = raw.split(".")
         if (parts.size != 4) return null
         var acc = 0L
         for (part in parts) {
             if (part.isEmpty() || part.length > 3 || !part.all { it in '0'..'9' }) return null
+            if (part.length > 1 && part[0] == '0') return null
             val octet = part.toIntOrNull() ?: return null
             if (octet !in 0..255) return null
             acc = (acc shl 8) or octet.toLong()
@@ -457,7 +478,12 @@ class Ipv4SubnettingEngine @Inject constructor() {
             return parseDecimalMask(raw)
         }
         val stripped = if (raw.startsWith("/")) raw.drop(1) else raw
-        if (stripped.isEmpty()) return PrefixParseResult.Invalid(Ipv4Error.PrefixOutOfRange)
+        if (stripped.isEmpty() || !stripped.all { it in '0'..'9' }) {
+            return PrefixParseResult.Invalid(Ipv4Error.PrefixOutOfRange)
+        }
+        if (stripped.length > 1 && stripped[0] == '0') {
+            return PrefixParseResult.Invalid(Ipv4Error.PrefixOutOfRange)
+        }
         val parsed = stripped.toIntOrNull() ?: return PrefixParseResult.Invalid(Ipv4Error.PrefixOutOfRange)
         if (parsed !in 0..32) return PrefixParseResult.Invalid(Ipv4Error.PrefixOutOfRange)
         return PrefixParseResult.Valid(parsed)

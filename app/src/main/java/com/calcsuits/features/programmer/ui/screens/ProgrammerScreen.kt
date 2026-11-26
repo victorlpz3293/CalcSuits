@@ -225,7 +225,7 @@ fun ProgrammerWorkspaceBody(
             Column(modifier = bitContainerModifier) {
                 BitToggleMatrix(
                     rawValue = state.rawValue,
-                    wordSize = state.wordSize.coerceAtMost(32),
+                    wordSize = state.wordSize,
                     onToggleBit = onToggleBit
                 )
                 Spacer(Modifier.height(4.dp))
@@ -338,12 +338,20 @@ private fun BaseRow(
                 style = MaterialTheme.typography.titleSmall.copy(
                     fontFamily = JetBrainsMonoFontFamily,
                     fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal,
-                    fontSize = if (label == "BIN" && value.length > 20) 12.sp else 15.sp,
-                    lineHeight = if (label == "BIN" && value.length > 20) 17.sp else 20.sp
+                    fontSize = when {
+                        label == "BIN" && value.length > 40 -> 10.5.sp
+                        label == "BIN" && value.length > 20 -> 12.sp
+                        else -> 15.sp
+                    },
+                    lineHeight = when {
+                        label == "BIN" && value.length > 40 -> 14.sp
+                        label == "BIN" && value.length > 20 -> 17.sp
+                        else -> 20.sp
+                    }
                 ),
                 color = if (isActive) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.End,
-                maxLines = if (label == "BIN") 4 else 2,
+                maxLines = if (label == "BIN") 6 else 2,
                 overflow = TextOverflow.Ellipsis
             )
         }
@@ -561,60 +569,124 @@ private fun ProgrammerKey(
     }
 }
 
+internal fun normalizedBitMatrixWordSize(wordSize: Int): Int = when (wordSize) {
+    8, 16, 32, 64 -> wordSize
+    else -> wordSize.coerceIn(8, 64).let { (it / 8) * 8 }.coerceAtLeast(8)
+}
+
+internal fun buildBitMatrixRows(wordSize: Int): List<List<Int>> {
+    val totalBits = normalizedBitMatrixWordSize(wordSize)
+    return ((totalBits - 1) downTo 0 step 8).map { rowStart ->
+        (0 until 8).map { offset -> rowStart - offset }
+    }
+}
+
+internal fun isBitSet(rawValue: Long, bitIndex: Int): Boolean {
+    if (bitIndex !in 0..63) return false
+    return ((rawValue ushr bitIndex) and 1L) == 1L
+}
+
 @Composable
 private fun BitToggleMatrix(
     rawValue: Long,
     wordSize: Int,
     onToggleBit: (Int) -> Unit
 ) {
-    CalcCard(contentPadding = PaddingValues(12.dp)) {
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text(
-                text = stringResource(R.string.prog_bit_matrix_hint),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            val totalBits = wordSize.coerceIn(8, 32)
-            for (rowStart in (totalBits - 1) downTo 0 step 8) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    for (offset in 0 until 8) {
-                        val bitIdx = rowStart - offset
-                        val isOne = ((rawValue ushr bitIdx) and 1L) == 1L
-                        Surface(
-                            onClick = { onToggleBit(bitIdx) },
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(46.dp),
-                            shape = RoundedCornerShape(8.dp),
-                            color = if (isOne) MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.surfaceContainer,
-                            border = BorderStroke(
-                                1.dp,
-                                if (isOne) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
-                            )
-                        ) {
-                            Column(
-                                modifier = Modifier.fillMaxSize(),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center
+    val rows = remember(wordSize) { buildBitMatrixRows(wordSize) }
+    val totalBits = remember(wordSize) { normalizedBitMatrixWordSize(wordSize) }
+
+    CalcCard(
+        modifier = Modifier.testTag("prog_bit_matrix"),
+        contentPadding = PaddingValues(12.dp)
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = stringResource(R.string.prog_bit_matrix_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f)
+                )
+                Text(
+                    text = stringResource(R.string.prog_bit_matrix_count, totalBits),
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontFamily = JetBrainsMonoFontFamily,
+                        fontWeight = FontWeight.SemiBold
+                    ),
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+
+            rows.forEachIndexed { rowIndex, bitIndices ->
+                val msb = bitIndices.first()
+                val lsb = bitIndices.last()
+
+                if (totalBits == 64 && msb == 31) {
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 2.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant
+                    )
+                }
+
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = stringResource(R.string.prog_bit_byte_range, rows.size - 1 - rowIndex, msb, lsb),
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontFamily = JetBrainsMonoFontFamily,
+                                fontSize = 10.sp
+                            ),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        bitIndices.forEach { bitIdx ->
+                            val isOne = isBitSet(rawValue, bitIdx)
+                            Surface(
+                                onClick = { onToggleBit(bitIdx) },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(48.dp)
+                                    .testTag("prog_bit_$bitIdx"),
+                                shape = RoundedCornerShape(8.dp),
+                                color = if (isOne) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.surfaceContainer,
+                                border = BorderStroke(
+                                    1.dp,
+                                    if (isOne) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
+                                )
                             ) {
-                                Text(
-                                    text = if (isOne) "1" else "0",
-                                    style = MaterialTheme.typography.titleSmall.copy(
-                                        fontFamily = JetBrainsMonoFontFamily,
-                                        fontWeight = FontWeight.Bold
-                                    ),
-                                    color = if (isOne) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Text(
-                                    text = "$bitIdx",
-                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 8.sp),
-                                    color = if (isOne) MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f)
-                                    else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                                )
+                                Column(
+                                    modifier = Modifier.fillMaxSize(),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Center
+                                ) {
+                                    Text(
+                                        text = if (isOne) "1" else "0",
+                                        style = MaterialTheme.typography.titleSmall.copy(
+                                            fontFamily = JetBrainsMonoFontFamily,
+                                            fontWeight = FontWeight.Bold
+                                        ),
+                                        color = if (isOne) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Text(
+                                        text = "$bitIdx",
+                                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 8.sp),
+                                        color = if (isOne) MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f)
+                                        else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                    )
+                                }
                             }
                         }
                     }

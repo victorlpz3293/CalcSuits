@@ -74,6 +74,12 @@ class EngineeringViewModel @Inject constructor(
 
     private var electricalInputs: Map<String, String> = emptyMap()
     private var networkingInputs: Map<String, String> = DEFAULT_IPV4_INPUTS
+    private var flsmBaseIp: String = "192.168.1.0"
+    private var flsmBaseMask: String = "/24"
+    private var vlsmBaseIp: String = "192.168.1.0"
+    private var vlsmBaseMask: String = "/24"
+    private var flsmSubnetsTargetInput: String = "4"
+    private var flsmHostsTargetInput: String = "30"
     private var nextVlsmId: Long = 4L
 
     init {
@@ -255,7 +261,7 @@ class EngineeringViewModel @Inject constructor(
 
     fun onIpv4DecimalMaskChange(value: String) {
         val sanitized = value.filter { it.isDigit() || it == '.' }
-        val resolvedPrefix = ipv4Engine.resolvePrefixOrNull(sanitized)
+        val resolvedPrefix = ipv4Engine.resolveDecimalMaskPrefixOrNull(sanitized)
         val syncedCidr = resolvedPrefix?.let { "/$it" }
         updateNetworkingLegacyInputs(_state.value.ipv4IpInput, sanitized)
         _state.update {
@@ -273,18 +279,42 @@ class EngineeringViewModel @Inject constructor(
     // --- Subnet Design (FLSM / VLSM) actions ---
 
     fun onSubnetDesignModeSelected(mode: SubnetDesignMode) {
-        _state.update { it.copy(subnetDesignMode = mode) }
+        val (baseIp, baseMask) = if (mode == SubnetDesignMode.FLSM) {
+            flsmBaseIp to flsmBaseMask
+        } else {
+            vlsmBaseIp to vlsmBaseMask
+        }
+        _state.update {
+            it.copy(
+                subnetDesignMode = mode,
+                designBaseIp = baseIp,
+                designBaseMask = baseMask
+            )
+        }
         recomputeSubnetDesign()
     }
 
     fun onDesignBaseIpChange(value: String) {
         val sanitized = value.filter { it.isDigit() || it == '.' || it == '/' }
+        val isFlsm = _state.value.subnetDesignMode == SubnetDesignMode.FLSM
         if ("/" in sanitized) {
             val parts = sanitized.split("/", limit = 2)
             val ipPart = parts[0]
             val maskPart = if (parts[1].isNotEmpty()) "/${parts[1]}" else "/"
+            if (isFlsm) {
+                flsmBaseIp = ipPart
+                flsmBaseMask = maskPart
+            } else {
+                vlsmBaseIp = ipPart
+                vlsmBaseMask = maskPart
+            }
             _state.update { it.copy(designBaseIp = ipPart, designBaseMask = maskPart) }
         } else {
+            if (isFlsm) {
+                flsmBaseIp = sanitized
+            } else {
+                vlsmBaseIp = sanitized
+            }
             _state.update { it.copy(designBaseIp = sanitized) }
         }
         recomputeSubnetDesign()
@@ -292,19 +322,25 @@ class EngineeringViewModel @Inject constructor(
 
     fun onDesignBaseMaskChange(value: String) {
         val sanitized = value.filter { it.isDigit() || it == '.' || it == '/' || it == '-' }
+        if (_state.value.subnetDesignMode == SubnetDesignMode.FLSM) {
+            flsmBaseMask = sanitized
+        } else {
+            vlsmBaseMask = sanitized
+        }
         _state.update { it.copy(designBaseMask = sanitized) }
         recomputeSubnetDesign()
     }
 
     fun onFlsmCriteriaSelected(criteria: FlsmCriteria) {
-        val suggestedDefault = when (criteria) {
-            FlsmCriteria.BY_SUBNET_COUNT -> "4"
-            FlsmCriteria.BY_HOSTS_PER_SUBNET -> "30"
+        if (_state.value.flsmCriteria == criteria) return
+        val restoredTarget = when (criteria) {
+            FlsmCriteria.BY_SUBNET_COUNT -> flsmSubnetsTargetInput
+            FlsmCriteria.BY_HOSTS_PER_SUBNET -> flsmHostsTargetInput
         }
         _state.update {
             it.copy(
                 flsmCriteria = criteria,
-                flsmTargetInput = suggestedDefault
+                flsmTargetInput = restoredTarget
             )
         }
         recomputeSubnetDesign()
@@ -312,6 +348,10 @@ class EngineeringViewModel @Inject constructor(
 
     fun onFlsmTargetChange(value: String) {
         val digitsOnly = value.filter { it.isDigit() }
+        when (_state.value.flsmCriteria) {
+            FlsmCriteria.BY_SUBNET_COUNT -> flsmSubnetsTargetInput = digitsOnly
+            FlsmCriteria.BY_HOSTS_PER_SUBNET -> flsmHostsTargetInput = digitsOnly
+        }
         _state.update { it.copy(flsmTargetInput = digitsOnly) }
         recomputeSubnetDesign()
     }
@@ -331,10 +371,11 @@ class EngineeringViewModel @Inject constructor(
     }
 
     fun onUpdateVlsmRequirementName(id: Long, name: String) {
+        val sanitizedName = name.replace('\n', ' ').replace('\r', ' ').take(40)
         _state.update {
             it.copy(
                 vlsmRequirements = it.vlsmRequirements.map { req ->
-                    if (req.id == id) req.copy(name = name) else req
+                    if (req.id == id) req.copy(name = sanitizedName) else req
                 }
             )
         }
@@ -368,6 +409,10 @@ class EngineeringViewModel @Inject constructor(
             current.selectedSpecialty == EngineeringSpecialty.NETWORKING &&
                 current.selectedNetworkingTool == NetworkingTool.SUBNET_DESIGN -> {
                 if (current.subnetDesignMode == SubnetDesignMode.FLSM) {
+                    when (current.flsmCriteria) {
+                        FlsmCriteria.BY_SUBNET_COUNT -> flsmSubnetsTargetInput = ""
+                        FlsmCriteria.BY_HOSTS_PER_SUBNET -> flsmHostsTargetInput = ""
+                    }
                     _state.update { it.copy(flsmTargetInput = "") }
                 } else {
                     _state.update { it.copy(vlsmRequirements = emptyList()) }
@@ -428,8 +473,8 @@ class EngineeringViewModel @Inject constructor(
                 FlsmOutcome.Failure(err)
             } else {
                 ipv4Engine.designFlsm(
-                    baseIp = current.designBaseIp,
-                    basePrefixOrMask = current.designBaseMask,
+                    baseIp = flsmBaseIp,
+                    basePrefixOrMask = flsmBaseMask,
                     criteria = current.flsmCriteria,
                     targetValue = target
                 )
@@ -440,24 +485,32 @@ class EngineeringViewModel @Inject constructor(
             if (current.vlsmRequirements.isEmpty()) {
                 VlsmOutcome.Failure(Ipv4Error.NoVlsmRequirements)
             } else {
-                val invalid = current.vlsmRequirements.firstOrNull {
-                    (it.hostsInput.toLongOrNull() ?: 0L) <= 0L
-                }
-                if (invalid != null) {
-                    VlsmOutcome.Failure(Ipv4Error.InvalidVlsmRequirement(invalid.name.ifBlank { "#${invalid.id}" }))
+                val emptyNameIdx = current.vlsmRequirements.indexOfFirst { it.name.isBlank() }
+                if (emptyNameIdx >= 0) {
+                    VlsmOutcome.Failure(Ipv4Error.EmptyVlsmRequirementName(emptyNameIdx + 1))
                 } else {
-                    val domainReqs = current.vlsmRequirements.map {
-                        VlsmRequirement(
-                            id = it.id,
-                            name = it.name,
-                            requiredHosts = it.hostsInput.toLong()
+                    val invalidIdx = current.vlsmRequirements.indexOfFirst {
+                        (it.hostsInput.toLongOrNull() ?: 0L) <= 0L
+                    }
+                    if (invalidIdx >= 0) {
+                        val invalid = current.vlsmRequirements[invalidIdx]
+                        VlsmOutcome.Failure(
+                            Ipv4Error.InvalidVlsmRequirement(invalid.name.trim().ifEmpty { "#${invalidIdx + 1}" })
+                        )
+                    } else {
+                        val domainReqs = current.vlsmRequirements.map {
+                            VlsmRequirement(
+                                id = it.id,
+                                name = it.name.trim(),
+                                requiredHosts = it.hostsInput.toLong()
+                            )
+                        }
+                        ipv4Engine.designVlsm(
+                            baseIp = vlsmBaseIp,
+                            basePrefixOrMask = vlsmBaseMask,
+                            requirements = domainReqs
                         )
                     }
-                    ipv4Engine.designVlsm(
-                        baseIp = current.designBaseIp,
-                        basePrefixOrMask = current.designBaseMask,
-                        requirements = domainReqs
-                    )
                 }
             }
         }
