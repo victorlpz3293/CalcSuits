@@ -7,8 +7,10 @@ import com.calcsuits.domain.model.finance.LoanTermUnit
 import com.calcsuits.domain.model.finance.PaymentFrequency
 import com.calcsuits.domain.model.finance.RateConvention
 import com.calcsuits.domain.usecase.CalculateLoanUseCase
+import com.calcsuits.features.finance.ui.screens.MAX_NON_LAZY_SCHEDULE_ROWS
 import com.calcsuits.features.finance.ui.screens.ScheduleLayoutMode
 import com.calcsuits.features.finance.ui.screens.resolveScheduleLayoutMode
+import com.calcsuits.features.finance.ui.screens.resolveVisibleScheduleRows
 import com.calcsuits.features.finance.ui.screens.shouldUseNonLazyLoanLayout
 import com.calcsuits.features.finance.ui.screens.shouldUseStackedComparisonLayout
 import org.junit.Assert.assertEquals
@@ -150,24 +152,85 @@ class FinanceViewModelTest {
     }
 
     @Test
-    fun loanLayoutResolverSwitchesToNonLazyWhenHeightIsUnboundedOrBelowThreshold() {
-        // Unbounded height (e.g., inside CalcPinnedScaffold outer verticalScroll) MUST use non-lazy Column
+    fun loanLayoutResolverUsesNonLazyOnlyWhenHeightIsUnboundedOrNonPositive() {
+        // Unbounded height (inside CalcPinnedScaffold outer verticalScroll) MUST use non-lazy Column
         assertTrue(shouldUseNonLazyLoanLayout(hasBoundedHeight = false, maxHeightDp = Float.POSITIVE_INFINITY))
         assertTrue(shouldUseNonLazyLoanLayout(hasBoundedHeight = false, maxHeightDp = 800f))
-        // Bounded compact vertical space (< 200dp) uses non-lazy Column
-        assertTrue(shouldUseNonLazyLoanLayout(hasBoundedHeight = true, maxHeightDp = 199.9f))
-        // Bounded normal vertical space (>= 200dp) uses LazyColumn
+        // Non-positive height falls back safely
+        assertTrue(shouldUseNonLazyLoanLayout(hasBoundedHeight = true, maxHeightDp = 0f))
+        // Bounded positive heights (including 120–199dp under soft keyboard IME) stay on LazyColumn
+        // so the loan screen remains scrollable without an unscrollable dead-zone
+        assertFalse(shouldUseNonLazyLoanLayout(hasBoundedHeight = true, maxHeightDp = 148f))
+        assertFalse(shouldUseNonLazyLoanLayout(hasBoundedHeight = true, maxHeightDp = 199.9f))
         assertFalse(shouldUseNonLazyLoanLayout(hasBoundedHeight = true, maxHeightDp = 200f))
         assertFalse(shouldUseNonLazyLoanLayout(hasBoundedHeight = true, maxHeightDp = 640f))
     }
 
     @Test
+    fun nonLazyScheduleRowResolverCapsEagerCompositionOnLongSchedulesWhileLazyKeepsAllRows() {
+        val longLoan = CalculateLoanUseCase()(
+            com.calcsuits.domain.model.finance.LoanRequest(
+                amount = 500_000.0,
+                annualRate = 9.5,
+                termValue = 1_200,
+                termUnit = LoanTermUnit.PERIODS,
+                paymentFrequency = PaymentFrequency.MONTHLY,
+                system = AmortizationSystem.FRENCH
+            )
+        )
+        assertEquals(1_200, longLoan.schedule.size)
+
+        // LazyColumn mode keeps full 1,200-row virtualized schedule
+        assertEquals(
+            1_200,
+            resolveVisibleScheduleRows(
+                schedule = longLoan.schedule,
+                showSchedule = true,
+                showAllPeriods = true,
+                useNonLazyLayout = false
+            ).size
+        )
+        // Non-lazy unbounded fallback caps eager composition to MAX_NON_LAZY_SCHEDULE_ROWS (24)
+        val capped = resolveVisibleScheduleRows(
+            schedule = longLoan.schedule,
+            showSchedule = true,
+            showAllPeriods = true,
+            useNonLazyLayout = true
+        )
+        assertEquals(MAX_NON_LAZY_SCHEDULE_ROWS, capped.size)
+        assertEquals(1, capped.first().period)
+        assertEquals(MAX_NON_LAZY_SCHEDULE_ROWS, capped.last().period)
+
+        // Default preview stays at 12 rows in both modes; hidden schedule returns empty
+        assertEquals(
+            12,
+            resolveVisibleScheduleRows(
+                schedule = longLoan.schedule,
+                showSchedule = true,
+                showAllPeriods = false,
+                useNonLazyLayout = true
+            ).size
+        )
+        assertTrue(
+            resolveVisibleScheduleRows(
+                schedule = longLoan.schedule,
+                showSchedule = false,
+                showAllPeriods = true,
+                useNonLazyLayout = false
+            ).isEmpty()
+        )
+    }
+
+    @Test
     fun comparisonCardUsesStackedLayoutOnNarrowPhonesAndHorizontalColumnsOnWideScreens() {
-        assertTrue(shouldUseStackedComparisonLayout(300f))
-        assertTrue(shouldUseStackedComparisonLayout(352f))
+        // Screen widths minus 32dp scaffold padding and 40dp CalcResultCard padding = screenWidth - 72dp
+        assertTrue(shouldUseStackedComparisonLayout(360f - 72f)) // 288dp
+        assertTrue(shouldUseStackedComparisonLayout(375f - 72f)) // 303dp
+        assertTrue(shouldUseStackedComparisonLayout(412f - 72f)) // 340dp
         assertTrue(shouldUseStackedComparisonLayout(399.9f))
         assertFalse(shouldUseStackedComparisonLayout(400f))
-        assertFalse(shouldUseStackedComparisonLayout(640f))
+        assertFalse(shouldUseStackedComparisonLayout(600f - 72f)) // 528dp
+        assertFalse(shouldUseStackedComparisonLayout(840f - 72f)) // 768dp
     }
 
     @Test

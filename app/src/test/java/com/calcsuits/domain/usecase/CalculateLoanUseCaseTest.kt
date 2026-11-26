@@ -920,6 +920,154 @@ class CalculateLoanUseCaseTest {
         assertEquals("50", formatCompactMoneyAxis(50.0, jpy, Locale.US))
     }
 
+    @Test
+    fun effectiveAnnualRateMatrixCoversAllFivePeriodicitiesAndRequiredRatesToDecimal128Precision() {
+        val requiredRates = listOf(0.0, 0.5, 1.0, 5.0, 12.0, 36.0, 100.0, 300.0)
+        val mc = MathContext.DECIMAL128
+        val tolerance = BigDecimal("1E-29")
+
+        for (ratePercent in requiredRates) {
+            val expectedTea = BigDecimal.valueOf(ratePercent).divide(BigDecimal(100), mc)
+            val periodicByM = mutableMapOf<Int, BigDecimal>()
+
+            for (frequency in PaymentFrequency.entries) {
+                val m = frequency.periodsPerYear
+                val periodic = useCase.computeEffectivePeriodicRate(ratePercent, m)
+                periodicByM[m] = periodic
+
+                if (ratePercent == 0.0) {
+                    assertEquals(0, BigDecimal.ZERO.compareTo(periodic))
+                } else {
+                    assertTrue("Periodic rate must be > 0 for rate=$ratePercent%, m=$m", periodic > BigDecimal.ZERO)
+                }
+
+                if (m == 1) {
+                    assertEquals(0, expectedTea.compareTo(periodic))
+                }
+
+                val reconstructedTea = BigDecimal.ONE.add(periodic, mc)
+                    .pow(m, mc)
+                    .subtract(BigDecimal.ONE, mc)
+                val residual = reconstructedTea.subtract(expectedTea, mc).abs()
+                assertTrue(
+                    "Residual $residual exceeded $tolerance for TEA=$ratePercent%, m=$m",
+                    residual <= tolerance
+                )
+            }
+
+            // Cross-periodicity algebraic consistency: (1+i_24)^2 == 1+i_12, (1+i_12)^3 == 1+i_4, (1+i_4)^2 == 1+i_2
+            val onePlus24 = BigDecimal.ONE.add(periodicByM.getValue(24), mc)
+            val onePlus12 = BigDecimal.ONE.add(periodicByM.getValue(12), mc)
+            val onePlus4 = BigDecimal.ONE.add(periodicByM.getValue(4), mc)
+            val onePlus2 = BigDecimal.ONE.add(periodicByM.getValue(2), mc)
+
+            assertTrue(onePlus24.pow(2, mc).subtract(onePlus12, mc).abs() <= tolerance)
+            assertTrue(onePlus12.pow(3, mc).subtract(onePlus4, mc).abs() <= tolerance)
+            assertTrue(onePlus4.pow(2, mc).subtract(onePlus2, mc).abs() <= tolerance)
+
+            if (ratePercent > 0.0) {
+                assertTrue(periodicByM.getValue(24) < periodicByM.getValue(12))
+                assertTrue(periodicByM.getValue(12) < periodicByM.getValue(4))
+                assertTrue(periodicByM.getValue(4) < periodicByM.getValue(2))
+                assertTrue(periodicByM.getValue(2) < periodicByM.getValue(1))
+            }
+        }
+    }
+
+    @Test
+    fun pureBigDecimalInitialSeedIsUpperBoundAndConvergesAcrossFractionalAndBeyondDoubleMagnitudes() {
+        val mc = MathContext.DECIMAL128
+        val relativeTolerance = BigDecimal("1E-29")
+        val testBases = listOf(
+            BigDecimal("1E-24"),
+            BigDecimal("0.0001"),
+            BigDecimal("0.5"),
+            BigDecimal("1.000001"),
+            BigDecimal("1.12"),
+            BigDecimal("4.0"),
+            BigDecimal("11.0"),        // 1,000% TEA
+            BigDecimal("1001.0"),      // 100,000% TEA
+            BigDecimal("1E24"),
+            BigDecimal("1E400")        // Strictly exceeds IEEE-754 Double.MAX_VALUE (~1.8E308)
+        )
+        val degrees = listOf(2, 4, 12, 24)
+
+        for (base in testBases) {
+            for (degree in degrees) {
+                val seed = useCase.initialNthRootSeed(base, degree)
+                assertTrue("Seed $seed must be strictly positive", seed > BigDecimal.ZERO)
+                assertTrue(
+                    "Convexity upper bound violated for base=$base, degree=$degree: seed^m < base",
+                    seed.pow(degree, mc) >= base
+                )
+
+                val root = useCase.nthRootBigDecimal(base, degree)
+                val relativeError = root.pow(degree, mc)
+                    .subtract(base, mc)
+                    .abs()
+                    .divide(base, mc)
+                assertTrue(
+                    "Relative residual $relativeError exceeded $relativeTolerance for base=$base, degree=$degree",
+                    relativeError <= relativeTolerance
+                )
+            }
+        }
+
+        // Tiny and extreme financial rates via computeEffectivePeriodicRate
+        for (extremeRate in listOf(0.0001, 1000.0)) {
+            val expectedTea = BigDecimal.valueOf(extremeRate).divide(BigDecimal(100), mc)
+            val periodic = useCase.computeEffectivePeriodicRate(extremeRate, 24)
+            val reconstructed = BigDecimal.ONE.add(periodic, mc).pow(24, mc).subtract(BigDecimal.ONE, mc)
+            val relativeError = reconstructed.subtract(expectedTea, mc).abs()
+                .divide(expectedTea.max(BigDecimal.ONE), mc)
+            assertTrue("Extreme rate $extremeRate% relative error $relativeError too large", relativeError <= relativeTolerance)
+        }
+    }
+
+    @Test
+    fun nthRootAndEffectiveRateRejectInvalidInputsAndThrowArithmeticExceptionOnNonConvergence() {
+        // Invalid computeEffectivePeriodicRate inputs
+        assertIllegalArgument { useCase.computeEffectivePeriodicRate(-0.01, 12) }
+        assertIllegalArgument { useCase.computeEffectivePeriodicRate(Double.NaN, 12) }
+        assertIllegalArgument { useCase.computeEffectivePeriodicRate(Double.POSITIVE_INFINITY, 12) }
+        assertIllegalArgument { useCase.computeEffectivePeriodicRate(12.0, 0) }
+        assertIllegalArgument { useCase.computeEffectivePeriodicRate(12.0, -4) }
+
+        // Invalid nthRootBigDecimal inputs
+        assertIllegalArgument { useCase.nthRootBigDecimal(BigDecimal.ZERO, 12) }
+        assertIllegalArgument { useCase.nthRootBigDecimal(BigDecimal("-1.5"), 12) }
+        assertIllegalArgument { useCase.nthRootBigDecimal(BigDecimal("1.12"), 0) }
+        assertIllegalArgument { useCase.nthRootBigDecimal(BigDecimal("1.12"), -2) }
+        assertIllegalArgument { useCase.nthRootBigDecimal(BigDecimal("1.12"), 12, maxIterations = 0) }
+        assertIllegalArgument { useCase.nthRootBigDecimal(BigDecimal("1.12"), 12, tolerance = BigDecimal.ZERO) }
+
+        // Non-convergence with insufficient iterations MUST throw ArithmeticException (never return silently)
+        try {
+            useCase.nthRootBigDecimal(
+                value = BigDecimal("4.0"),
+                degree = 24,
+                maxIterations = 1,
+                tolerance = BigDecimal("1E-31")
+            )
+            fail("Expected ArithmeticException when Newton-Raphson does not converge within maxIterations")
+        } catch (_: ArithmeticException) {
+            // Expected controlled exception
+        }
+
+        // Non-convergence with unachievable sub-DECIMAL128 tolerance MUST also throw ArithmeticException
+        try {
+            useCase.nthRootBigDecimal(
+                value = BigDecimal("1.12"),
+                degree = 12,
+                maxIterations = 16,
+                tolerance = BigDecimal("1E-40")
+            )
+            fail("Expected ArithmeticException when requested tolerance is tighter than DECIMAL128 precision")
+        } catch (_: ArithmeticException) {
+            // Expected controlled exception
+        }
+    }
+
     /**
      * Verifies exact accounting invariants to the currency minor unit across every row in [result]:
      * - openingBalance matches running balance prior to period principal

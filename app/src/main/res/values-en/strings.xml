@@ -351,6 +351,7 @@
     <string name="finance_schedule_totals">Totals</string>
     <string name="finance_schedule_totals_title">Schedule totals</string>
     <string name="finance_show_first_12">Show first 12</string>
+    <string name="finance_schedule_compact_height_cap_note">Showing the first %1$d of %2$d installments in compact height mode for smooth scrolling. Expand viewport height to browse all rows.</string>
     <plurals name="finance_show_all_periods">
         <item quantity="one">Show all (%d)</item>
         <item quantity="other">Show all (%d)</item>

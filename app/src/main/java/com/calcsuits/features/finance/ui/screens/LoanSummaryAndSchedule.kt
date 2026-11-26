@@ -794,7 +794,8 @@ internal fun ScheduleTotalsFooterCard(
     locale: Locale,
     layoutMode: ScheduleLayoutMode,
     showAllPeriods: Boolean,
-    onToggleShowAll: () -> Unit
+    onToggleShowAll: () -> Unit,
+    nonLazyCappedRowCount: Int? = null
 ) {
     val currency = result.currency
     val isExpandedTable = layoutMode == ScheduleLayoutMode.EXPANDED_TABLE
@@ -908,6 +909,19 @@ internal fun ScheduleTotalsFooterCard(
                     ),
                     value = formatMoney(result.totalPayment, currency, locale),
                     emphasize = true
+                )
+            }
+
+            if (nonLazyCappedRowCount != null) {
+                Text(
+                    text = stringResource(
+                        R.string.finance_schedule_compact_height_cap_note,
+                        nonLazyCappedRowCount,
+                        result.schedule.size
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.testTag("loan_schedule_compact_height_cap_note")
                 )
             }
 

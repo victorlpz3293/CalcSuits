@@ -351,6 +351,7 @@
     <string name="finance_schedule_totals">Totales</string>
     <string name="finance_schedule_totals_title">Totales del plan de pagos</string>
     <string name="finance_show_first_12">Mostrar primeras 12</string>
+    <string name="finance_schedule_compact_height_cap_note">Mostrando las primeras %1$d de %2$d cuotas en modo de altura compacta para mantener fluidez. Amplía la altura de pantalla para recorrer todas las filas.</string>
     <plurals name="finance_show_all_periods">
         <item quantity="one">Mostrar todas (%d)</item>
         <item quantity="other">Mostrar todas (%d)</item>

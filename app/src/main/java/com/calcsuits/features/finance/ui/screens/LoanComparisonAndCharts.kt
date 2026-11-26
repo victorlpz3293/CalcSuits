@@ -29,6 +29,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -501,7 +502,7 @@ internal fun LoanChartsCard(
     locale: Locale,
     preferComparisonTab: Boolean = false
 ) {
-    var selectedTab by remember {
+    var selectedTab by rememberSaveable {
         mutableStateOf(
             if (preferComparisonTab && comparison != null) {
                 LoanChartTab.SYSTEM_COMPARISON
@@ -510,11 +511,13 @@ internal fun LoanChartsCard(
             }
         )
     }
+    var lastPreferComparisonTab by rememberSaveable { mutableStateOf(preferComparisonTab) }
 
     LaunchedEffect(preferComparisonTab) {
-        if (preferComparisonTab && comparison != null) {
+        if (preferComparisonTab && !lastPreferComparisonTab && comparison != null) {
             selectedTab = LoanChartTab.SYSTEM_COMPARISON
         }
+        lastPreferComparisonTab = preferComparisonTab
     }
 
     val primaryColor = MaterialTheme.colorScheme.primary

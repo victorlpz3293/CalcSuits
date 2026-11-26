@@ -49,6 +49,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.calcsuits.R
+import com.calcsuits.domain.model.finance.AmortizationRow
 import com.calcsuits.domain.model.finance.AmortizationSystem
 import com.calcsuits.domain.model.finance.FinanceCurrency
 import com.calcsuits.domain.model.finance.LoanSimulationMode
@@ -85,15 +86,39 @@ internal fun resolveScheduleLayoutMode(availableWidthDp: Float): ScheduleLayoutM
 }
 
 /**
- * Selects non-lazy [Column] rendering whenever parent height constraints are unbounded
- * (e.g., when [CalcPinnedScaffold] switches to outer `verticalScroll` under compact vertical space
- * such as soft-keyboard IME or landscape split-screen) or when bounded height is < 200dp.
- * Prevents nesting a [LazyColumn] inside an unbounded vertical scroll container.
+ * Maximum number of installment rows composed eagerly when [LoanSection] runs inside an
+ * unbounded outer `verticalScroll` container (e.g., compact-height IME/landscape fallback).
+ * Prevents composing 360–1,200 rows synchronously in a single frame while preserving full
+ * domain totals in the footer and full lazy virtualization whenever height is bounded.
+ */
+internal const val MAX_NON_LAZY_SCHEDULE_ROWS = 24
+
+/**
+ * Selects non-lazy [Column] rendering strictly when parent height constraints are unbounded
+ * (e.g., when [CalcPinnedScaffold] switches to outer `verticalScroll` under compact vertical space)
+ * or non-positive. When parent height is bounded and positive (including 100–200dp viewports under
+ * soft keyboard IME), [LazyColumn] remains active so scrolling, scroll position, and 1,200-row
+ * virtualization stay intact without creating an unscrollable dead-zone.
  */
 internal fun shouldUseNonLazyLoanLayout(
     hasBoundedHeight: Boolean,
     maxHeightDp: Float
-): Boolean = !hasBoundedHeight || maxHeightDp < 200f
+): Boolean = !hasBoundedHeight || maxHeightDp <= 0f
+
+internal fun resolveVisibleScheduleRows(
+    schedule: List<AmortizationRow>,
+    showSchedule: Boolean,
+    showAllPeriods: Boolean,
+    useNonLazyLayout: Boolean
+): List<AmortizationRow> {
+    if (!showSchedule || schedule.isEmpty()) return emptyList()
+    val requested = if (showAllPeriods) schedule else schedule.take(12)
+    return if (useNonLazyLayout && requested.size > MAX_NON_LAZY_SCHEDULE_ROWS) {
+        requested.take(MAX_NON_LAZY_SCHEDULE_ROWS)
+    } else {
+        requested
+    }
+}
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -132,23 +157,31 @@ internal fun LoanSection(
         }
     }
 
-    val visibleRows = remember(activeResult, showSchedule, showAllPeriods) {
-        if (!showSchedule || activeResult == null) {
-            emptyList()
-        } else if (showAllPeriods) {
-            activeResult.schedule
-        } else {
-            activeResult.schedule.take(12)
-        }
-    }
-    val pairedRows = remember(visibleRows) { visibleRows.chunked(2) }
-
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val layoutMode = resolveScheduleLayoutMode(maxWidth.value)
         val useNonLazyLayout = shouldUseNonLazyLoanLayout(
             hasBoundedHeight = constraints.hasBoundedHeight,
             maxHeightDp = maxHeight.value
         )
+        val visibleRows = remember(activeResult, showSchedule, showAllPeriods, useNonLazyLayout) {
+            resolveVisibleScheduleRows(
+                schedule = activeResult?.schedule.orEmpty(),
+                showSchedule = showSchedule,
+                showAllPeriods = showAllPeriods,
+                useNonLazyLayout = useNonLazyLayout
+            )
+        }
+        val pairedRows = remember(visibleRows) { visibleRows.chunked(2) }
+        val nonLazyCappedRowCount = if (
+            useNonLazyLayout &&
+            showAllPeriods &&
+            activeResult != null &&
+            activeResult.schedule.size > MAX_NON_LAZY_SCHEDULE_ROWS
+        ) {
+            MAX_NON_LAZY_SCHEDULE_ROWS
+        } else {
+            null
+        }
 
         if (useNonLazyLayout) {
             Column(
@@ -211,7 +244,8 @@ internal fun LoanSection(
                                         locale = locale,
                                         layoutMode = layoutMode,
                                         showAllPeriods = showAllPeriods,
-                                        onToggleShowAll = { showAllPeriods = !showAllPeriods }
+                                        onToggleShowAll = { showAllPeriods = !showAllPeriods },
+                                        nonLazyCappedRowCount = nonLazyCappedRowCount
                                     )
                                 }
                             }
@@ -232,7 +266,8 @@ internal fun LoanSection(
                                     locale = locale,
                                     layoutMode = layoutMode,
                                     showAllPeriods = showAllPeriods,
-                                    onToggleShowAll = { showAllPeriods = !showAllPeriods }
+                                    onToggleShowAll = { showAllPeriods = !showAllPeriods },
+                                    nonLazyCappedRowCount = nonLazyCappedRowCount
                                 )
                             }
                             ScheduleLayoutMode.COMPACT_CARDS -> {
@@ -251,7 +286,8 @@ internal fun LoanSection(
                                     locale = locale,
                                     layoutMode = layoutMode,
                                     showAllPeriods = showAllPeriods,
-                                    onToggleShowAll = { showAllPeriods = !showAllPeriods }
+                                    onToggleShowAll = { showAllPeriods = !showAllPeriods },
+                                    nonLazyCappedRowCount = nonLazyCappedRowCount
                                 )
                             }
                         }

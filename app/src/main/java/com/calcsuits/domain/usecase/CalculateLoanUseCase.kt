@@ -16,7 +16,6 @@ import java.util.Calendar
 import java.util.GregorianCalendar
 import java.util.TimeZone
 import javax.inject.Inject
-import kotlin.math.pow
 
 /**
  * Calculates full loan amortization schedules using [BigDecimal] internal accounting.
@@ -226,6 +225,12 @@ class CalculateLoanUseCase @Inject constructor() {
         annualRatePercent: Double,
         periodsPerYear: Int
     ): BigDecimal {
+        require(annualRatePercent.isFinite() && annualRatePercent >= 0.0) {
+            "Annual interest rate must be finite and non-negative"
+        }
+        require(periodsPerYear >= 1) {
+            "Periods per year must be >= 1"
+        }
         if (annualRatePercent == 0.0) return BigDecimal.ZERO
         val annualDecimal = BigDecimal.valueOf(annualRatePercent)
             .divide(BigDecimal(100), mathContext)
@@ -266,35 +271,86 @@ class CalculateLoanUseCase @Inject constructor() {
     }
 
     /**
-     * Computes `value^(1 / degree)` purely in [BigDecimal] ([MathContext.DECIMAL128])
-     * using Newton-Raphson iteration: `x_{k+1} = ((m - 1) * x_k + value / x_k^(m - 1)) / m`.
+     * Produces a pure-[BigDecimal] upper-bound initial seed `x_0 >= value^(1 / degree)` without
+     * any `Double` or `Math.pow` dependency. Because `f(x) = x^degree - value` is strictly convex
+     * on `(0, +inf)` for `degree >= 2`, starting at or above the true root guarantees monotone
+     * quadratic Newton-Raphson convergence from above across arbitrary decimal magnitudes.
      */
-    private fun nthRootBigDecimal(value: BigDecimal, degree: Int): BigDecimal {
+    internal fun initialNthRootSeed(value: BigDecimal, degree: Int): BigDecimal {
         require(degree >= 1) { "Root degree must be >= 1" }
         require(value > BigDecimal.ZERO) { "Root operand must be strictly positive" }
         if (degree == 1 || value.compareTo(BigDecimal.ONE) == 0) return value
 
+        val base10Exponent = value.precision() - value.scale() - 1
+        return when {
+            // For 1 < value < 10 (0% < TEA < 900%), Bernoulli's inequality guarantees
+            // (1 + (value - 1) / m)^m >= value, yielding a tight upper bound.
+            value > BigDecimal.ONE && base10Exponent <= 0 -> {
+                val delta = value.subtract(BigDecimal.ONE, mathContext)
+                BigDecimal.ONE.add(delta.divide(BigDecimal(degree), mathContext), mathContext)
+            }
+            // For value >= 10, value < 10^(e + 1), so 10^ceil((e + 1) / m) > value^(1 / m).
+            value >= BigDecimal.TEN -> {
+                val shift = (base10Exponent + degree) / degree
+                BigDecimal.ONE.movePointRight(shift)
+            }
+            // For 0 < value < 1, value < 10^(e + 1) <= 1, so 10^(-floor((-e - 1) / m)) > value^(1 / m).
+            else -> {
+                val shift = (-base10Exponent - 1) / degree
+                BigDecimal.ONE.movePointLeft(shift)
+            }
+        }
+    }
+
+    /**
+     * Computes `value^(1 / degree)` purely in [BigDecimal] ([MathContext.DECIMAL128])
+     * using Newton-Raphson iteration: `x_{k+1} = ((m - 1) * x_k + value / x_k^(m - 1)) / m`.
+     *
+     * Verifies both step convergence (`|x_{k+1} - x_k| <= tolerance * |x_{k+1}|`) and an
+     * independent residual bound (`|x_{k+1}^m - value|`) before returning. If convergence is not
+     * achieved within [maxIterations], throws [ArithmeticException] rather than silently returning
+     * an unconverged iterate.
+     */
+    internal fun nthRootBigDecimal(
+        value: BigDecimal,
+        degree: Int,
+        maxIterations: Int = MAX_NEWTON_ITERATIONS,
+        tolerance: BigDecimal = NEWTON_CONVERGENCE_TOLERANCE
+    ): BigDecimal {
+        require(degree >= 1) { "Root degree must be >= 1" }
+        require(value > BigDecimal.ZERO) { "Root operand must be strictly positive" }
+        require(maxIterations >= 1) { "Max Newton iterations must be >= 1" }
+        require(tolerance > BigDecimal.ZERO) { "Convergence tolerance must be strictly positive" }
+        if (degree == 1 || value.compareTo(BigDecimal.ONE) == 0) return value
+
         val m = BigDecimal(degree)
         val mMinus1 = BigDecimal(degree - 1)
-        val seedDouble = value.toDouble().pow(1.0 / degree.toDouble())
-        var current = if (seedDouble.isFinite() && seedDouble > 0.0) {
-            BigDecimal.valueOf(seedDouble)
-        } else {
-            BigDecimal.ONE
-        }
+        var current = initialNthRootSeed(value, degree)
+        val residualScaleFactor = m.multiply(RESIDUAL_SAFETY_MULTIPLIER, mathContext)
 
-        val epsilon = BigDecimal("1E-32")
-        for (iteration in 0 until MAX_NEWTON_ITERATIONS) {
+        for (iteration in 1..maxIterations) {
             val prevPow = current.pow(degree - 1, mathContext)
             val numerator = mMinus1.multiply(current, mathContext)
                 .add(value.divide(prevPow, mathContext), mathContext)
             val next = numerator.divide(m, mathContext)
-            if (next.subtract(current, mathContext).abs() <= epsilon) {
-                return next
+
+            val stepDelta = next.subtract(current, mathContext).abs()
+            val scaledTolerance = tolerance.multiply(next.abs(), mathContext)
+            if (stepDelta <= scaledTolerance || next.compareTo(current) == 0) {
+                val residual = next.pow(degree, mathContext).subtract(value, mathContext).abs()
+                val residualLimit = tolerance
+                    .multiply(residualScaleFactor, mathContext)
+                    .multiply(value.abs(), mathContext)
+                if (residual <= residualLimit) {
+                    return next
+                }
             }
             current = next
         }
-        return current
+        throw ArithmeticException(
+            "Newton-Raphson nth-root did not converge within $maxIterations iterations " +
+                "(degree=$degree, tolerance=$tolerance)"
+        )
     }
 
     private fun buildFrenchSchedule(
@@ -554,7 +610,9 @@ class CalculateLoanUseCase @Inject constructor() {
 
     companion object {
         const val MAX_PERIODS = 2_400
-        private const val MAX_NEWTON_ITERATIONS = 64
+        internal const val MAX_NEWTON_ITERATIONS = 128
+        internal val NEWTON_CONVERGENCE_TOLERANCE = BigDecimal("1E-31")
+        private val RESIDUAL_SAFETY_MULTIPLIER = BigDecimal(100)
 
         /** Fixed UTC timezone used for all canonical civil-date representations (`00:00:00.000 UTC`). */
         val UTC_TIME_ZONE: TimeZone = TimeZone.getTimeZone("UTC")
