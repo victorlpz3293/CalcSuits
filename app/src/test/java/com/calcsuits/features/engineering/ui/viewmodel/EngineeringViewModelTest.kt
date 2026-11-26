@@ -3,8 +3,15 @@ package com.calcsuits.features.engineering.ui.viewmodel
 import com.calcsuits.domain.model.UiText
 import com.calcsuits.domain.model.engineering.EngineeringFormula
 import com.calcsuits.domain.model.engineering.EngineeringSpecialty
+import com.calcsuits.domain.model.engineering.FlsmCriteria
+import com.calcsuits.domain.model.engineering.FlsmOutcome
+import com.calcsuits.domain.model.engineering.Ipv4AnalysisOutcome
+import com.calcsuits.domain.model.engineering.Ipv4Error
 import com.calcsuits.domain.model.engineering.NetworkingTool
+import com.calcsuits.domain.model.engineering.SubnetDesignMode
+import com.calcsuits.domain.model.engineering.VlsmOutcome
 import com.calcsuits.domain.usecase.CalculateEngineeringUseCase
+import com.calcsuits.domain.usecase.engineering.Ipv4SubnettingEngine
 import java.util.Locale
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -23,7 +30,7 @@ class EngineeringViewModelTest {
     fun setUp() {
         originalLocale = Locale.getDefault()
         Locale.setDefault(Locale.US)
-        viewModel = EngineeringViewModel(CalculateEngineeringUseCase())
+        viewModel = EngineeringViewModel(CalculateEngineeringUseCase(), Ipv4SubnettingEngine())
     }
 
     @After
@@ -98,7 +105,29 @@ class EngineeringViewModelTest {
     }
 
     @Test
-    fun networkingSwitchesBetweenIpv4AnalysisAndSubnetDesignAndPreservesElectricalState() {
+    fun ipv4AnalysisSynchronizesCidrAndDecimalMaskAndValidatesErrors() {
+        viewModel.onSpecialtySelected(EngineeringSpecialty.NETWORKING)
+
+        // Editing CIDR updates decimal mask
+        viewModel.onIpv4CidrChange("/26")
+        assertEquals("255.255.255.192", viewModel.state.value.ipv4MaskInput)
+        val success = viewModel.state.value.ipv4Analysis as Ipv4AnalysisOutcome.Success
+        assertEquals(26, success.result.prefixLength)
+        assertEquals(62L, success.result.usableHosts)
+
+        // Editing decimal mask updates CIDR
+        viewModel.onIpv4DecimalMaskChange("255.255.240.0")
+        assertEquals("/20", viewModel.state.value.ipv4CidrInput)
+        val success20 = viewModel.state.value.ipv4Analysis as Ipv4AnalysisOutcome.Success
+        assertEquals(20, success20.result.prefixLength)
+
+        // Non-contiguous decimal mask yields NonContiguousMask error
+        viewModel.onIpv4DecimalMaskChange("255.0.255.0")
+        assertEquals(Ipv4AnalysisOutcome.Failure(Ipv4Error.NonContiguousMask), viewModel.state.value.ipv4Analysis)
+    }
+
+    @Test
+    fun subnetDesignSupportsFlsmAndVlsmAndPreservesElectricalState() {
         viewModel.onSpecialtySelected(EngineeringSpecialty.ELECTRICAL)
         viewModel.onFormulaSelected(EngineeringFormula.OhmsLaw)
         viewModel.onInputChange("v", "24")
@@ -106,15 +135,33 @@ class EngineeringViewModelTest {
         assertTrue((viewModel.state.value.output.headline as UiText.DynamicString).value.startsWith("I = 3"))
 
         viewModel.onSpecialtySelected(EngineeringSpecialty.NETWORKING)
-        viewModel.onInputChange("ip", "10.0.0.5")
-        viewModel.onInputChange("mask", "/8")
-        assertEquals(UiText.DynamicString("10.0.0.0/8"), viewModel.state.value.output.headline)
-
         viewModel.onNetworkingToolSelected(NetworkingTool.SUBNET_DESIGN)
-        assertEquals(NetworkingTool.SUBNET_DESIGN, viewModel.state.value.selectedNetworkingTool)
 
-        viewModel.onNetworkingToolSelected(NetworkingTool.IPV4_ANALYSIS)
-        assertEquals(UiText.DynamicString("10.0.0.0/8"), viewModel.state.value.output.headline)
+        // FLSM by subnets (default 192.168.1.0/24 -> 4 subnets -> /26)
+        viewModel.onSubnetDesignModeSelected(SubnetDesignMode.FLSM)
+        val flsm4 = viewModel.state.value.flsmOutcome as FlsmOutcome.Success
+        assertEquals(26, flsm4.result.newPrefix)
+        assertEquals(4, flsm4.result.subnets.size)
+
+        // FLSM by hosts per subnet (30 hosts -> /27 -> 8 subnets)
+        viewModel.onFlsmCriteriaSelected(FlsmCriteria.BY_HOSTS_PER_SUBNET)
+        viewModel.onFlsmTargetChange("30")
+        val flsmHosts = viewModel.state.value.flsmOutcome as FlsmOutcome.Success
+        assertEquals(27, flsmHosts.result.newPrefix)
+        assertEquals(8, flsmHosts.result.subnets.size)
+
+        // VLSM: add, update, and remove requirements
+        viewModel.onSubnetDesignModeSelected(SubnetDesignMode.VLSM)
+        val initialCount = viewModel.state.value.vlsmRequirements.size
+        viewModel.onAddVlsmRequirement("DMZ")
+        assertEquals(initialCount + 1, viewModel.state.value.vlsmRequirements.size)
+        val addedId = viewModel.state.value.vlsmRequirements.last().id
+        viewModel.onUpdateVlsmRequirementHosts(addedId, "12")
+        val vlsmRes = viewModel.state.value.vlsmOutcome as VlsmOutcome.Success
+        assertEquals(initialCount + 1, vlsmRes.result.allocations.size)
+
+        viewModel.onRemoveVlsmRequirement(addedId)
+        assertEquals(initialCount, viewModel.state.value.vlsmRequirements.size)
 
         // Returning to Electrical restores previous electrical inputs and result
         viewModel.onSpecialtySelected(EngineeringSpecialty.ELECTRICAL)

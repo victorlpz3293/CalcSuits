@@ -272,7 +272,7 @@
     <string name="eng_tool_electrical_calculator">Electrical Calculator</string>
     <string name="eng_specialty_networking">Networks, Telecom &amp; Telematics</string>
     <string name="eng_specialty_networking_tools">IPv4 Analysis · Subnet Design</string>
-    <string name="eng_specialty_networking_desc">IPv4 network, broadcast, wildcard, usable hosts &amp; subnet design workspace.</string>
+    <string name="eng_specialty_networking_desc">IPv4 analysis (CIDR, binary &amp; scope) and FLSM/VLSM subnet design.</string>
     <string name="eng_tool_ipv4_analysis">IPv4 Analysis</string>
     <string name="eng_tool_subnet_design">Subnet Design</string>
     <string name="eng_subnet_design_badge">INTEGRATION SPACE</string>
@@ -283,6 +283,88 @@
     <string name="eng_tool_digital_logic">Number Systems &amp; Digital Logic Calculator</string>
     <string name="eng_tool_digital_logic_short">Number Systems &amp; Logic</string>
     <string name="eng_digital_subtitle_format">DIGITAL LOGIC · %1$d-BIT · BASE %2$d</string>
+
+    <string name="eng_ipv4_cidr_label">CIDR Prefix</string>
+    <string name="eng_ipv4_decimal_mask_label">Decimal Mask</string>
+    <string name="eng_ipv4_analysis_hint">Enter an IPv4 address with a CIDR prefix (/0–/32) or dotted-decimal mask.</string>
+    <string name="eng_detail_cidr_prefix">CIDR Prefix</string>
+    <string name="eng_detail_binary_section">BINARY REPRESENTATION</string>
+    <string name="eng_detail_ip_binary">IP in Binary</string>
+    <string name="eng_detail_mask_binary">Mask in Binary</string>
+    <string name="eng_detail_classification_section">ADDRESS CLASSIFICATION</string>
+    <string name="eng_detail_iana_scope">Modern Scope (IANA / CIDR)</string>
+    <string name="eng_detail_historical_class">Historical Class (obsolete)</string>
+    <string name="eng_historical_class_note">Classful addressing (A–E) is shown for historical reference only; modern routing uses classless CIDR.</string>
+
+    <string name="eng_scope_private">Private (RFC 1918)</string>
+    <string name="eng_scope_public">Public (Global Unicast)</string>
+    <string name="eng_scope_loopback">Loopback (127.0.0.0/8 · RFC 1122)</string>
+    <string name="eng_scope_link_local">Link-Local / APIPA (169.254.0.0/16 · RFC 3927)</string>
+    <string name="eng_scope_cgnat">Shared / CGNAT (100.64.0.0/10 · RFC 6598)</string>
+    <string name="eng_scope_multicast">Multicast (224.0.0.0/4 · RFC 5771)</string>
+    <string name="eng_scope_limited_broadcast">Limited Broadcast (255.255.255.255/32 · RFC 919)</string>
+    <string name="eng_scope_this_network">This Network (0.0.0.0/8 · RFC 1122)</string>
+    <string name="eng_scope_documentation">Documentation / TEST-NET (RFC 5737)</string>
+    <string name="eng_scope_benchmarking">Benchmarking (198.18.0.0/15 · RFC 2544)</string>
+    <string name="eng_scope_ietf_protocol">IETF Protocol Assignments (192.0.0.0/24 · RFC 6890)</string>
+    <string name="eng_scope_reserved">Reserved for Future Use (240.0.0.0/4 · RFC 1112)</string>
+
+    <string name="eng_class_a">Class A (historical /8)</string>
+    <string name="eng_class_b">Class B (historical /16)</string>
+    <string name="eng_class_c">Class C (historical /24)</string>
+    <string name="eng_class_d">Class D (Multicast)</string>
+    <string name="eng_class_e">Class E (Experimental)</string>
+
+    <string name="eng_special_prefix_31">/31 Point-to-Point link (RFC 3021): both addresses are usable hosts without separate network/broadcast.</string>
+    <string name="eng_special_prefix_32">/32 Host route: identifies a single IPv4 host address (1 usable address).</string>
+    <string name="eng_special_prefix_0">/0 Default route: covers the entire 32-bit IPv4 address space.</string>
+    <string name="eng_special_range_warning">Special or reserved IPv4 range — not globally routable on the public Internet.</string>
+
+    <string name="eng_error_invalid_ip_only">Invalid IPv4 address (4 octets between 0 and 255, e.g. 192.168.1.10).</string>
+    <string name="eng_error_prefix_out_of_range">CIDR prefix must be an integer between /0 and /32.</string>
+    <string name="eng_error_non_contiguous_mask">Invalid subnet mask: bits are not contiguous (e.g. 255.255.255.0).</string>
+    <string name="eng_error_invalid_mask">Invalid decimal subnet mask (4 octets, e.g. 255.255.255.0).</string>
+    <string name="eng_error_invalid_subnet_count">Enter a valid subnet count (at least 1).</string>
+    <string name="eng_error_invalid_host_count">Enter a valid required hosts count (at least 1).</string>
+    <string name="eng_error_insufficient_capacity">Insufficient network capacity: requires %1$s addresses, only %2$s available in the base network.</string>
+    <string name="eng_error_no_vlsm_reqs">Add at least one subnet requirement to compute VLSM.</string>
+    <string name="eng_error_invalid_vlsm_req">Enter a valid positive host count for %1$s.</string>
+
+    <string name="eng_design_mode_flsm">FLSM</string>
+    <string name="eng_design_mode_vlsm">VLSM</string>
+    <string name="eng_design_base_network_title">BASE NETWORK</string>
+    <string name="eng_design_base_ip">Base Network (IPv4)</string>
+    <string name="eng_design_base_prefix_mask">CIDR or Mask</string>
+    <string name="eng_flsm_criteria_label">DIVISION CRITERIA</string>
+    <string name="eng_flsm_by_subnets">By subnet count</string>
+    <string name="eng_flsm_by_hosts">By hosts per subnet</string>
+    <string name="eng_flsm_subnets_input">Desired subnets</string>
+    <string name="eng_flsm_hosts_input">Required hosts per subnet</string>
+    <string name="eng_flsm_summary_title">FLSM DESIGN SUMMARY</string>
+    <string name="eng_flsm_new_prefix">Calculated prefix</string>
+    <string name="eng_flsm_borrowed_bits">Borrowed bits</string>
+    <string name="eng_flsm_generated_subnets">Generated subnets</string>
+    <string name="eng_flsm_capacity_per_subnet">Capacity per subnet</string>
+    <string name="eng_flsm_usable_per_subnet">Usable hosts per subnet</string>
+    <string name="eng_flsm_truncated_note">Showing first %1$s of %2$s generated subnets for display performance.</string>
+    <string name="eng_flsm_table_title">GENERATED SUBNETS</string>
+    <string name="eng_flsm_copied">FLSM table copied</string>
+    <string name="eng_vlsm_reqs_title">SUBNET REQUIREMENTS</string>
+    <string name="eng_vlsm_req_name">Subnet name</string>
+    <string name="eng_vlsm_req_hosts">Hosts</string>
+    <string name="eng_vlsm_add_req">Add subnet</string>
+    <string name="cd_vlsm_remove_req">Remove requirement</string>
+    <string name="eng_vlsm_summary_title">VLSM ALLOCATION SUMMARY</string>
+    <string name="eng_vlsm_allocated_addresses">Allocated addresses</string>
+    <string name="eng_vlsm_remaining_addresses">Remaining addresses</string>
+    <string name="eng_vlsm_utilization">Utilization</string>
+    <string name="eng_vlsm_remaining_blocks">Unallocated CIDR blocks</string>
+    <string name="eng_vlsm_table_title">ALLOCATION TABLE (OPTIMIZED ORDER)</string>
+    <string name="eng_vlsm_req_vs_usable">Req: %1$s · Usable: %2$s</string>
+    <string name="eng_vlsm_copied">VLSM allocation table copied</string>
+    <string name="eng_subnet_number_format">Subnet #%1$d</string>
+    <string name="eng_subnet_usable_short">Usable</string>
+    <string name="eng_vlsm_default_prefix_name">Subnet %1$d</string>
 
     <string name="eng_quick_cidr">QUICK CIDR</string>
     <string name="eng_calculated_result">CALCULATED RESULT</string>

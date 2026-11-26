@@ -272,7 +272,7 @@
     <string name="eng_tool_electrical_calculator">Calculadora eléctrica</string>
     <string name="eng_specialty_networking">Redes, Telecomunicaciones y Telemática</string>
     <string name="eng_specialty_networking_tools">Análisis IPv4 · Diseño de subredes</string>
-    <string name="eng_specialty_networking_desc">Red, broadcast, wildcard, hosts útiles y espacio para diseño de subredes.</string>
+    <string name="eng_specialty_networking_desc">Análisis IPv4 (CIDR, binario y alcance) y diseño de subredes FLSM/VLSM.</string>
     <string name="eng_tool_ipv4_analysis">Análisis IPv4</string>
     <string name="eng_tool_subnet_design">Diseño de subredes</string>
     <string name="eng_subnet_design_badge">ESPACIO PREPARADO</string>
@@ -283,6 +283,88 @@
     <string name="eng_tool_digital_logic">Calculadora de sistemas numéricos y lógica digital</string>
     <string name="eng_tool_digital_logic_short">Sistemas Numéricos y Lógica</string>
     <string name="eng_digital_subtitle_format">LÓGICA DIGITAL · %1$d-BIT · BASE %2$d</string>
+
+    <string name="eng_ipv4_cidr_label">Prefijo CIDR</string>
+    <string name="eng_ipv4_decimal_mask_label">Máscara decimal</string>
+    <string name="eng_ipv4_analysis_hint">Ingresa una dirección IPv4 con prefijo CIDR (/0–/32) o máscara decimal.</string>
+    <string name="eng_detail_cidr_prefix">Prefijo CIDR</string>
+    <string name="eng_detail_binary_section">REPRESENTACIÓN BINARIA</string>
+    <string name="eng_detail_ip_binary">IP en binario</string>
+    <string name="eng_detail_mask_binary">Máscara en binario</string>
+    <string name="eng_detail_classification_section">CLASIFICACIÓN DE LA DIRECCIÓN</string>
+    <string name="eng_detail_iana_scope">Alcance moderno (IANA / CIDR)</string>
+    <string name="eng_detail_historical_class">Clase histórica (obsoleta)</string>
+    <string name="eng_historical_class_note">La clasificación por clases (A–E) se muestra solo como referencia histórica; el enrutamiento moderno usa CIDR sin clases.</string>
+
+    <string name="eng_scope_private">Privada (RFC 1918)</string>
+    <string name="eng_scope_public">Pública (Unicast global)</string>
+    <string name="eng_scope_loopback">Loopback (127.0.0.0/8 · RFC 1122)</string>
+    <string name="eng_scope_link_local">Enlace local / APIPA (169.254.0.0/16 · RFC 3927)</string>
+    <string name="eng_scope_cgnat">Compartida / CGNAT (100.64.0.0/10 · RFC 6598)</string>
+    <string name="eng_scope_multicast">Multicast (224.0.0.0/4 · RFC 5771)</string>
+    <string name="eng_scope_limited_broadcast">Broadcast limitado (255.255.255.255/32 · RFC 919)</string>
+    <string name="eng_scope_this_network">Red actual (0.0.0.0/8 · RFC 1122)</string>
+    <string name="eng_scope_documentation">Documentación / TEST-NET (RFC 5737)</string>
+    <string name="eng_scope_benchmarking">Pruebas de rendimiento (198.18.0.0/15 · RFC 2544)</string>
+    <string name="eng_scope_ietf_protocol">Asignaciones de protocolo IETF (192.0.0.0/24 · RFC 6890)</string>
+    <string name="eng_scope_reserved">Reservada para uso futuro (240.0.0.0/4 · RFC 1112)</string>
+
+    <string name="eng_class_a">Clase A (/8 histórico)</string>
+    <string name="eng_class_b">Clase B (/16 histórico)</string>
+    <string name="eng_class_c">Clase C (/24 histórico)</string>
+    <string name="eng_class_d">Clase D (Multicast)</string>
+    <string name="eng_class_e">Clase E (Experimental)</string>
+
+    <string name="eng_special_prefix_31">Enlace punto a punto /31 (RFC 3021): ambas direcciones son hosts útiles sin red/broadcast separados.</string>
+    <string name="eng_special_prefix_32">Ruta de host /32: identifica una única dirección IPv4 (1 dirección útil).</string>
+    <string name="eng_special_prefix_0">Ruta por defecto /0: abarca todo el espacio de direcciones IPv4 de 32 bits.</string>
+    <string name="eng_special_range_warning">Rango IPv4 especial o reservado — no enrutable globalmente en Internet público.</string>
+
+    <string name="eng_error_invalid_ip_only">Dirección IPv4 inválida (4 octetos entre 0 y 255, ej. 192.168.1.10).</string>
+    <string name="eng_error_prefix_out_of_range">El prefijo CIDR debe ser un entero entre /0 y /32.</string>
+    <string name="eng_error_non_contiguous_mask">Máscara de subred inválida: los bits no son contiguos (ej. 255.255.255.0).</string>
+    <string name="eng_error_invalid_mask">Máscara decimal inválida (4 octetos, ej. 255.255.255.0).</string>
+    <string name="eng_error_invalid_subnet_count">Ingresa una cantidad válida de subredes (al menos 1).</string>
+    <string name="eng_error_invalid_host_count">Ingresa una cantidad válida de hosts requeridos (al menos 1).</string>
+    <string name="eng_error_insufficient_capacity">Capacidad insuficiente en la red principal: se requieren %1$s direcciones y solo hay %2$s disponibles.</string>
+    <string name="eng_error_no_vlsm_reqs">Agrega al menos un requerimiento de subred para calcular VLSM.</string>
+    <string name="eng_error_invalid_vlsm_req">Ingresa una cantidad positiva válida de hosts para %1$s.</string>
+
+    <string name="eng_design_mode_flsm">FLSM</string>
+    <string name="eng_design_mode_vlsm">VLSM</string>
+    <string name="eng_design_base_network_title">RED PRINCIPAL</string>
+    <string name="eng_design_base_ip">Red principal (IPv4)</string>
+    <string name="eng_design_base_prefix_mask">CIDR o Máscara</string>
+    <string name="eng_flsm_criteria_label">CRITERIO DE DIVISIÓN</string>
+    <string name="eng_flsm_by_subnets">Por cantidad de subredes</string>
+    <string name="eng_flsm_by_hosts">Por hosts por subred</string>
+    <string name="eng_flsm_subnets_input">Subredes deseadas</string>
+    <string name="eng_flsm_hosts_input">Hosts requeridos por subred</string>
+    <string name="eng_flsm_summary_title">RESUMEN DE DISEÑO FLSM</string>
+    <string name="eng_flsm_new_prefix">Prefijo calculado</string>
+    <string name="eng_flsm_borrowed_bits">Bits prestados</string>
+    <string name="eng_flsm_generated_subnets">Subredes generadas</string>
+    <string name="eng_flsm_capacity_per_subnet">Capacidad por subred</string>
+    <string name="eng_flsm_usable_per_subnet">Hosts útiles por subred</string>
+    <string name="eng_flsm_truncated_note">Mostrando las primeras %1$s de %2$s subredes generadas por rendimiento visual.</string>
+    <string name="eng_flsm_table_title">SUBREDES GENERADAS</string>
+    <string name="eng_flsm_copied">Tabla FLSM copiada</string>
+    <string name="eng_vlsm_reqs_title">REQUERIMIENTOS DE SUBRED</string>
+    <string name="eng_vlsm_req_name">Nombre</string>
+    <string name="eng_vlsm_req_hosts">Hosts</string>
+    <string name="eng_vlsm_add_req">Agregar subred</string>
+    <string name="cd_vlsm_remove_req">Eliminar requerimiento</string>
+    <string name="eng_vlsm_summary_title">RESUMEN DE ASIGNACIÓN VLSM</string>
+    <string name="eng_vlsm_allocated_addresses">Direcciones asignadas</string>
+    <string name="eng_vlsm_remaining_addresses">Direcciones restantes</string>
+    <string name="eng_vlsm_utilization">Aprovechamiento</string>
+    <string name="eng_vlsm_remaining_blocks">Bloques CIDR libres</string>
+    <string name="eng_vlsm_table_title">TABLA DE ASIGNACIÓN (ORDEN OPTIMIZADO)</string>
+    <string name="eng_vlsm_req_vs_usable">Req: %1$s · Útiles: %2$s</string>
+    <string name="eng_vlsm_copied">Tabla de asignación VLSM copiada</string>
+    <string name="eng_subnet_number_format">Subred #%1$d</string>
+    <string name="eng_subnet_usable_short">Útiles</string>
+    <string name="eng_vlsm_default_prefix_name">Subred %1$d</string>
 
     <string name="eng_quick_cidr">CIDR RÁPIDO</string>
     <string name="eng_calculated_result">RESULTADO CALCULADO</string>

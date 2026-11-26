@@ -25,17 +25,13 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
-import androidx.compose.material.icons.filled.AccountTree
-import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.RestartAlt
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
@@ -50,16 +46,12 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
@@ -67,7 +59,9 @@ import androidx.compose.ui.unit.dp
 import com.calcsuits.R
 import com.calcsuits.domain.model.engineering.EngineeringFormula
 import com.calcsuits.domain.model.engineering.EngineeringSpecialty
+import com.calcsuits.domain.model.engineering.FlsmCriteria
 import com.calcsuits.domain.model.engineering.NetworkingTool
+import com.calcsuits.domain.model.engineering.SubnetDesignMode
 import com.calcsuits.features.engineering.ui.viewmodel.EngineeringState
 import com.calcsuits.features.programmer.ui.screens.ProgrammerPinnedControls
 import com.calcsuits.features.programmer.ui.screens.ProgrammerWorkspaceBody
@@ -82,17 +76,6 @@ import com.calcsuits.ui.theme.CalcSuitsTheme
 import com.calcsuits.ui.theme.JetBrainsMonoFontFamily
 import com.calcsuits.ui.util.asString
 import com.calcsuits.ui.util.rememberCurrentLocale
-import com.calcsuits.ui.util.resolve
-import kotlinx.coroutines.launch
-
-private val COMMON_CIDR_PRESETS = listOf(
-    "/8" to "255.0.0.0",
-    "/16" to "255.255.0.0",
-    "/24" to "255.255.255.0",
-    "/26" to "255.255.255.192",
-    "/28" to "255.255.255.240",
-    "/30" to "255.255.255.252"
-)
 
 @Composable
 fun EngineeringScreen(
@@ -105,6 +88,18 @@ fun EngineeringScreen(
     onFormulaSelected: (EngineeringFormula) -> Unit,
     onInputChange: (String, String) -> Unit,
     onClearInputs: () -> Unit = {},
+    onIpv4IpChange: (String) -> Unit,
+    onIpv4CidrChange: (String) -> Unit,
+    onIpv4DecimalMaskChange: (String) -> Unit,
+    onSubnetDesignModeSelected: (SubnetDesignMode) -> Unit,
+    onDesignBaseIpChange: (String) -> Unit,
+    onDesignBaseMaskChange: (String) -> Unit,
+    onFlsmCriteriaSelected: (FlsmCriteria) -> Unit,
+    onFlsmTargetChange: (String) -> Unit,
+    onAddVlsmRequirement: (String) -> Unit,
+    onUpdateVlsmRequirementName: (Long, String) -> Unit,
+    onUpdateVlsmRequirementHosts: (Long, String) -> Unit,
+    onRemoveVlsmRequirement: (Long) -> Unit,
     onBaseSelected: (Int) -> Unit,
     onWordSizeSelected: (Int) -> Unit,
     onKeyPress: (String) -> Unit,
@@ -135,8 +130,19 @@ fun EngineeringScreen(
             state = state,
             onBackClick = onBackToSpecialties,
             onToolSelected = onNetworkingToolSelected,
-            onInputChange = onInputChange,
-            onClearInputs = onClearInputs
+            onClearInputs = onClearInputs,
+            onIpv4IpChange = onIpv4IpChange,
+            onIpv4CidrChange = onIpv4CidrChange,
+            onIpv4DecimalMaskChange = onIpv4DecimalMaskChange,
+            onSubnetDesignModeSelected = onSubnetDesignModeSelected,
+            onDesignBaseIpChange = onDesignBaseIpChange,
+            onDesignBaseMaskChange = onDesignBaseMaskChange,
+            onFlsmCriteriaSelected = onFlsmCriteriaSelected,
+            onFlsmTargetChange = onFlsmTargetChange,
+            onAddVlsmRequirement = onAddVlsmRequirement,
+            onUpdateVlsmRequirementName = onUpdateVlsmRequirementName,
+            onUpdateVlsmRequirementHosts = onUpdateVlsmRequirementHosts,
+            onRemoveVlsmRequirement = onRemoveVlsmRequirement
         )
 
         EngineeringSpecialty.DIGITAL_ELECTRONICS -> DigitalElectronicsView(
@@ -330,11 +336,9 @@ private fun ElectricalEngineeringView(
             }
         }
     ) {
-        EngineeringFormulaBody(
+        ElectricalFormulaBody(
             state = state,
-            onInputChange = onInputChange,
-            showSubnetExtras = false,
-            snackbarHostState = null
+            onInputChange = onInputChange
         )
     }
 }
@@ -344,8 +348,19 @@ private fun NetworkingEngineeringView(
     state: EngineeringState,
     onBackClick: () -> Unit,
     onToolSelected: (NetworkingTool) -> Unit,
-    onInputChange: (String, String) -> Unit,
-    onClearInputs: () -> Unit
+    onClearInputs: () -> Unit,
+    onIpv4IpChange: (String) -> Unit,
+    onIpv4CidrChange: (String) -> Unit,
+    onIpv4DecimalMaskChange: (String) -> Unit,
+    onSubnetDesignModeSelected: (SubnetDesignMode) -> Unit,
+    onDesignBaseIpChange: (String) -> Unit,
+    onDesignBaseMaskChange: (String) -> Unit,
+    onFlsmCriteriaSelected: (FlsmCriteria) -> Unit,
+    onFlsmTargetChange: (String) -> Unit,
+    onAddVlsmRequirement: (String) -> Unit,
+    onUpdateVlsmRequirementName: (Long, String) -> Unit,
+    onUpdateVlsmRequirementHosts: (Long, String) -> Unit,
+    onRemoveVlsmRequirement: (Long) -> Unit
 ) {
     val locale = rememberCurrentLocale()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -366,17 +381,15 @@ private fun NetworkingEngineeringView(
                 navigationContentDescription = stringResource(R.string.cd_back_to_engineering),
                 navigationTestTag = "engineering_back_button",
                 actions = {
-                    if (isIpv4Analysis) {
-                        IconButton(
-                            onClick = onClearInputs,
-                            modifier = Modifier.testTag("engineering_clear_button")
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.RestartAlt,
-                                contentDescription = stringResource(R.string.cd_clear),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+                    IconButton(
+                        onClick = onClearInputs,
+                        modifier = Modifier.testTag("engineering_clear_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.RestartAlt,
+                            contentDescription = stringResource(R.string.cd_clear),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
             )
@@ -411,76 +424,26 @@ private fun NetworkingEngineeringView(
         }
     ) {
         if (isIpv4Analysis) {
-            EngineeringFormulaBody(
+            Ipv4AnalysisPanel(
                 state = state,
-                onInputChange = onInputChange,
-                showSubnetExtras = true,
-                snackbarHostState = snackbarHostState
+                snackbarHostState = snackbarHostState,
+                onIpChange = onIpv4IpChange,
+                onCidrChange = onIpv4CidrChange,
+                onDecimalMaskChange = onIpv4DecimalMaskChange
             )
         } else {
-            SubnetDesignIntegrationPlaceholder()
-        }
-    }
-}
-
-@Composable
-private fun SubnetDesignIntegrationPlaceholder() {
-    val extColors = CalcSuitsTheme.colors
-
-    CalcCard(
-        modifier = Modifier
-            .padding(horizontal = 16.dp)
-            .testTag("eng_subnet_design_placeholder"),
-        contentPadding = PaddingValues(20.dp)
-    ) {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(extColors.technicalContainer),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.AccountTree,
-                        contentDescription = null,
-                        tint = extColors.technicalAccent,
-                        modifier = Modifier.size(22.dp)
-                    )
-                }
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Surface(
-                        shape = RoundedCornerShape(6.dp),
-                        color = extColors.technicalContainer,
-                        border = BorderStroke(1.dp, extColors.technicalAccent.copy(alpha = 0.4f))
-                    ) {
-                        Text(
-                            text = stringResource(R.string.eng_subnet_design_badge),
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                fontFamily = JetBrainsMonoFontFamily,
-                                fontWeight = FontWeight.SemiBold
-                            ),
-                            color = extColors.onTechnicalContainer,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
-                        )
-                    }
-                    Text(
-                        text = stringResource(R.string.eng_subnet_design_title),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-            }
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            Text(
-                text = stringResource(R.string.eng_subnet_design_desc),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+            SubnetDesignPanel(
+                state = state,
+                snackbarHostState = snackbarHostState,
+                onModeSelected = onSubnetDesignModeSelected,
+                onBaseIpChange = onDesignBaseIpChange,
+                onBaseMaskChange = onDesignBaseMaskChange,
+                onFlsmCriteriaSelected = onFlsmCriteriaSelected,
+                onFlsmTargetChange = onFlsmTargetChange,
+                onAddVlsmRequirement = onAddVlsmRequirement,
+                onUpdateVlsmRequirementName = onUpdateVlsmRequirementName,
+                onUpdateVlsmRequirementHosts = onUpdateVlsmRequirementHosts,
+                onRemoveVlsmRequirement = onRemoveVlsmRequirement
             )
         }
     }
@@ -541,16 +504,11 @@ private fun DigitalElectronicsView(
 }
 
 @Composable
-private fun EngineeringFormulaBody(
+private fun ElectricalFormulaBody(
     state: EngineeringState,
-    onInputChange: (String, String) -> Unit,
-    showSubnetExtras: Boolean,
-    snackbarHostState: SnackbarHostState?
+    onInputChange: (String, String) -> Unit
 ) {
     val extColors = CalcSuitsTheme.colors
-    val clipboard = LocalClipboardManager.current
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
 
     CalcCard(
         modifier = Modifier.padding(horizontal = 16.dp),
@@ -573,41 +531,6 @@ private fun EngineeringFormulaBody(
         }
     }
 
-    if (showSubnetExtras) {
-        val maskFieldKey = EngineeringFormula.Subnetting.variables[1].key
-        val currentMask = state.inputs[maskFieldKey]?.trim().orEmpty()
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(
-                text = stringResource(R.string.eng_quick_cidr),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 18.dp)
-            )
-            LazyRow(
-                contentPadding = PaddingValues(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                items(COMMON_CIDR_PRESETS, key = { it.first }) { (cidr, dotted) ->
-                    val numeric = cidr.removePrefix("/")
-                    val selected = currentMask == cidr || currentMask == numeric || currentMask == dotted
-                    CalcFilterChip(
-                        selected = selected,
-                        onClick = { onInputChange(maskFieldKey, cidr) },
-                        label = {
-                            Text(
-                                text = cidr,
-                                fontFamily = JetBrainsMonoFontFamily,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        },
-                        modifier = Modifier.testTag("eng_cidr_$numeric")
-                    )
-                }
-            }
-        }
-    }
-
     CalcCard(modifier = Modifier.padding(horizontal = 16.dp)) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             state.selectedFormula.variables.forEach { variable ->
@@ -618,9 +541,7 @@ private fun EngineeringFormulaBody(
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("eng_input_${variable.key}"),
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = if (state.selectedFormula.allowsCidrText) KeyboardType.Text else KeyboardType.Decimal
-                    ),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true,
                     textStyle = MaterialTheme.typography.titleMedium.copy(fontFamily = JetBrainsMonoFontFamily)
                 )
@@ -686,54 +607,6 @@ private fun EngineeringFormulaBody(
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                         }
-                    }
-                }
-
-                if (showSubnetExtras) {
-                    Spacer(Modifier.height(4.dp))
-                    OutlinedButton(
-                        onClick = {
-                            val headlineText = out.headline.resolve(context)
-                            val summary = buildString {
-                                appendLine(
-                                    context.getString(
-                                        R.string.eng_subnet_summary_header,
-                                        headlineText
-                                    )
-                                )
-                                out.details.forEach { detail ->
-                                    appendLine("${detail.label.resolve(context)}: ${detail.value.resolve(context)}")
-                                }
-                            }.trim()
-                            clipboard.setText(AnnotatedString(summary))
-                            if (snackbarHostState != null) {
-                                scope.launch {
-                                    snackbarHostState.showSnackbar(
-                                        context.getString(R.string.eng_subnet_copied)
-                                    )
-                                }
-                            }
-                        },
-                        shape = MaterialTheme.shapes.medium,
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            containerColor = MaterialTheme.colorScheme.surface,
-                            contentColor = MaterialTheme.colorScheme.primary
-                        ),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag("eng_copy_subnet_summary")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.ContentCopy,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            text = stringResource(R.string.eng_copy_summary),
-                            fontWeight = FontWeight.SemiBold
-                        )
                     }
                 }
             }
