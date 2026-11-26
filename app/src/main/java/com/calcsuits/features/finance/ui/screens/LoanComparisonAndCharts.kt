@@ -3,6 +3,7 @@ package com.calcsuits.features.finance.ui.screens
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -15,9 +16,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ShowChart
 import androidx.compose.material.icons.rounded.Balance
 import androidx.compose.material.icons.rounded.Info
-import androidx.compose.material.icons.rounded.ShowChart
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -40,6 +41,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -53,8 +55,8 @@ import com.calcsuits.ui.components.CalcFilterChip
 import com.calcsuits.ui.components.CalcResultCard
 import com.calcsuits.ui.theme.CalcSuitsTheme
 import com.calcsuits.ui.theme.JetBrainsMonoFontFamily
+import com.calcsuits.ui.util.formatCompactMoneyAxis
 import com.calcsuits.ui.util.formatMoney
-import com.calcsuits.ui.util.formatMoneyPlain
 import com.calcsuits.ui.util.formatRatePercent
 import com.calcsuits.ui.util.formatShortDate
 import java.util.Locale
@@ -67,6 +69,22 @@ private enum class LoanChartTab {
     SYSTEM_COMPARISON
 }
 
+/**
+ * Uses a stacked two-column metric layout inside [LoanComparisonCard] on narrow screens
+ * (`< 400dp` inner card width, covering 360dp–412dp phones) so 7–9 digit formatted monetary
+ * amounts remain fully legible without ellipsis truncation.
+ */
+internal fun shouldUseStackedComparisonLayout(availableWidthDp: Float): Boolean =
+    availableWidthDp < 400f
+
+private data class ComparisonMetricItem(
+    val label: String,
+    val frenchValue: String,
+    val germanValue: String,
+    val emphasize: Boolean = false,
+    val dividerBefore: Boolean = false
+)
+
 @Composable
 internal fun LoanComparisonCard(
     comparison: LoanComparisonResult,
@@ -75,7 +93,72 @@ internal fun LoanComparisonCard(
     val french = comparison.french
     val german = comparison.german
     val currency = french.currency
-    val installmentNoun = stringResource(french.paymentFrequency.installmentNounRes())
+    val installmentContextualNoun = stringResource(french.paymentFrequency.installmentContextualNounRes())
+    val periodsLabel = pluralStringResource(
+        R.plurals.finance_term_summary_periods,
+        french.schedule.size,
+        french.schedule.size
+    )
+    val hasDownPayment = french.downPayment > 0.0
+
+    val metricItems = buildList {
+        add(
+            ComparisonMetricItem(
+                label = stringResource(R.string.finance_loan_initial_installment_fmt, installmentContextualNoun),
+                frenchValue = formatMoney(french.firstPayment, currency, locale),
+                germanValue = formatMoney(german.firstPayment, currency, locale)
+            )
+        )
+        add(
+            ComparisonMetricItem(
+                label = stringResource(R.string.finance_loan_final_installment_fmt, installmentContextualNoun),
+                frenchValue = formatMoney(french.lastPayment, currency, locale),
+                germanValue = formatMoney(german.lastPayment, currency, locale)
+            )
+        )
+        add(
+            ComparisonMetricItem(
+                label = stringResource(R.string.finance_total_interest),
+                frenchValue = formatMoney(french.totalInterest, currency, locale),
+                germanValue = formatMoney(german.totalInterest, currency, locale)
+            )
+        )
+        add(
+            ComparisonMetricItem(
+                label = stringResource(R.string.finance_loan_principal_amortized),
+                frenchValue = formatMoney(french.principalAmount, currency, locale),
+                germanValue = formatMoney(german.principalAmount, currency, locale)
+            )
+        )
+        if (hasDownPayment) {
+            add(
+                ComparisonMetricItem(
+                    label = stringResource(R.string.finance_total_installments_paid),
+                    frenchValue = formatMoney(french.totalPayment, currency, locale),
+                    germanValue = formatMoney(german.totalPayment, currency, locale),
+                    dividerBefore = true
+                )
+            )
+            add(
+                ComparisonMetricItem(
+                    label = stringResource(R.string.finance_total_outflow_with_down_payment),
+                    frenchValue = formatMoney(french.totalOutflowWithDownPayment(), currency, locale),
+                    germanValue = formatMoney(german.totalOutflowWithDownPayment(), currency, locale),
+                    emphasize = true
+                )
+            )
+        } else {
+            add(
+                ComparisonMetricItem(
+                    label = stringResource(R.string.finance_total_payment),
+                    frenchValue = formatMoney(french.totalPayment, currency, locale),
+                    germanValue = formatMoney(german.totalPayment, currency, locale),
+                    emphasize = true,
+                    dividerBefore = true
+                )
+            )
+        }
+    }
 
     CalcResultCard {
         Column(
@@ -117,14 +200,14 @@ internal fun LoanComparisonCard(
                             formatMoney(french.principalAmount, currency, locale),
                             formatRatePercent(french.annualRatePercent, locale, maxFraction = 2),
                             stringResource(french.paymentFrequency.shortLabelRes()),
-                            french.schedule.size
+                            periodsLabel
                         ),
                         style = MaterialTheme.typography.bodySmall.copy(
                             fontFamily = JetBrainsMonoFontFamily
                         ),
                         color = MaterialTheme.colorScheme.onSurface
                     )
-                    if (french.downPayment > 0.0) {
+                    if (hasDownPayment) {
                         Text(
                             text = stringResource(
                                 R.string.finance_comparison_down_payment_note,
@@ -148,56 +231,84 @@ internal fun LoanComparisonCard(
                 }
             }
 
-            // Column headers for French vs German
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.Bottom
-            ) {
-                Spacer(Modifier.weight(1.1f))
-                ComparisonSystemHeader(
-                    title = stringResource(R.string.finance_system_french_short),
-                    subtitle = stringResource(R.string.finance_system_french_academic),
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.weight(1f)
-                )
-                ComparisonSystemHeader(
-                    title = stringResource(R.string.finance_system_german_short),
-                    subtitle = stringResource(R.string.finance_system_german_academic),
-                    color = CalcSuitsTheme.colors.technicalAccent,
-                    modifier = Modifier.weight(1f)
-                )
+            BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                val useStacked = shouldUseStackedComparisonLayout(maxWidth.value)
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(if (useStacked) 10.dp else 12.dp)
+                ) {
+                    if (useStacked) {
+                        // Two equal-width columns (50% / 50%) so full monetary amounts never clip on 360dp–412dp phones
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalAlignment = Alignment.Bottom
+                        ) {
+                            ComparisonSystemHeader(
+                                title = stringResource(R.string.finance_system_french_short),
+                                subtitle = stringResource(R.string.finance_system_french_academic),
+                                color = MaterialTheme.colorScheme.primary,
+                                alignEnd = false,
+                                modifier = Modifier.weight(1f)
+                            )
+                            ComparisonSystemHeader(
+                                title = stringResource(R.string.finance_system_german_short),
+                                subtitle = stringResource(R.string.finance_system_german_academic),
+                                color = CalcSuitsTheme.colors.technicalAccent,
+                                alignEnd = true,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                        metricItems.forEach { item ->
+                            if (item.dividerBefore) {
+                                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                            }
+                            ComparisonStackedMetricItem(
+                                label = item.label,
+                                frenchValue = item.frenchValue,
+                                germanValue = item.germanValue,
+                                emphasize = item.emphasize
+                            )
+                        }
+                    } else {
+                        // Wide 3-column horizontal layout for tablets / expanded screens
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.Bottom
+                        ) {
+                            Spacer(Modifier.weight(1.1f))
+                            ComparisonSystemHeader(
+                                title = stringResource(R.string.finance_system_french_short),
+                                subtitle = stringResource(R.string.finance_system_french_academic),
+                                color = MaterialTheme.colorScheme.primary,
+                                alignEnd = true,
+                                modifier = Modifier.weight(1f)
+                            )
+                            ComparisonSystemHeader(
+                                title = stringResource(R.string.finance_system_german_short),
+                                subtitle = stringResource(R.string.finance_system_german_academic),
+                                color = CalcSuitsTheme.colors.technicalAccent,
+                                alignEnd = true,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                        metricItems.forEach { item ->
+                            if (item.dividerBefore) {
+                                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                            }
+                            ComparisonMetricRow(
+                                label = item.label,
+                                frenchValue = item.frenchValue,
+                                germanValue = item.germanValue,
+                                emphasize = item.emphasize
+                            )
+                        }
+                    }
+                }
             }
-
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-
-            ComparisonMetricRow(
-                label = stringResource(R.string.finance_loan_initial_installment_fmt, installmentNoun),
-                frenchValue = formatMoney(french.firstPayment, currency, locale),
-                germanValue = formatMoney(german.firstPayment, currency, locale)
-            )
-            ComparisonMetricRow(
-                label = stringResource(R.string.finance_loan_final_installment_fmt, installmentNoun),
-                frenchValue = formatMoney(french.lastPayment, currency, locale),
-                germanValue = formatMoney(german.lastPayment, currency, locale)
-            )
-            ComparisonMetricRow(
-                label = stringResource(R.string.finance_total_interest),
-                frenchValue = formatMoney(french.totalInterest, currency, locale),
-                germanValue = formatMoney(german.totalInterest, currency, locale)
-            )
-            ComparisonMetricRow(
-                label = stringResource(R.string.finance_loan_principal_amortized),
-                frenchValue = formatMoney(french.principalAmount, currency, locale),
-                germanValue = formatMoney(german.principalAmount, currency, locale)
-            )
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            ComparisonMetricRow(
-                label = stringResource(R.string.finance_total_payment),
-                frenchValue = formatMoney(french.totalPayment, currency, locale),
-                germanValue = formatMoney(german.totalPayment, currency, locale),
-                emphasize = true
-            )
 
             // Explicit differences block (French - German)
             Surface(
@@ -257,18 +368,21 @@ private fun ComparisonSystemHeader(
     title: String,
     subtitle: String,
     color: Color,
+    alignEnd: Boolean,
     modifier: Modifier = Modifier
 ) {
+    val alignment = if (alignEnd) Alignment.End else Alignment.Start
+    val textAlign = if (alignEnd) TextAlign.End else TextAlign.Start
     Column(
         modifier = modifier,
-        horizontalAlignment = Alignment.End
+        horizontalAlignment = alignment
     ) {
         Text(
             text = title,
             style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.Bold,
             color = color,
-            textAlign = TextAlign.End,
+            textAlign = textAlign,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis
         )
@@ -276,10 +390,60 @@ private fun ComparisonSystemHeader(
             text = subtitle,
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.End,
+            textAlign = textAlign,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
+    }
+}
+
+@Composable
+private fun ComparisonStackedMetricItem(
+    label: String,
+    frenchValue: String,
+    germanValue: String,
+    emphasize: Boolean = false
+) {
+    val valueStyle = (if (emphasize) {
+        MaterialTheme.typography.titleSmall
+    } else {
+        MaterialTheme.typography.bodySmall
+    }).copy(
+        fontFamily = JetBrainsMonoFontFamily,
+        fontWeight = if (emphasize) FontWeight.Bold else FontWeight.SemiBold
+    )
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(3.dp)
+    ) {
+        Text(
+            text = label,
+            style = if (emphasize) MaterialTheme.typography.labelLarge else MaterialTheme.typography.labelMedium,
+            fontWeight = if (emphasize) FontWeight.Bold else FontWeight.Medium,
+            color = if (emphasize) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = frenchValue,
+                style = valueStyle,
+                color = if (emphasize) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Start,
+                maxLines = 2,
+                modifier = Modifier.weight(1f)
+            )
+            Text(
+                text = germanValue,
+                style = valueStyle,
+                color = if (emphasize) CalcSuitsTheme.colors.technicalAccent else MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.End,
+                maxLines = 2,
+                modifier = Modifier.weight(1f)
+            )
+        }
     }
 }
 
@@ -315,8 +479,7 @@ private fun ComparisonMetricRow(
             style = valueStyle,
             color = if (emphasize) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.End,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
+            maxLines = 2,
             modifier = Modifier.weight(1f)
         )
         Text(
@@ -324,8 +487,7 @@ private fun ComparisonMetricRow(
             style = valueStyle,
             color = if (emphasize) CalcSuitsTheme.colors.technicalAccent else MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.End,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
+            maxLines = 2,
             modifier = Modifier.weight(1f)
         )
     }
@@ -378,7 +540,7 @@ internal fun LoanChartsCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Rounded.ShowChart,
+                    imageVector = Icons.AutoMirrored.Rounded.ShowChart,
                     contentDescription = null,
                     tint = primaryColor,
                     modifier = Modifier.size(18.dp)
@@ -417,43 +579,57 @@ internal fun LoanChartsCard(
                 }
             }
 
-            // Legend
-            Row(
+            // Legend + exact peak scale reference
+            FlowRow(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalAlignment = Alignment.CenterVertically
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                when (selectedTab) {
-                    LoanChartTab.BALANCE -> {
-                        LegendDot(
-                            color = primaryColor,
-                            label = stringResource(R.string.finance_chart_legend_balance)
-                        )
-                    }
-                    LoanChartTab.INTEREST_VS_PRINCIPAL -> {
-                        LegendDot(
-                            color = primaryColor,
-                            label = stringResource(R.string.finance_col_principal)
-                        )
-                        LegendDot(
-                            color = accentColor,
-                            label = stringResource(R.string.finance_col_interest)
-                        )
-                    }
-                    LoanChartTab.SYSTEM_COMPARISON -> {
-                        LegendDot(
-                            color = primaryColor,
-                            label = stringResource(R.string.finance_system_french_academic)
-                        )
-                        LegendDot(
-                            color = accentColor,
-                            label = stringResource(R.string.finance_system_german_academic)
-                        )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    when (selectedTab) {
+                        LoanChartTab.BALANCE -> {
+                            LegendDot(
+                                color = primaryColor,
+                                label = stringResource(R.string.finance_chart_legend_balance)
+                            )
+                        }
+                        LoanChartTab.INTEREST_VS_PRINCIPAL -> {
+                            LegendDot(
+                                color = primaryColor,
+                                label = stringResource(R.string.finance_col_principal)
+                            )
+                            LegendDot(
+                                color = accentColor,
+                                label = stringResource(R.string.finance_col_interest)
+                            )
+                        }
+                        LoanChartTab.SYSTEM_COMPARISON -> {
+                            LegendDot(
+                                color = primaryColor,
+                                label = stringResource(R.string.finance_system_french_academic)
+                            )
+                            LegendDot(
+                                color = accentColor,
+                                label = stringResource(R.string.finance_system_german_academic)
+                            )
+                        }
                     }
                 }
+                Text(
+                    text = stringResource(
+                        R.string.finance_chart_scale_peak,
+                        formatMoney(chartModel.maxY, currency, locale)
+                    ),
+                    style = MaterialTheme.typography.labelSmall.copy(fontFamily = JetBrainsMonoFontFamily),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
 
-            // Y-axis header + Canvas
+            // Compact Y-axis ticks (zero truncation on 6-9 digit amounts) + Canvas
+            val yAxisWidth = 56.dp
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -462,26 +638,24 @@ internal fun LoanChartsCard(
                 Column(
                     modifier = Modifier
                         .height(176.dp)
-                        .width(68.dp),
+                        .width(yAxisWidth),
                     verticalArrangement = Arrangement.SpaceBetween,
                     horizontalAlignment = Alignment.End
                 ) {
                     Text(
-                        text = formatMoneyPlain(chartModel.maxY, currency, locale),
+                        text = formatCompactMoneyAxis(chartModel.maxY, currency, locale),
                         style = MaterialTheme.typography.labelSmall.copy(fontFamily = JetBrainsMonoFontFamily),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        maxLines = 1
                     )
                     Text(
-                        text = formatMoneyPlain(chartModel.maxY / 2.0, currency, locale),
+                        text = formatCompactMoneyAxis(chartModel.maxY / 2.0, currency, locale),
                         style = MaterialTheme.typography.labelSmall.copy(fontFamily = JetBrainsMonoFontFamily),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        maxLines = 1
                     )
                     Text(
-                        text = formatMoneyPlain(0.0, currency, locale),
+                        text = formatCompactMoneyAxis(0.0, currency, locale),
                         style = MaterialTheme.typography.labelSmall.copy(fontFamily = JetBrainsMonoFontFamily),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1
@@ -593,11 +767,11 @@ internal fun LoanChartsCard(
                 }
             }
 
-            // X-axis period markers aligned with chart area
+            // X-axis period markers aligned with chart area (yAxisWidth + 8dp spacing)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 76.dp),
+                    .padding(start = yAxisWidth + 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(

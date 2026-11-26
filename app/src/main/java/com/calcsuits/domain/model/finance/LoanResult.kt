@@ -1,5 +1,8 @@
 package com.calcsuits.domain.model.finance
 
+import java.math.BigDecimal
+import java.math.RoundingMode
+
 /**
  * Amortization methods supported by the loan engine.
  *
@@ -91,7 +94,11 @@ data class LoanRequest(
      * financed principal. Distinct from periodic principal repayment.
      */
     val downPayment: Double = 0.0,
-    /** Optional simulation issue timestamp in epoch milliseconds used to project installment due dates. */
+    /**
+     * Optional simulation issue civil date represented canonically as `00:00:00.000 UTC` epoch
+     * milliseconds (see `CalculateLoanUseCase.civilDateUtcMillis`). Used to project due dates
+     * deterministically independent of device timezone changes.
+     */
     val issuedAtMillis: Long? = null
 )
 
@@ -107,7 +114,10 @@ data class AmortizationRow(
     val interest: Double,
     /** Remaining principal balance after applying [principal] (`openingBalance - principal`). */
     val balance: Double,
-    /** Optional projected due date in epoch milliseconds when the simulation provides an issue date. */
+    /**
+     * Optional projected due civil date encoded canonically as `00:00:00.000 UTC` epoch
+     * milliseconds when the simulation provides an issue date.
+     */
     val dueDateMillis: Long? = null,
     /**
      * Architectural extension hook for future non-financial charges (e.g., insurance or fees).
@@ -123,6 +133,10 @@ data class LoanResult(
     /** Primary periodic payment metric (kept as [monthlyPayment] for backwards compatibility). */
     val monthlyPayment: Double,
     val totalInterest: Double,
+    /**
+     * Sum of all periodic financial installments (`principalAmount + totalInterest`),
+     * strictly excluding any upfront [downPayment].
+     */
     val totalPayment: Double,
     val schedule: List<AmortizationRow> = emptyList(),
     val system: AmortizationSystem = AmortizationSystem.FRENCH,
@@ -140,7 +154,7 @@ data class LoanResult(
     /** Term quantity entered by the user (interpreted via [termUnit]). */
     val termValue: Int = schedule.size,
     val termUnit: LoanTermUnit = LoanTermUnit.PERIODS,
-    /** Optional simulation issue date in epoch milliseconds. */
+    /** Optional simulation issue civil date encoded as `00:00:00.000 UTC` epoch milliseconds. */
     val issuedAtMillis: Long? = null,
     /** Effective periodic interest rate as a decimal (e.g., 0.09 = 9% per period). */
     val periodicRate: Double = 0.0,
@@ -155,9 +169,20 @@ data class LoanResult(
     val finalBalance: Double = schedule.lastOrNull()?.balance ?: 0.0,
     /** Architectural hook for future total non-financial charges; always `0.0` in pure financial mode. */
     val totalAdditionalCharges: Double = 0.0,
-    /** Total client disbursement (`totalPayment + totalAdditionalCharges`). */
+    /** Total periodic client disbursement (`totalPayment + totalAdditionalCharges`), excluding upfront [downPayment]. */
     val totalDisbursement: Double = totalPayment + totalAdditionalCharges
-)
+) {
+    /**
+     * Total cash outflow across the full transaction including any upfront [downPayment]
+     * plus all periodic installments and additional charges (`downPayment + totalDisbursement`),
+     * computed in [BigDecimal] at [currency] scale.
+     */
+    fun totalOutflowWithDownPayment(): Double =
+        BigDecimal.valueOf(downPayment)
+            .add(BigDecimal.valueOf(totalDisbursement))
+            .setScale(currency.fractionDigits, RoundingMode.HALF_UP)
+            .toDouble()
+}
 
 /**
  * Side-by-side comparison of French (fixed installment) and German (declining installment)

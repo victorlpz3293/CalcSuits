@@ -225,7 +225,7 @@ class FinanceViewModel @Inject constructor(
                 system = activeSystem,
                 rateConvention = s.rateConvention,
                 currency = s.selectedCurrency,
-                issuedAtMillis = System.currentTimeMillis()
+                issuedAtMillis = CalculateLoanUseCase.todayCivilDateUtcMillis()
             )
             val comparison = runCatching { calculateLoanUseCase.compare(request) }.getOrNull()
             val activeResult = comparison?.let {

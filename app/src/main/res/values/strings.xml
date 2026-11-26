@@ -259,10 +259,20 @@
     <string name="finance_installment_semiannual">Semiannual installment</string>
     <string name="finance_installment_annual">Annual installment</string>
 
+    <string name="finance_installment_contextual_monthly">monthly installment</string>
+    <string name="finance_installment_contextual_semimonthly">semi-monthly installment</string>
+    <string name="finance_installment_contextual_quarterly">quarterly installment</string>
+    <string name="finance_installment_contextual_semiannual">semiannual installment</string>
+    <string name="finance_installment_contextual_annual">annual installment</string>
+
     <string name="finance_term_unit_years">Years</string>
     <string name="finance_term_unit_periods">Installments</string>
     <string name="finance_term_periods">Term (installments)</string>
-    <string name="finance_term_summary_years_fmt">%1$d yr (%2$d installments)</string>
+    <plurals name="finance_term_years_count">
+        <item quantity="one">%d year</item>
+        <item quantity="other">%d years</item>
+    </plurals>
+    <string name="finance_term_summary_years_fmt">%1$s (%2$s)</string>
     <plurals name="finance_term_summary_periods">
         <item quantity="one">%d installment</item>
         <item quantity="other">%d installments</item>
@@ -301,9 +311,11 @@
     <string name="finance_loan_effective_rate">Effective annual rate (EAR)</string>
     <string name="finance_total_interest">Total interest</string>
     <string name="finance_total_payment">Total amount paid</string>
+    <string name="finance_total_installments_paid">Total paid in installments</string>
+    <string name="finance_total_outflow_with_down_payment">Total outflow (incl. down payment)</string>
 
     <string name="finance_comparison_title">French vs. German Comparison</string>
-    <string name="finance_comparison_context">Principal %1$s · %2$s · %3$s · %4$d periods</string>
+    <string name="finance_comparison_context">Principal %1$s · %2$s · %3$s · %4$s</string>
     <string name="finance_comparison_down_payment_note">Requested %1$s minus %2$s down payment</string>
     <string name="finance_comparison_differences_title">Differences (French − German)</string>
     <string name="finance_comparison_interest_diff">Interest difference</string>
@@ -316,13 +328,14 @@
     <string name="finance_chart_tab_components">Interest vs. Principal</string>
     <string name="finance_chart_tab_comparison">French vs. German</string>
     <string name="finance_chart_legend_balance">Outstanding balance</string>
+    <string name="finance_chart_scale_peak">Peak: %1$s</string>
 
     <string name="finance_hide_schedule">Hide amortization schedule</string>
     <plurals name="finance_show_schedule">
         <item quantity="one">View amortization schedule (%d installment)</item>
         <item quantity="other">View amortization schedule (%d installments)</item>
     </plurals>
-    <string name="finance_schedule_currency_caption">Amounts in %1$s (%2$s) · %3$d installments</string>
+    <string name="finance_schedule_currency_caption">Amounts in %1$s (%2$s) · %3$s</string>
     <string name="finance_schedule_tap_expand_hint">Tap any installment to view full breakdown</string>
     <string name="cd_finance_expand_installment">Expand installment %1$d details</string>
     <string name="cd_finance_collapse_installment">Collapse installment %1$d details</string>

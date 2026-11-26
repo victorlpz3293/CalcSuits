@@ -8,7 +8,9 @@ import com.calcsuits.domain.model.finance.LoanResult
 import com.calcsuits.domain.model.finance.LoanTermUnit
 import com.calcsuits.domain.model.finance.PaymentFrequency
 import com.calcsuits.domain.model.finance.RateConvention
+import com.calcsuits.ui.util.formatCompactMoneyAxis
 import com.calcsuits.ui.util.formatMoney
+import com.calcsuits.ui.util.formatShortDate
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -17,9 +19,12 @@ import org.junit.Assert.fail
 import org.junit.Before
 import org.junit.Test
 import java.math.BigDecimal
+import java.math.MathContext
 import java.math.RoundingMode
 import java.util.Calendar
+import java.util.GregorianCalendar
 import java.util.Locale
+import java.util.TimeZone
 import kotlin.math.pow
 
 class CalculateLoanUseCaseTest {
@@ -375,14 +380,8 @@ class CalculateLoanUseCaseTest {
 
     @Test
     fun dueDatesFromJan28To31InNonLeapAndLeapYearsAvoidCumulativeDrift() {
-        fun localNoonMillis(year: Int, month: Int, day: Int): Long =
-            Calendar.getInstance().apply {
-                set(year, month, day, 12, 0, 0)
-                set(Calendar.MILLISECOND, 0)
-            }.timeInMillis
-
-        fun ymd(millis: Long): Triple<Int, Int, Int> =
-            Calendar.getInstance().apply { timeInMillis = millis }.let {
+        fun utcYmd(millis: Long): Triple<Int, Int, Int> =
+            GregorianCalendar(CalculateLoanUseCase.UTC_TIME_ZONE).apply { timeInMillis = millis }.let {
                 Triple(it.get(Calendar.YEAR), it.get(Calendar.MONTH), it.get(Calendar.DAY_OF_MONTH))
             }
 
@@ -421,13 +420,13 @@ class CalculateLoanUseCaseTest {
                     termValue = 4,
                     termUnit = LoanTermUnit.PERIODS,
                     paymentFrequency = PaymentFrequency.MONTHLY,
-                    issuedAtMillis = localNoonMillis(2025, Calendar.JANUARY, day)
+                    issuedAtMillis = CalculateLoanUseCase.civilDateUtcMillis(2025, Calendar.JANUARY, day)
                 )
             )
             assertEquals(
                 "Non-leap Jan $day monthly schedule mismatch",
                 expectedDates,
-                result.schedule.map { ymd(it.dueDateMillis!!) }
+                result.schedule.map { utcYmd(it.dueDateMillis!!) }
             )
         }
 
@@ -466,27 +465,21 @@ class CalculateLoanUseCaseTest {
                     termValue = 4,
                     termUnit = LoanTermUnit.PERIODS,
                     paymentFrequency = PaymentFrequency.MONTHLY,
-                    issuedAtMillis = localNoonMillis(2024, Calendar.JANUARY, day)
+                    issuedAtMillis = CalculateLoanUseCase.civilDateUtcMillis(2024, Calendar.JANUARY, day)
                 )
             )
             assertEquals(
                 "Leap Jan $day monthly schedule mismatch",
                 expectedDates,
-                result.schedule.map { ymd(it.dueDateMillis!!) }
+                result.schedule.map { utcYmd(it.dueDateMillis!!) }
             )
         }
     }
 
     @Test
     fun dueDatesForFebruaryLeapNonLeapAndQuarterlySemiannualAnnualPeriodsMatchCalendarAnchor() {
-        fun localNoonMillis(year: Int, month: Int, day: Int): Long =
-            Calendar.getInstance().apply {
-                set(year, month, day, 12, 0, 0)
-                set(Calendar.MILLISECOND, 0)
-            }.timeInMillis
-
-        fun ymd(millis: Long): Triple<Int, Int, Int> =
-            Calendar.getInstance().apply { timeInMillis = millis }.let {
+        fun utcYmd(millis: Long): Triple<Int, Int, Int> =
+            GregorianCalendar(CalculateLoanUseCase.UTC_TIME_ZONE).apply { timeInMillis = millis }.let {
                 Triple(it.get(Calendar.YEAR), it.get(Calendar.MONTH), it.get(Calendar.DAY_OF_MONTH))
             }
 
@@ -498,7 +491,7 @@ class CalculateLoanUseCaseTest {
                 termValue = 4,
                 termUnit = LoanTermUnit.PERIODS,
                 paymentFrequency = PaymentFrequency.ANNUAL,
-                issuedAtMillis = localNoonMillis(2024, Calendar.FEBRUARY, 29)
+                issuedAtMillis = CalculateLoanUseCase.civilDateUtcMillis(2024, Calendar.FEBRUARY, 29)
             )
         )
         assertEquals(
@@ -508,7 +501,7 @@ class CalculateLoanUseCaseTest {
                 Triple(2027, Calendar.FEBRUARY, 28),
                 Triple(2028, Calendar.FEBRUARY, 29)
             ),
-            leapAnnual.schedule.map { ymd(it.dueDateMillis!!) }
+            leapAnnual.schedule.map { utcYmd(it.dueDateMillis!!) }
         )
 
         // Non-leap Feb 28 (2025-02-28) annual stays on 28th even in leap year 2028
@@ -519,7 +512,7 @@ class CalculateLoanUseCaseTest {
                 termValue = 4,
                 termUnit = LoanTermUnit.PERIODS,
                 paymentFrequency = PaymentFrequency.ANNUAL,
-                issuedAtMillis = localNoonMillis(2025, Calendar.FEBRUARY, 28)
+                issuedAtMillis = CalculateLoanUseCase.civilDateUtcMillis(2025, Calendar.FEBRUARY, 28)
             )
         )
         assertEquals(
@@ -529,7 +522,7 @@ class CalculateLoanUseCaseTest {
                 Triple(2028, Calendar.FEBRUARY, 28),
                 Triple(2029, Calendar.FEBRUARY, 28)
             ),
-            nonLeapAnnual.schedule.map { ymd(it.dueDateMillis!!) }
+            nonLeapAnnual.schedule.map { utcYmd(it.dueDateMillis!!) }
         )
 
         // Jan 31 quarterly (4 periods): Apr 30, Jul 31, Oct 31, Jan 31 (no drift to 30th)
@@ -540,7 +533,7 @@ class CalculateLoanUseCaseTest {
                 termValue = 4,
                 termUnit = LoanTermUnit.PERIODS,
                 paymentFrequency = PaymentFrequency.QUARTERLY,
-                issuedAtMillis = localNoonMillis(2025, Calendar.JANUARY, 31)
+                issuedAtMillis = CalculateLoanUseCase.civilDateUtcMillis(2025, Calendar.JANUARY, 31)
             )
         )
         assertEquals(
@@ -550,7 +543,7 @@ class CalculateLoanUseCaseTest {
                 Triple(2025, Calendar.OCTOBER, 31),
                 Triple(2026, Calendar.JANUARY, 31)
             ),
-            jan31Quarterly.schedule.map { ymd(it.dueDateMillis!!) }
+            jan31Quarterly.schedule.map { utcYmd(it.dueDateMillis!!) }
         )
 
         // Jan 31 semiannual (2 periods): Jul 31, Jan 31
@@ -561,7 +554,7 @@ class CalculateLoanUseCaseTest {
                 termValue = 2,
                 termUnit = LoanTermUnit.PERIODS,
                 paymentFrequency = PaymentFrequency.SEMIANNUAL,
-                issuedAtMillis = localNoonMillis(2025, Calendar.JANUARY, 31)
+                issuedAtMillis = CalculateLoanUseCase.civilDateUtcMillis(2025, Calendar.JANUARY, 31)
             )
         )
         assertEquals(
@@ -569,7 +562,7 @@ class CalculateLoanUseCaseTest {
                 Triple(2025, Calendar.JULY, 31),
                 Triple(2026, Calendar.JANUARY, 31)
             ),
-            jan31Semiannual.schedule.map { ymd(it.dueDateMillis!!) }
+            jan31Semiannual.schedule.map { utcYmd(it.dueDateMillis!!) }
         )
 
         // Leap day (2024-02-29) quarterly & semiannual
@@ -580,7 +573,7 @@ class CalculateLoanUseCaseTest {
                 termValue = 4,
                 termUnit = LoanTermUnit.PERIODS,
                 paymentFrequency = PaymentFrequency.QUARTERLY,
-                issuedAtMillis = localNoonMillis(2024, Calendar.FEBRUARY, 29)
+                issuedAtMillis = CalculateLoanUseCase.civilDateUtcMillis(2024, Calendar.FEBRUARY, 29)
             )
         )
         assertEquals(
@@ -590,7 +583,7 @@ class CalculateLoanUseCaseTest {
                 Triple(2024, Calendar.NOVEMBER, 29),
                 Triple(2025, Calendar.FEBRUARY, 28)
             ),
-            leapQuarterly.schedule.map { ymd(it.dueDateMillis!!) }
+            leapQuarterly.schedule.map { utcYmd(it.dueDateMillis!!) }
         )
 
         val leapSemiannual = useCase(
@@ -600,7 +593,7 @@ class CalculateLoanUseCaseTest {
                 termValue = 2,
                 termUnit = LoanTermUnit.PERIODS,
                 paymentFrequency = PaymentFrequency.SEMIANNUAL,
-                issuedAtMillis = localNoonMillis(2024, Calendar.FEBRUARY, 29)
+                issuedAtMillis = CalculateLoanUseCase.civilDateUtcMillis(2024, Calendar.FEBRUARY, 29)
             )
         )
         assertEquals(
@@ -608,8 +601,71 @@ class CalculateLoanUseCaseTest {
                 Triple(2024, Calendar.AUGUST, 29),
                 Triple(2025, Calendar.FEBRUARY, 28)
             ),
-            leapSemiannual.schedule.map { ymd(it.dueDateMillis!!) }
+            leapSemiannual.schedule.map { utcYmd(it.dueDateMillis!!) }
         )
+    }
+
+    @Test
+    fun dueDateCalculationAndShortDateFormattingAreCompletelyInvariantAcrossTimeZones() {
+        val originalTz = TimeZone.getDefault()
+        val timeZones = listOf("UTC", "America/Managua", "America/New_York", "Asia/Tokyo")
+        val issueDates = listOf(
+            CalculateLoanUseCase.civilDateUtcMillis(2025, Calendar.JANUARY, 31),
+            CalculateLoanUseCase.civilDateUtcMillis(2024, Calendar.FEBRUARY, 29),
+            CalculateLoanUseCase.civilDateUtcMillis(2025, Calendar.NOVEMBER, 1) // DST transition boundary in US
+        )
+
+        try {
+            for (issuedAt in issueDates) {
+                for (frequency in PaymentFrequency.entries) {
+                    val baselineResult = useCase(
+                        LoanRequest(
+                            amount = 25_000.0,
+                            annualRate = 12.0,
+                            termValue = 6,
+                            termUnit = LoanTermUnit.PERIODS,
+                            paymentFrequency = frequency,
+                            issuedAtMillis = issuedAt
+                        )
+                    )
+                    val baselineDueMillis = baselineResult.schedule.map { it.dueDateMillis!! }
+                    val baselineFormattedUs = baselineDueMillis.map { formatShortDate(it, Locale.US) }
+                    val baselineFormattedEs = baselineDueMillis.map { formatShortDate(it, Locale.forLanguageTag("es")) }
+
+                    for (tzId in timeZones) {
+                        TimeZone.setDefault(TimeZone.getTimeZone(tzId))
+                        val tzResult = useCase(
+                            LoanRequest(
+                                amount = 25_000.0,
+                                annualRate = 12.0,
+                                termValue = 6,
+                                termUnit = LoanTermUnit.PERIODS,
+                                paymentFrequency = frequency,
+                                issuedAtMillis = issuedAt
+                            )
+                        )
+                        assertEquals(
+                            "Due dates shifted under timezone $tzId for $frequency",
+                            baselineDueMillis,
+                            tzResult.schedule.map { it.dueDateMillis!! }
+                        )
+                        // Formatting existing timestamps after a timezone change must remain identical
+                        assertEquals(
+                            "US formatted dates shifted under timezone $tzId",
+                            baselineFormattedUs,
+                            baselineDueMillis.map { formatShortDate(it, Locale.US) }
+                        )
+                        assertEquals(
+                            "ES formatted dates shifted under timezone $tzId",
+                            baselineFormattedEs,
+                            baselineDueMillis.map { formatShortDate(it, Locale.forLanguageTag("es")) }
+                        )
+                    }
+                }
+            }
+        } finally {
+            TimeZone.setDefault(originalTz)
+        }
     }
 
     @Test
@@ -781,6 +837,87 @@ class CalculateLoanUseCaseTest {
                 )
             )
         }
+    }
+
+    @Test
+    fun effectiveAnnualPeriodicRateConversionMaintainsBigDecimalPrecisionAcrossAllPeriodicities() {
+        val rates = listOf(0.5, 12.0, 24.0, 36.0, 100.0, 300.0)
+        val mc = MathContext.DECIMAL128
+        val tolerance = BigDecimal("1E-28")
+
+        for (ratePercent in rates) {
+            val expectedTea = BigDecimal.valueOf(ratePercent).divide(BigDecimal(100), mc)
+            for (frequency in PaymentFrequency.entries) {
+                val periodicBd = useCase.computeEffectivePeriodicRate(ratePercent, frequency.periodsPerYear)
+                val reconstructedTea = BigDecimal.ONE.add(periodicBd, mc)
+                    .pow(frequency.periodsPerYear, mc)
+                    .subtract(BigDecimal.ONE, mc)
+                val error = reconstructedTea.subtract(expectedTea, mc).abs()
+                assertTrue(
+                    "TEA BigDecimal conversion error $error exceeded $tolerance for rate=$ratePercent%, freq=$frequency",
+                    error <= tolerance
+                )
+
+                val result = useCase(
+                    LoanRequest(
+                        amount = 100_000.0,
+                        annualRate = ratePercent,
+                        termValue = 12,
+                        termUnit = LoanTermUnit.PERIODS,
+                        paymentFrequency = frequency,
+                        rateConvention = RateConvention.EFFECTIVE_ANNUAL,
+                        system = AmortizationSystem.FRENCH
+                    )
+                )
+                assertEquals(expectedTea.toDouble(), result.effectiveAnnualRate, 1e-12)
+                assertLedgerInvariants(result, expectedPrincipal = 100_000.0, scale = 2)
+            }
+        }
+    }
+
+    @Test
+    fun downPaymentTotalOutflowHelperSeparatesInstallmentSumFromUpfrontDownPayment() {
+        val result = useCase(
+            LoanRequest(
+                amount = 100_000.0,
+                downPayment = 20_000.0,
+                annualRate = 12.0,
+                termValue = 2,
+                termUnit = LoanTermUnit.YEARS,
+                paymentFrequency = PaymentFrequency.MONTHLY,
+                system = AmortizationSystem.GERMAN,
+                currency = FinanceCurrencies.USD
+            )
+        )
+
+        assertEquals(100_000.0, result.requestedAmount, 1e-9)
+        assertEquals(20_000.0, result.downPayment, 1e-9)
+        assertEquals(80_000.0, result.principalAmount, 1e-9)
+        assertEquals(result.requestedAmount, result.downPayment + result.principalAmount, 1e-9)
+        // totalPayment strictly excludes upfront down payment
+        assertEquals(result.principalAmount + result.totalInterest, result.totalPayment, 1e-6)
+        // totalOutflowWithDownPayment includes down payment + installments + additional charges
+        val expectedOutflow = BigDecimal.valueOf(result.downPayment)
+            .add(BigDecimal.valueOf(result.totalPayment))
+            .add(BigDecimal.valueOf(result.totalAdditionalCharges))
+            .setScale(2, RoundingMode.HALF_UP)
+            .toDouble()
+        assertEquals(expectedOutflow, result.totalOutflowWithDownPayment(), 1e-9)
+        assertLedgerInvariants(result, expectedPrincipal = 80_000.0, scale = 2)
+    }
+
+    @Test
+    fun compactMoneyAxisFormatterProducesReadableNonTruncatedLabelsAcrossMagnitudes() {
+        val nio = FinanceCurrencies.NIO
+        val jpy = FinanceCurrency(code = "JPY", symbol = "¥", fractionDigits = 0)
+        assertEquals("0", formatCompactMoneyAxis(0.0, nio, Locale.US))
+        assertEquals("332", formatCompactMoneyAxis(332.14, nio, Locale.US))
+        assertEquals("75k", formatCompactMoneyAxis(75_000.0, nio, Locale.US))
+        assertEquals("600k", formatCompactMoneyAxis(600_000.0, nio, Locale.US))
+        assertEquals("1.3M", formatCompactMoneyAxis(1_250_000.0, nio, Locale.US))
+        assertEquals("15M", formatCompactMoneyAxis(15_000_000.0, nio, Locale.US))
+        assertEquals("1.5B", formatCompactMoneyAxis(1_500_000_000.0, nio, Locale.US))
+        assertEquals("50", formatCompactMoneyAxis(50.0, jpy, Locale.US))
     }
 
     /**

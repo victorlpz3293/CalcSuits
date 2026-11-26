@@ -9,6 +9,8 @@ import com.calcsuits.domain.model.finance.RateConvention
 import com.calcsuits.domain.usecase.CalculateLoanUseCase
 import com.calcsuits.features.finance.ui.screens.ScheduleLayoutMode
 import com.calcsuits.features.finance.ui.screens.resolveScheduleLayoutMode
+import com.calcsuits.features.finance.ui.screens.shouldUseNonLazyLoanLayout
+import com.calcsuits.features.finance.ui.screens.shouldUseStackedComparisonLayout
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -145,6 +147,34 @@ class FinanceViewModelTest {
         assertEquals(ScheduleLayoutMode.MEDIUM_COMPACT, resolveScheduleLayoutMode(839.9f))
         assertEquals(ScheduleLayoutMode.EXPANDED_TABLE, resolveScheduleLayoutMode(840f))
         assertEquals(ScheduleLayoutMode.EXPANDED_TABLE, resolveScheduleLayoutMode(1024f))
+    }
+
+    @Test
+    fun loanLayoutResolverSwitchesToNonLazyWhenHeightIsUnboundedOrBelowThreshold() {
+        // Unbounded height (e.g., inside CalcPinnedScaffold outer verticalScroll) MUST use non-lazy Column
+        assertTrue(shouldUseNonLazyLoanLayout(hasBoundedHeight = false, maxHeightDp = Float.POSITIVE_INFINITY))
+        assertTrue(shouldUseNonLazyLoanLayout(hasBoundedHeight = false, maxHeightDp = 800f))
+        // Bounded compact vertical space (< 200dp) uses non-lazy Column
+        assertTrue(shouldUseNonLazyLoanLayout(hasBoundedHeight = true, maxHeightDp = 199.9f))
+        // Bounded normal vertical space (>= 200dp) uses LazyColumn
+        assertFalse(shouldUseNonLazyLoanLayout(hasBoundedHeight = true, maxHeightDp = 200f))
+        assertFalse(shouldUseNonLazyLoanLayout(hasBoundedHeight = true, maxHeightDp = 640f))
+    }
+
+    @Test
+    fun comparisonCardUsesStackedLayoutOnNarrowPhonesAndHorizontalColumnsOnWideScreens() {
+        assertTrue(shouldUseStackedComparisonLayout(300f))
+        assertTrue(shouldUseStackedComparisonLayout(352f))
+        assertTrue(shouldUseStackedComparisonLayout(399.9f))
+        assertFalse(shouldUseStackedComparisonLayout(400f))
+        assertFalse(shouldUseStackedComparisonLayout(640f))
+    }
+
+    @Test
+    fun viewModelEmitsCanonicalUtcMidnightCivilDateForIssuedAtMillis() {
+        val issuedAt = viewModel.state.value.loanResult!!.issuedAtMillis!!
+        assertEquals(CalculateLoanUseCase.normalizeCivilDateUtcMillis(issuedAt), issuedAt)
+        assertEquals(0L, issuedAt % 86_400_000L)
     }
 
     @Test

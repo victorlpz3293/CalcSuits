@@ -65,10 +65,11 @@ internal fun LoanSummaryCard(
 ) {
     val currency = result.currency
     val installmentNoun = stringResource(result.paymentFrequency.installmentNounRes())
+    val installmentContextualNoun = stringResource(result.paymentFrequency.installmentContextualNounRes())
     val heroCaption = when (result.system) {
         AmortizationSystem.GERMAN -> stringResource(
             R.string.finance_loan_hero_german_fmt,
-            installmentNoun
+            installmentContextualNoun
         )
         else -> stringResource(
             R.string.finance_loan_hero_french_fmt,
@@ -76,18 +77,24 @@ internal fun LoanSummaryCard(
         )
     }
 
+    val periodsSummary = pluralStringResource(
+        R.plurals.finance_term_summary_periods,
+        result.schedule.size,
+        result.schedule.size
+    )
     val termSummary = if (result.termUnit == LoanTermUnit.YEARS) {
+        val yearsSummary = pluralStringResource(
+            R.plurals.finance_term_years_count,
+            result.termValue,
+            result.termValue
+        )
         stringResource(
             R.string.finance_term_summary_years_fmt,
-            result.termValue,
-            result.schedule.size
+            yearsSummary,
+            periodsSummary
         )
     } else {
-        pluralStringResource(
-            R.plurals.finance_term_summary_periods,
-            result.schedule.size,
-            result.schedule.size
-        )
+        periodsSummary
     }
 
     val rateConventionShort = stringResource(
@@ -186,11 +193,11 @@ internal fun LoanSummaryCard(
 
             // Key Financial Metrics
             FinanceMetricRow(
-                label = stringResource(R.string.finance_loan_initial_installment_fmt, installmentNoun),
+                label = stringResource(R.string.finance_loan_initial_installment_fmt, installmentContextualNoun),
                 value = formatMoney(result.firstPayment, currency, locale)
             )
             FinanceMetricRow(
-                label = stringResource(R.string.finance_loan_final_installment_fmt, installmentNoun),
+                label = stringResource(R.string.finance_loan_final_installment_fmt, installmentContextualNoun),
                 value = formatMoney(result.lastPayment, currency, locale)
             )
             result.constantPrincipalPerPeriod?.let { constPrincipal ->
@@ -212,11 +219,25 @@ internal fun LoanSummaryCard(
                 value = formatRatePercent(result.effectiveAnnualRate * 100.0, locale, maxFraction = 4)
             )
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            FinanceMetricRow(
-                label = stringResource(R.string.finance_total_payment),
-                value = formatMoney(result.totalPayment, currency, locale),
-                emphasize = true
-            )
+            if (result.downPayment > 0.0) {
+                FinanceMetricRow(
+                    label = stringResource(R.string.finance_total_installments_paid),
+                    value = formatMoney(result.totalPayment, currency, locale),
+                    modifier = Modifier.testTag("loan_total_installments_paid")
+                )
+                FinanceMetricRow(
+                    label = stringResource(R.string.finance_total_outflow_with_down_payment),
+                    value = formatMoney(result.totalOutflowWithDownPayment(), currency, locale),
+                    emphasize = true,
+                    modifier = Modifier.testTag("loan_total_outflow_with_down_payment")
+                )
+            } else {
+                FinanceMetricRow(
+                    label = stringResource(R.string.finance_total_payment),
+                    value = formatMoney(result.totalPayment, currency, locale),
+                    emphasize = true
+                )
+            }
         }
     }
 }
@@ -300,6 +321,11 @@ internal fun ScheduleCaptionBanner(
     result: LoanResult,
     isCardLayout: Boolean
 ) {
+    val periodsLabel = pluralStringResource(
+        R.plurals.finance_term_summary_periods,
+        result.schedule.size,
+        result.schedule.size
+    )
     Surface(
         shape = RoundedCornerShape(12.dp),
         color = MaterialTheme.colorScheme.surfaceContainer,
@@ -316,7 +342,7 @@ internal fun ScheduleCaptionBanner(
                     R.string.finance_schedule_currency_caption,
                     result.currency.code,
                     result.currency.symbol,
-                    result.schedule.size
+                    periodsLabel
                 ),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.primary,
@@ -610,11 +636,19 @@ internal fun InstallmentCardPairRow(
  */
 @Composable
 internal fun ExpandedScheduleTableHeader(result: LoanResult) {
+    val periodsLabel = pluralStringResource(
+        R.plurals.finance_term_summary_periods,
+        result.schedule.size,
+        result.schedule.size
+    )
+    // Opaque surface prevents scrolling table rows from bleeding through behind the sticky header.
     Surface(
         shape = RoundedCornerShape(topStart = 14.dp, topEnd = 14.dp),
         color = MaterialTheme.colorScheme.surfaceContainer,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        modifier = Modifier.testTag("loan_expanded_table_header")
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("loan_expanded_table_header")
     ) {
         Column(
             modifier = Modifier
@@ -627,7 +661,7 @@ internal fun ExpandedScheduleTableHeader(result: LoanResult) {
                     R.string.finance_schedule_currency_caption,
                     result.currency.code,
                     result.currency.symbol,
-                    result.schedule.size
+                    periodsLabel
                 ),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.primary,
@@ -865,7 +899,13 @@ internal fun ScheduleTotalsFooterCard(
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 FinanceMetricRow(
-                    label = stringResource(R.string.finance_total_payment),
+                    label = stringResource(
+                        if (result.downPayment > 0.0) {
+                            R.string.finance_total_installments_paid
+                        } else {
+                            R.string.finance_total_payment
+                        }
+                    ),
                     value = formatMoney(result.totalPayment, currency, locale),
                     emphasize = true
                 )

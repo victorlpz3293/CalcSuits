@@ -13,6 +13,8 @@ import java.math.BigDecimal
 import java.math.MathContext
 import java.math.RoundingMode
 import java.util.Calendar
+import java.util.GregorianCalendar
+import java.util.TimeZone
 import javax.inject.Inject
 import kotlin.math.pow
 
@@ -25,13 +27,22 @@ import kotlin.math.pow
  * - [AmortizationSystem.AMERICAN]: Retained in the domain engine solely for backwards compatibility.
  *
  * ## Precision & Rounding Policy
- * All internal schedule calculations use [BigDecimal] with [MathContext.DECIMAL128] and
- * [RoundingMode.HALF_UP] at the selected [LoanRequest.currency] minor-unit scale on each period.
+ * All internal schedule calculations, totals, and comparative differences use [BigDecimal] with
+ * [MathContext.DECIMAL128] and [RoundingMode.HALF_UP] at the selected [LoanRequest.currency]
+ * minor-unit scale on each period. Conversion to `Double` occurs strictly at the public DTO
+ * boundary ([AmortizationRow], [LoanResult], [LoanComparisonResult]).
  * This prevents IEEE-754 drift and enforces strict ledger invariants on every schedule:
  * - Every row satisfies `payment == principal + interest` at currency precision.
  * - Every row satisfies `openingBalance - principal == balance` and `principal <= openingBalance`.
  * - `sum(schedule.principal) == financedPrincipal` and `schedule.last().balance == 0.0`.
  * - The final installment absorbs any accumulated rounding remainder.
+ *
+ * ## Civil Date Convention (API 24+ compatible, timezone-independent)
+ * Because CalcSuits targets `minSdk = 24` without core library desugaring, civil calendar dates
+ * (`issuedAtMillis`, `dueDateMillis`) are represented canonically as **`00:00:00.000 UTC`** via
+ * [GregorianCalendar] configured with [UTC_TIME_ZONE]. Callers capturing "today" from the device
+ * clock should convert the local civil `(year, month, day)` through [todayCivilDateUtcMillis] so
+ * due-date projection and UI formatting remain completely invariant to timezone or DST shifts.
  *
  * ## Down Payment ("Prima")
  * When [LoanRequest.downPayment] is provided (`0 <= downPayment < amount`), it is deducted upfront
@@ -43,8 +54,9 @@ import kotlin.math.pow
  * separated from the annual rate basis ([RateConvention]):
  * - [RateConvention.NOMINAL_PER_PAYMENT_PERIOD]: nominal annual rate (TNA) capitalized at payment
  *   periodicity, yielding `i_p = annualRate / periodsPerYear`.
- * - [RateConvention.EFFECTIVE_ANNUAL]: effective annual rate (TEA / EAR) converted to its
- *   mathematically equivalent periodic rate `i_p = (1 + annualRate)^(1 / periodsPerYear) - 1`.
+ * - [RateConvention.EFFECTIVE_ANNUAL]: effective annual rate (TEA / EAR) converted in
+ *   [BigDecimal] ([MathContext.DECIMAL128]) to its mathematically equivalent periodic rate
+ *   `i_p = (1 + annualRate)^(1 / periodsPerYear) - 1`.
  */
 class CalculateLoanUseCase @Inject constructor() {
 
@@ -68,7 +80,33 @@ class CalculateLoanUseCase @Inject constructor() {
             )
         )
 
-    operator fun invoke(request: LoanRequest): LoanResult {
+    operator fun invoke(request: LoanRequest): LoanResult =
+        computeInternal(request).result
+
+    /**
+     * Compares French (fixed installment) and German (declining installment) systems
+     * under identical loan parameters, computing all monetary differences directly from
+     * internal [BigDecimal] accumulators at currency scale.
+     */
+    fun compare(request: LoanRequest): LoanComparisonResult {
+        val french = computeInternal(request.copy(system = AmortizationSystem.FRENCH))
+        val german = computeInternal(request.copy(system = AmortizationSystem.GERMAN))
+        val scale = request.currency.fractionDigits
+
+        fun diff(a: BigDecimal, b: BigDecimal): Double =
+            a.subtract(b).setScale(scale, RoundingMode.HALF_UP).toDouble()
+
+        return LoanComparisonResult(
+            french = french.result,
+            german = german.result,
+            interestDifference = diff(french.totalInterestBd, german.totalInterestBd),
+            totalPaymentDifference = diff(french.totalPaymentBd, german.totalPaymentBd),
+            firstPaymentDifference = diff(german.firstPaymentBd, french.firstPaymentBd),
+            lastPaymentDifference = diff(french.lastPaymentBd, german.lastPaymentBd)
+        )
+    }
+
+    private fun computeInternal(request: LoanRequest): ComputedLoan {
         require(request.amount.isFinite() && request.amount > 0.0) {
             "Loan amount must be finite and greater than 0"
         }
@@ -104,7 +142,9 @@ class CalculateLoanUseCase @Inject constructor() {
             "Financed principal rounds to zero in ${request.currency.code}"
         }
 
-        val (periodicRateBd, effectiveAnnualRate) = resolveRates(
+        val normalizedIssuedAtMillis = request.issuedAtMillis?.let { normalizeCivilDateUtcMillis(it) }
+
+        val (periodicRateBd, effectiveAnnualRateBd) = resolveRates(
             annualRatePercent = request.annualRate,
             periodsPerYear = periodsPerYear,
             convention = request.rateConvention
@@ -117,7 +157,7 @@ class CalculateLoanUseCase @Inject constructor() {
                 periods = numberOfPayments,
                 scale = scale,
                 zero = zero,
-                issuedAtMillis = request.issuedAtMillis,
+                issuedAtMillis = normalizedIssuedAtMillis,
                 frequency = request.paymentFrequency
             )
             AmortizationSystem.GERMAN -> buildGermanSchedule(
@@ -126,7 +166,7 @@ class CalculateLoanUseCase @Inject constructor() {
                 periods = numberOfPayments,
                 scale = scale,
                 zero = zero,
-                issuedAtMillis = request.issuedAtMillis,
+                issuedAtMillis = normalizedIssuedAtMillis,
                 frequency = request.paymentFrequency
             )
             AmortizationSystem.AMERICAN -> buildAmericanSchedule(
@@ -135,30 +175,22 @@ class CalculateLoanUseCase @Inject constructor() {
                 periods = numberOfPayments,
                 scale = scale,
                 zero = zero,
-                issuedAtMillis = request.issuedAtMillis,
+                issuedAtMillis = normalizedIssuedAtMillis,
                 frequency = request.paymentFrequency
             )
         }
 
-        val schedule = scheduleResult.rows
-        var totalInterestBd = zero
-        var totalPaymentBd = zero
-        schedule.forEach { row ->
-            totalInterestBd = totalInterestBd.add(BigDecimal.valueOf(row.interest))
-            totalPaymentBd = totalPaymentBd.add(BigDecimal.valueOf(row.payment))
-        }
-        totalInterestBd = totalInterestBd.setScale(scale, RoundingMode.HALF_UP)
-        totalPaymentBd = totalPaymentBd.setScale(scale, RoundingMode.HALF_UP)
+        val totalInterestBd = scheduleResult.totalInterest.setScale(scale, RoundingMode.HALF_UP)
+        val totalPaymentBd = scheduleResult.totalPayment.setScale(scale, RoundingMode.HALF_UP)
+        val firstPaymentBd = scheduleResult.firstPayment.setScale(scale, RoundingMode.HALF_UP)
+        val lastPaymentBd = scheduleResult.lastPayment.setScale(scale, RoundingMode.HALF_UP)
+        val finalBalanceBd = scheduleResult.finalBalance.setScale(scale, RoundingMode.HALF_UP)
 
-        val firstPayment = schedule.first().payment
-        val lastPayment = schedule.last().payment
-        val primaryPayment = scheduleResult.primaryPeriodicPayment.toDouble()
-
-        return LoanResult(
-            monthlyPayment = primaryPayment,
+        val loanResult = LoanResult(
+            monthlyPayment = scheduleResult.primaryPeriodicPayment.toDouble(),
             totalInterest = totalInterestBd.toDouble(),
             totalPayment = totalPaymentBd.toDouble(),
-            schedule = schedule,
+            schedule = scheduleResult.rows,
             system = request.system,
             paymentFrequency = request.paymentFrequency,
             rateConvention = request.rateConvention,
@@ -169,51 +201,51 @@ class CalculateLoanUseCase @Inject constructor() {
             annualRatePercent = request.annualRate,
             termValue = request.termValue,
             termUnit = request.termUnit,
-            issuedAtMillis = request.issuedAtMillis,
+            issuedAtMillis = normalizedIssuedAtMillis,
             periodicRate = periodicRateBd.toDouble(),
-            effectiveAnnualRate = effectiveAnnualRate,
+            effectiveAnnualRate = effectiveAnnualRateBd.toDouble(),
             theoreticalPeriodicPayment = scheduleResult.theoreticalPeriodicPayment.toDouble(),
-            firstPayment = firstPayment,
-            lastPayment = lastPayment,
+            firstPayment = firstPaymentBd.toDouble(),
+            lastPayment = lastPaymentBd.toDouble(),
             constantPrincipalPerPeriod = scheduleResult.constantPrincipalPerPeriod?.toDouble(),
-            finalBalance = schedule.last().balance,
+            finalBalance = finalBalanceBd.toDouble(),
             totalAdditionalCharges = 0.0,
             totalDisbursement = totalPaymentBd.toDouble()
         )
+
+        return ComputedLoan(
+            result = loanResult,
+            totalInterestBd = totalInterestBd,
+            totalPaymentBd = totalPaymentBd,
+            firstPaymentBd = firstPaymentBd,
+            lastPaymentBd = lastPaymentBd
+        )
     }
 
-    /**
-     * Compares French (fixed installment) and German (declining installment) systems
-     * under identical loan parameters, computing all monetary differences at currency scale.
-     */
-    fun compare(request: LoanRequest): LoanComparisonResult {
-        val french = invoke(request.copy(system = AmortizationSystem.FRENCH))
-        val german = invoke(request.copy(system = AmortizationSystem.GERMAN))
-        val scale = request.currency.fractionDigits
-
-        fun diff(a: Double, b: Double): Double =
-            BigDecimal.valueOf(a)
-                .subtract(BigDecimal.valueOf(b))
-                .setScale(scale, RoundingMode.HALF_UP)
-                .toDouble()
-
-        return LoanComparisonResult(
-            french = french,
-            german = german,
-            interestDifference = diff(french.totalInterest, german.totalInterest),
-            totalPaymentDifference = diff(french.totalPayment, german.totalPayment),
-            firstPaymentDifference = diff(german.firstPayment, french.firstPayment),
-            lastPaymentDifference = diff(french.lastPayment, german.lastPayment)
-        )
+    internal fun computeEffectivePeriodicRate(
+        annualRatePercent: Double,
+        periodsPerYear: Int
+    ): BigDecimal {
+        if (annualRatePercent == 0.0) return BigDecimal.ZERO
+        val annualDecimal = BigDecimal.valueOf(annualRatePercent)
+            .divide(BigDecimal(100), mathContext)
+        if (periodsPerYear == 1) return annualDecimal
+        val base = BigDecimal.ONE.add(annualDecimal, mathContext)
+        val root = nthRootBigDecimal(base, periodsPerYear)
+        val periodic = root.subtract(BigDecimal.ONE, mathContext)
+        require(periodic >= BigDecimal.ZERO) {
+            "Effective periodic rate out of range"
+        }
+        return periodic
     }
 
     private fun resolveRates(
         annualRatePercent: Double,
         periodsPerYear: Int,
         convention: RateConvention
-    ): Pair<BigDecimal, Double> {
+    ): Pair<BigDecimal, BigDecimal> {
         if (annualRatePercent == 0.0) {
-            return BigDecimal.ZERO to 0.0
+            return BigDecimal.ZERO to BigDecimal.ZERO
         }
         val annualDecimal = BigDecimal.valueOf(annualRatePercent)
             .divide(BigDecimal(100), mathContext)
@@ -224,17 +256,45 @@ class CalculateLoanUseCase @Inject constructor() {
                 val earBd = BigDecimal.ONE.add(periodic, mathContext)
                     .pow(periodsPerYear, mathContext)
                     .subtract(BigDecimal.ONE, mathContext)
-                periodic to earBd.toDouble()
+                periodic to earBd
             }
             RateConvention.EFFECTIVE_ANNUAL -> {
-                val annualDouble = annualDecimal.toDouble()
-                val periodicDouble = (1.0 + annualDouble).pow(1.0 / periodsPerYear.toDouble()) - 1.0
-                require(periodicDouble.isFinite() && periodicDouble >= 0.0) {
-                    "Effective periodic rate out of range"
-                }
-                BigDecimal.valueOf(periodicDouble) to annualDouble
+                val periodic = computeEffectivePeriodicRate(annualRatePercent, periodsPerYear)
+                periodic to annualDecimal
             }
         }
+    }
+
+    /**
+     * Computes `value^(1 / degree)` purely in [BigDecimal] ([MathContext.DECIMAL128])
+     * using Newton-Raphson iteration: `x_{k+1} = ((m - 1) * x_k + value / x_k^(m - 1)) / m`.
+     */
+    private fun nthRootBigDecimal(value: BigDecimal, degree: Int): BigDecimal {
+        require(degree >= 1) { "Root degree must be >= 1" }
+        require(value > BigDecimal.ZERO) { "Root operand must be strictly positive" }
+        if (degree == 1 || value.compareTo(BigDecimal.ONE) == 0) return value
+
+        val m = BigDecimal(degree)
+        val mMinus1 = BigDecimal(degree - 1)
+        val seedDouble = value.toDouble().pow(1.0 / degree.toDouble())
+        var current = if (seedDouble.isFinite() && seedDouble > 0.0) {
+            BigDecimal.valueOf(seedDouble)
+        } else {
+            BigDecimal.ONE
+        }
+
+        val epsilon = BigDecimal("1E-32")
+        for (iteration in 0 until MAX_NEWTON_ITERATIONS) {
+            val prevPow = current.pow(degree - 1, mathContext)
+            val numerator = mMinus1.multiply(current, mathContext)
+                .add(value.divide(prevPow, mathContext), mathContext)
+            val next = numerator.divide(m, mathContext)
+            if (next.subtract(current, mathContext).abs() <= epsilon) {
+                return next
+            }
+            current = next
+        }
+        return current
     }
 
     private fun buildFrenchSchedule(
@@ -272,6 +332,10 @@ class CalculateLoanUseCase @Inject constructor() {
         }
 
         var balance = principal
+        var totalInterest = zero
+        var totalPayment = zero
+        var firstPayment = zero
+        var lastPayment = zero
         val rows = ArrayList<AmortizationRow>(periods)
         for (period in 1..periods) {
             val openingBalance = balance
@@ -291,6 +355,11 @@ class CalculateLoanUseCase @Inject constructor() {
                 payment = principalPaid.add(interest)
             }
             balance = openingBalance.subtract(principalPaid).coerceAtLeast(zero)
+            totalInterest = totalInterest.add(interest)
+            totalPayment = totalPayment.add(payment)
+            if (period == 1) firstPayment = payment
+            if (period == periods) lastPayment = payment
+
             rows.add(
                 AmortizationRow(
                     period = period,
@@ -304,15 +373,16 @@ class CalculateLoanUseCase @Inject constructor() {
             )
         }
 
-        val primaryPayment = if (periods == 1) {
-            BigDecimal.valueOf(rows.first().payment).setScale(scale, RoundingMode.HALF_UP)
-        } else {
-            scheduledPayment
-        }
+        val primaryPayment = if (periods == 1) firstPayment else scheduledPayment
         return InternalSchedule(
             rows = rows,
             primaryPeriodicPayment = primaryPayment,
-            theoreticalPeriodicPayment = theoreticalPayment
+            theoreticalPeriodicPayment = theoreticalPayment,
+            totalInterest = totalInterest,
+            totalPayment = totalPayment,
+            firstPayment = firstPayment,
+            lastPayment = lastPayment,
+            finalBalance = balance
         )
     }
 
@@ -329,6 +399,10 @@ class CalculateLoanUseCase @Inject constructor() {
         val constantPrincipal = principal.divide(BigDecimal(periods), scale, RoundingMode.HALF_UP)
 
         var balance = principal
+        var totalInterest = zero
+        var totalPayment = zero
+        var firstPayment = zero
+        var lastPayment = zero
         val rows = ArrayList<AmortizationRow>(periods)
         for (period in 1..periods) {
             val openingBalance = balance
@@ -344,6 +418,11 @@ class CalculateLoanUseCase @Inject constructor() {
             }
             val payment = principalPaid.add(interest)
             balance = openingBalance.subtract(principalPaid).coerceAtLeast(zero)
+            totalInterest = totalInterest.add(interest)
+            totalPayment = totalPayment.add(payment)
+            if (period == 1) firstPayment = payment
+            if (period == periods) lastPayment = payment
+
             rows.add(
                 AmortizationRow(
                     period = period,
@@ -357,11 +436,15 @@ class CalculateLoanUseCase @Inject constructor() {
             )
         }
 
-        val firstPayment = BigDecimal.valueOf(rows.first().payment).setScale(scale, RoundingMode.HALF_UP)
         return InternalSchedule(
             rows = rows,
             primaryPeriodicPayment = firstPayment,
             theoreticalPeriodicPayment = firstPayment,
+            totalInterest = totalInterest,
+            totalPayment = totalPayment,
+            firstPayment = firstPayment,
+            lastPayment = lastPayment,
+            finalBalance = balance,
             constantPrincipalPerPeriod = constantPrincipal
         )
     }
@@ -383,6 +466,10 @@ class CalculateLoanUseCase @Inject constructor() {
         }
 
         var balance = principal
+        var totalInterest = zero
+        var totalPayment = zero
+        var firstPayment = zero
+        var lastPayment = zero
         val rows = ArrayList<AmortizationRow>(periods)
         for (period in 1..periods) {
             val openingBalance = balance
@@ -391,6 +478,11 @@ class CalculateLoanUseCase @Inject constructor() {
             val principalPaid = if (isMaturity) openingBalance else zero
             val payment = principalPaid.add(interest)
             balance = if (isMaturity) zero else openingBalance
+            totalInterest = totalInterest.add(interest)
+            totalPayment = totalPayment.add(payment)
+            if (period == 1) firstPayment = payment
+            if (period == periods) lastPayment = payment
+
             rows.add(
                 AmortizationRow(
                     period = period,
@@ -404,15 +496,16 @@ class CalculateLoanUseCase @Inject constructor() {
             )
         }
 
-        val primaryPayment = if (periods == 1) {
-            BigDecimal.valueOf(rows.first().payment).setScale(scale, RoundingMode.HALF_UP)
-        } else {
-            periodicInterest
-        }
+        val primaryPayment = if (periods == 1) firstPayment else periodicInterest
         return InternalSchedule(
             rows = rows,
             primaryPeriodicPayment = primaryPayment,
-            theoreticalPeriodicPayment = primaryPayment
+            theoreticalPeriodicPayment = primaryPayment,
+            totalInterest = totalInterest,
+            totalPayment = totalPayment,
+            firstPayment = firstPayment,
+            lastPayment = lastPayment,
+            finalBalance = balance
         )
     }
 
@@ -422,7 +515,13 @@ class CalculateLoanUseCase @Inject constructor() {
         frequency: PaymentFrequency
     ): Long? {
         val base = issuedAtMillis ?: return null
-        val calendar = Calendar.getInstance().apply { timeInMillis = base }
+        val calendar = GregorianCalendar(UTC_TIME_ZONE).apply {
+            timeInMillis = base
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
         when (frequency) {
             PaymentFrequency.MONTHLY -> calendar.add(Calendar.MONTH, period)
             PaymentFrequency.SEMIMONTHLY -> calendar.add(Calendar.DAY_OF_YEAR, period * 15)
@@ -437,10 +536,63 @@ class CalculateLoanUseCase @Inject constructor() {
         val rows: List<AmortizationRow>,
         val primaryPeriodicPayment: BigDecimal,
         val theoreticalPeriodicPayment: BigDecimal,
+        val totalInterest: BigDecimal,
+        val totalPayment: BigDecimal,
+        val firstPayment: BigDecimal,
+        val lastPayment: BigDecimal,
+        val finalBalance: BigDecimal,
         val constantPrincipalPerPeriod: BigDecimal? = null
+    )
+
+    private data class ComputedLoan(
+        val result: LoanResult,
+        val totalInterestBd: BigDecimal,
+        val totalPaymentBd: BigDecimal,
+        val firstPaymentBd: BigDecimal,
+        val lastPaymentBd: BigDecimal
     )
 
     companion object {
         const val MAX_PERIODS = 2_400
+        private const val MAX_NEWTON_ITERATIONS = 64
+
+        /** Fixed UTC timezone used for all canonical civil-date representations (`00:00:00.000 UTC`). */
+        val UTC_TIME_ZONE: TimeZone = TimeZone.getTimeZone("UTC")
+
+        /**
+         * Encodes a civil calendar date `(year, monthZeroBased, dayOfMonth)` as canonical
+         * `00:00:00.000 UTC` epoch milliseconds.
+         */
+        fun civilDateUtcMillis(year: Int, monthZeroBased: Int, dayOfMonth: Int): Long =
+            GregorianCalendar(UTC_TIME_ZONE).apply {
+                clear()
+                set(year, monthZeroBased, dayOfMonth, 0, 0, 0)
+                set(Calendar.MILLISECOND, 0)
+            }.timeInMillis
+
+        /**
+         * Captures today's local civil date from [localCalendar] and encodes it into canonical
+         * `00:00:00.000 UTC` epoch milliseconds, eliminating device-timezone drift on subsequent
+         * due-date projections and UI date formatting.
+         */
+        fun todayCivilDateUtcMillis(localCalendar: Calendar = Calendar.getInstance()): Long =
+            civilDateUtcMillis(
+                year = localCalendar.get(Calendar.YEAR),
+                monthZeroBased = localCalendar.get(Calendar.MONTH),
+                dayOfMonth = localCalendar.get(Calendar.DAY_OF_MONTH)
+            )
+
+        /**
+         * Normalizes an epoch millisecond value interpreted in UTC to its canonical
+         * `00:00:00.000 UTC` civil date boundary.
+         */
+        fun normalizeCivilDateUtcMillis(epochMillis: Long): Long {
+            val utc = GregorianCalendar(UTC_TIME_ZONE).apply { timeInMillis = epochMillis }
+            return civilDateUtcMillis(
+                year = utc.get(Calendar.YEAR),
+                monthZeroBased = utc.get(Calendar.MONTH),
+                dayOfMonth = utc.get(Calendar.DAY_OF_MONTH)
+            )
+        }
     }
 }

@@ -84,6 +84,17 @@ internal fun resolveScheduleLayoutMode(availableWidthDp: Float): ScheduleLayoutM
     else -> ScheduleLayoutMode.EXPANDED_TABLE
 }
 
+/**
+ * Selects non-lazy [Column] rendering whenever parent height constraints are unbounded
+ * (e.g., when [CalcPinnedScaffold] switches to outer `verticalScroll` under compact vertical space
+ * such as soft-keyboard IME or landscape split-screen) or when bounded height is < 200dp.
+ * Prevents nesting a [LazyColumn] inside an unbounded vertical scroll container.
+ */
+internal fun shouldUseNonLazyLoanLayout(
+    hasBoundedHeight: Boolean,
+    maxHeightDp: Float
+): Boolean = !hasBoundedHeight || maxHeightDp < 200f
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun LoanSection(
@@ -134,11 +145,15 @@ internal fun LoanSection(
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val layoutMode = resolveScheduleLayoutMode(maxWidth.value)
+        val useNonLazyLayout = shouldUseNonLazyLoanLayout(
+            hasBoundedHeight = constraints.hasBoundedHeight,
+            maxHeightDp = maxHeight.value
+        )
 
-        if (maxHeight < 200.dp) {
+        if (useNonLazyLayout) {
             Column(
                 modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 LoanParametersCard(
                     state = state,
@@ -180,13 +195,23 @@ internal fun LoanSection(
                     if (showSchedule) {
                         when (layoutMode) {
                             ScheduleLayoutMode.EXPANDED_TABLE -> {
-                                ExpandedScheduleTableHeader(result = activeResult)
-                                visibleRows.forEachIndexed { idx, row ->
-                                    ExpandedScheduleTableRow(
-                                        row = row,
-                                        currency = activeResult.currency,
+                                // Contiguous table unit: zero vertical gaps between header, rows, and footer
+                                Column(modifier = Modifier.fillMaxWidth()) {
+                                    ExpandedScheduleTableHeader(result = activeResult)
+                                    visibleRows.forEachIndexed { idx, row ->
+                                        ExpandedScheduleTableRow(
+                                            row = row,
+                                            currency = activeResult.currency,
+                                            locale = locale,
+                                            isAlternate = idx % 2 == 1
+                                        )
+                                    }
+                                    ScheduleTotalsFooterCard(
+                                        result = activeResult,
                                         locale = locale,
-                                        isAlternate = idx % 2 == 1
+                                        layoutMode = layoutMode,
+                                        showAllPeriods = showAllPeriods,
+                                        onToggleShowAll = { showAllPeriods = !showAllPeriods }
                                     )
                                 }
                             }
@@ -202,6 +227,13 @@ internal fun LoanSection(
                                         onTogglePeriod = toggleExpandedPeriod
                                     )
                                 }
+                                ScheduleTotalsFooterCard(
+                                    result = activeResult,
+                                    locale = locale,
+                                    layoutMode = layoutMode,
+                                    showAllPeriods = showAllPeriods,
+                                    onToggleShowAll = { showAllPeriods = !showAllPeriods }
+                                )
                             }
                             ScheduleLayoutMode.COMPACT_CARDS -> {
                                 ScheduleCaptionBanner(result = activeResult, isCardLayout = true)
@@ -214,76 +246,88 @@ internal fun LoanSection(
                                         onToggleExpand = { toggleExpandedPeriod(row.period) }
                                     )
                                 }
+                                ScheduleTotalsFooterCard(
+                                    result = activeResult,
+                                    locale = locale,
+                                    layoutMode = layoutMode,
+                                    showAllPeriods = showAllPeriods,
+                                    onToggleShowAll = { showAllPeriods = !showAllPeriods }
+                                )
                             }
                         }
-                        ScheduleTotalsFooterCard(
-                            result = activeResult,
-                            locale = locale,
-                            layoutMode = layoutMode,
-                            showAllPeriods = showAllPeriods,
-                            onToggleShowAll = { showAllPeriods = !showAllPeriods }
-                        )
                     }
                 }
                 Spacer(Modifier.height(12.dp))
             }
         } else {
+            // Spacing is applied per-item so EXPANDED_TABLE header, rows, and totals footer render contiguously (0dp gap).
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
                 contentPadding = PaddingValues(bottom = 16.dp)
             ) {
                 item(key = "loan_params") {
-                    LoanParametersCard(
-                        state = state,
-                        locale = locale,
-                        onCurrencySelected = onCurrencySelected,
-                        onLoanSimulationModeSelected = onLoanSimulationModeSelected,
-                        onAmortizationSystemSelected = onAmortizationSystemSelected,
-                        onPaymentFrequencySelected = onPaymentFrequencySelected,
-                        onLoanTermUnitSelected = onLoanTermUnitSelected,
-                        onRateConventionSelected = onRateConventionSelected,
-                        onAmountChange = onAmountChange,
-                        onDownPaymentChange = onDownPaymentChange,
-                        onInterestRateChange = onInterestRateChange,
-                        onYearsChange = onYearsChange
-                    )
+                    Column(modifier = Modifier.padding(bottom = 12.dp)) {
+                        LoanParametersCard(
+                            state = state,
+                            locale = locale,
+                            onCurrencySelected = onCurrencySelected,
+                            onLoanSimulationModeSelected = onLoanSimulationModeSelected,
+                            onAmortizationSystemSelected = onAmortizationSystemSelected,
+                            onPaymentFrequencySelected = onPaymentFrequencySelected,
+                            onLoanTermUnitSelected = onLoanTermUnitSelected,
+                            onRateConventionSelected = onRateConventionSelected,
+                            onAmountChange = onAmountChange,
+                            onDownPaymentChange = onDownPaymentChange,
+                            onInterestRateChange = onInterestRateChange,
+                            onYearsChange = onYearsChange
+                        )
+                    }
                 }
                 if (activeResult != null) {
                     if (isComparisonMode && comparison != null) {
                         item(key = "loan_comparison") {
-                            LoanComparisonCard(comparison = comparison, locale = locale)
+                            Column(modifier = Modifier.padding(bottom = 12.dp)) {
+                                LoanComparisonCard(comparison = comparison, locale = locale)
+                            }
                         }
                     } else {
                         item(key = "loan_summary") {
-                            LoanSummaryCard(result = activeResult, locale = locale)
+                            Column(modifier = Modifier.padding(bottom = 12.dp)) {
+                                LoanSummaryCard(result = activeResult, locale = locale)
+                            }
                         }
                     }
 
                     item(key = "loan_charts") {
-                        LoanChartsCard(
-                            result = activeResult,
-                            comparison = comparison,
-                            locale = locale,
-                            preferComparisonTab = isComparisonMode
-                        )
-                    }
-
-                    if (isComparisonMode) {
-                        item(key = "loan_comparison_schedule_selector") {
-                            ComparisonScheduleSystemSelector(
-                                selectedSystem = state.amortizationSystem,
-                                onSelected = onAmortizationSystemSelected
+                        Column(modifier = Modifier.padding(bottom = 12.dp)) {
+                            LoanChartsCard(
+                                result = activeResult,
+                                comparison = comparison,
+                                locale = locale,
+                                preferComparisonTab = isComparisonMode
                             )
                         }
                     }
 
+                    if (isComparisonMode) {
+                        item(key = "loan_comparison_schedule_selector") {
+                            Column(modifier = Modifier.padding(bottom = 12.dp)) {
+                                ComparisonScheduleSystemSelector(
+                                    selectedSystem = state.amortizationSystem,
+                                    onSelected = onAmortizationSystemSelected
+                                )
+                            }
+                        }
+                    }
+
                     item(key = "loan_schedule_toggle") {
-                        ScheduleToggleButton(
-                            scheduleSize = activeResult.schedule.size,
-                            showSchedule = showSchedule,
-                            onToggle = { showSchedule = !showSchedule }
-                        )
+                        Column(modifier = Modifier.padding(bottom = 12.dp)) {
+                            ScheduleToggleButton(
+                                scheduleSize = activeResult.schedule.size,
+                                showSchedule = showSchedule,
+                                onToggle = { showSchedule = !showSchedule }
+                            )
+                        }
                     }
 
                     if (showSchedule) {
@@ -303,52 +347,77 @@ internal fun LoanSection(
                                         isAlternate = idx % 2 == 1
                                     )
                                 }
+                                item(key = "loan_schedule_footer") {
+                                    ScheduleTotalsFooterCard(
+                                        result = activeResult,
+                                        locale = locale,
+                                        layoutMode = layoutMode,
+                                        showAllPeriods = showAllPeriods,
+                                        onToggleShowAll = { showAllPeriods = !showAllPeriods }
+                                    )
+                                }
                             }
                             ScheduleLayoutMode.MEDIUM_COMPACT -> {
                                 item(key = "loan_schedule_caption") {
-                                    ScheduleCaptionBanner(result = activeResult, isCardLayout = true)
+                                    Column(modifier = Modifier.padding(bottom = 10.dp)) {
+                                        ScheduleCaptionBanner(result = activeResult, isCardLayout = true)
+                                    }
                                 }
                                 items(
                                     items = pairedRows,
                                     key = { pair -> "loan_pair_${activeResult.system.name}_${pair.first().period}" }
                                 ) { pair ->
-                                    InstallmentCardPairRow(
-                                        left = pair[0],
-                                        right = pair.getOrNull(1),
-                                        currency = activeResult.currency,
+                                    Column(modifier = Modifier.padding(bottom = 10.dp)) {
+                                        InstallmentCardPairRow(
+                                            left = pair[0],
+                                            right = pair.getOrNull(1),
+                                            currency = activeResult.currency,
+                                            locale = locale,
+                                            expandedPeriods = expandedPeriods,
+                                            onTogglePeriod = toggleExpandedPeriod
+                                        )
+                                    }
+                                }
+                                item(key = "loan_schedule_footer") {
+                                    ScheduleTotalsFooterCard(
+                                        result = activeResult,
                                         locale = locale,
-                                        expandedPeriods = expandedPeriods,
-                                        onTogglePeriod = toggleExpandedPeriod
+                                        layoutMode = layoutMode,
+                                        showAllPeriods = showAllPeriods,
+                                        onToggleShowAll = { showAllPeriods = !showAllPeriods }
                                     )
                                 }
                             }
                             ScheduleLayoutMode.COMPACT_CARDS -> {
                                 item(key = "loan_schedule_caption") {
-                                    ScheduleCaptionBanner(result = activeResult, isCardLayout = true)
+                                    Column(modifier = Modifier.padding(bottom = 10.dp)) {
+                                        ScheduleCaptionBanner(result = activeResult, isCardLayout = true)
+                                    }
                                 }
                                 items(
                                     items = visibleRows,
                                     key = { row -> "loan_card_${activeResult.system.name}_${row.period}" }
                                 ) { row ->
-                                    InstallmentExpandableCard(
-                                        row = row,
-                                        currency = activeResult.currency,
+                                    Column(modifier = Modifier.padding(bottom = 10.dp)) {
+                                        InstallmentExpandableCard(
+                                            row = row,
+                                            currency = activeResult.currency,
+                                            locale = locale,
+                                            expanded = row.period in expandedPeriods,
+                                            onToggleExpand = { toggleExpandedPeriod(row.period) }
+                                        )
+                                    }
+                                }
+                                item(key = "loan_schedule_footer") {
+                                    ScheduleTotalsFooterCard(
+                                        result = activeResult,
                                         locale = locale,
-                                        expanded = row.period in expandedPeriods,
-                                        onToggleExpand = { toggleExpandedPeriod(row.period) }
+                                        layoutMode = layoutMode,
+                                        showAllPeriods = showAllPeriods,
+                                        onToggleShowAll = { showAllPeriods = !showAllPeriods }
                                     )
                                 }
                             }
-                        }
-
-                        item(key = "loan_schedule_footer") {
-                            ScheduleTotalsFooterCard(
-                                result = activeResult,
-                                locale = locale,
-                                layoutMode = layoutMode,
-                                showAllPeriods = showAllPeriods,
-                                onToggleShowAll = { showAllPeriods = !showAllPeriods }
-                            )
                         }
                     }
                 }
@@ -798,4 +867,13 @@ internal fun PaymentFrequency.installmentNounRes(): Int = when (this) {
     PaymentFrequency.QUARTERLY -> R.string.finance_installment_quarterly
     PaymentFrequency.SEMIANNUAL -> R.string.finance_installment_semiannual
     PaymentFrequency.ANNUAL -> R.string.finance_installment_annual
+}
+
+@StringRes
+internal fun PaymentFrequency.installmentContextualNounRes(): Int = when (this) {
+    PaymentFrequency.MONTHLY -> R.string.finance_installment_contextual_monthly
+    PaymentFrequency.SEMIMONTHLY -> R.string.finance_installment_contextual_semimonthly
+    PaymentFrequency.QUARTERLY -> R.string.finance_installment_contextual_quarterly
+    PaymentFrequency.SEMIANNUAL -> R.string.finance_installment_contextual_semiannual
+    PaymentFrequency.ANNUAL -> R.string.finance_installment_contextual_annual
 }

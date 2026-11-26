@@ -12,6 +12,7 @@ import java.text.DateFormat
 import java.text.NumberFormat
 import java.util.Date
 import java.util.Locale
+import java.util.TimeZone
 import kotlin.math.abs
 
 @Composable
@@ -112,6 +113,42 @@ fun formatMoneyPlain(value: Double, currency: FinanceCurrency, locale: Locale): 
 }
 
 /**
+ * Formats a monetary magnitude concisely for chart Y-axis ticks (e.g. "0", "75k", "600k", "1.2M")
+ * so large loan balances never truncate with ellipsis on narrow phone screens.
+ */
+fun formatCompactMoneyAxis(value: Double, currency: FinanceCurrency, locale: Locale): String {
+    val safeValue = if (!value.isFinite() || abs(value) < 1e-9) 0.0 else value
+    val absValue = abs(safeValue)
+    val sign = if (safeValue < 0.0) "-" else ""
+
+    fun formatScaled(scaled: Double, suffix: String, maxFrac: Int): String {
+        val nf = NumberFormat.getNumberInstance(locale).apply {
+            roundingMode = RoundingMode.HALF_UP
+            isGroupingUsed = false
+            minimumFractionDigits = 0
+            maximumFractionDigits = maxFrac
+        }
+        return "$sign${nf.format(scaled)}$suffix"
+    }
+
+    return when {
+        absValue == 0.0 -> "0"
+        absValue >= 1_000_000_000.0 -> formatScaled(absValue / 1_000_000_000.0, "B", if (absValue >= 100_000_000_000.0) 0 else 1)
+        absValue >= 1_000_000.0 -> formatScaled(absValue / 1_000_000.0, "M", if (absValue >= 100_000_000.0) 0 else 1)
+        absValue >= 1_000.0 -> formatScaled(absValue / 1_000.0, "k", if (absValue >= 100_000.0) 0 else 1)
+        else -> {
+            val nf = NumberFormat.getNumberInstance(locale).apply {
+                roundingMode = RoundingMode.HALF_UP
+                isGroupingUsed = false
+                minimumFractionDigits = 0
+                maximumFractionDigits = if (currency.fractionDigits == 0 || absValue >= 100.0) 0 else 1
+            }
+            "$sign${nf.format(absValue)}"
+        }
+    }
+}
+
+/**
  * Formats a percentage value (already expressed in percent, e.g. 15.0 -> "15%", 0.9489 -> "0.9489%").
  */
 fun formatRatePercent(percentValue: Double, locale: Locale, maxFraction: Int = 4): String {
@@ -126,11 +163,13 @@ fun formatRatePercent(percentValue: Double, locale: Locale, maxFraction: Int = 4
 }
 
 /**
- * Formats an epoch millisecond timestamp as a concise localized calendar date
- * (e.g., "Nov 26, 2026" or "26 nov 2026").
+ * Formats a canonical UTC civil-date epoch timestamp (`00:00:00.000 UTC`) as a concise localized
+ * calendar date (e.g., "Nov 26, 2026" or "26 nov 2026"), invariant to the device default timezone.
  */
 fun formatShortDate(epochMillis: Long, locale: Locale): String =
-    DateFormat.getDateInstance(DateFormat.MEDIUM, locale).format(Date(epochMillis))
+    DateFormat.getDateInstance(DateFormat.MEDIUM, locale).apply {
+        timeZone = TimeZone.getTimeZone("UTC")
+    }.format(Date(epochMillis))
 
 private fun resolveCurrencyLocale(locale: Locale): Locale {
     if (locale.country.isNotEmpty()) return locale

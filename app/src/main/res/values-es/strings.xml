@@ -259,10 +259,20 @@
     <string name="finance_installment_semiannual">Cuota semestral</string>
     <string name="finance_installment_annual">Cuota anual</string>
 
+    <string name="finance_installment_contextual_monthly">Cuota mensual</string>
+    <string name="finance_installment_contextual_semimonthly">Cuota quincenal</string>
+    <string name="finance_installment_contextual_quarterly">Cuota trimestral</string>
+    <string name="finance_installment_contextual_semiannual">Cuota semestral</string>
+    <string name="finance_installment_contextual_annual">Cuota anual</string>
+
     <string name="finance_term_unit_years">Años</string>
     <string name="finance_term_unit_periods">Cuotas</string>
     <string name="finance_term_periods">Plazo (cuotas)</string>
-    <string name="finance_term_summary_years_fmt">%1$d años (%2$d cuotas)</string>
+    <plurals name="finance_term_years_count">
+        <item quantity="one">%d año</item>
+        <item quantity="other">%d años</item>
+    </plurals>
+    <string name="finance_term_summary_years_fmt">%1$s (%2$s)</string>
     <plurals name="finance_term_summary_periods">
         <item quantity="one">%d cuota</item>
         <item quantity="other">%d cuotas</item>
@@ -301,9 +311,11 @@
     <string name="finance_loan_effective_rate">Tasa efectiva anual (TEA)</string>
     <string name="finance_total_interest">Total de intereses</string>
     <string name="finance_total_payment">Total pagado</string>
+    <string name="finance_total_installments_paid">Total pagado en cuotas</string>
+    <string name="finance_total_outflow_with_down_payment">Desembolso total (con prima)</string>
 
     <string name="finance_comparison_title">Comparación: Francés vs. Alemán</string>
-    <string name="finance_comparison_context">Capital %1$s · %2$s · %3$s · %4$d cuotas</string>
+    <string name="finance_comparison_context">Capital %1$s · %2$s · %3$s · %4$s</string>
     <string name="finance_comparison_down_payment_note">Solicitado %1$s menos prima de %2$s</string>
     <string name="finance_comparison_differences_title">Diferencias (Francés − Alemán)</string>
     <string name="finance_comparison_interest_diff">Diferencia en intereses</string>
@@ -316,13 +328,14 @@
     <string name="finance_chart_tab_components">Intereses vs. Amort.</string>
     <string name="finance_chart_tab_comparison">Francés vs. Alemán</string>
     <string name="finance_chart_legend_balance">Saldo pendiente</string>
+    <string name="finance_chart_scale_peak">Máx.: %1$s</string>
 
     <string name="finance_hide_schedule">Ocultar plan de pagos</string>
     <plurals name="finance_show_schedule">
         <item quantity="one">Ver plan de pagos (%d cuota)</item>
         <item quantity="other">Ver plan de pagos (%d cuotas)</item>
     </plurals>
-    <string name="finance_schedule_currency_caption">Importes en %1$s (%2$s) · %3$d cuotas</string>
+    <string name="finance_schedule_currency_caption">Importes en %1$s (%2$s) · %3$s</string>
     <string name="finance_schedule_tap_expand_hint">Toca una cuota para ver el desglose completo</string>
     <string name="cd_finance_expand_installment">Expandir detalle de la cuota %1$d</string>
     <string name="cd_finance_collapse_installment">Contraer detalle de la cuota %1$d</string>
