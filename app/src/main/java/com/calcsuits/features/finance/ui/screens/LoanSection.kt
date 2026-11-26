@@ -55,6 +55,7 @@ import com.calcsuits.domain.model.finance.FinanceCurrency
 import com.calcsuits.domain.model.finance.LoanSimulationMode
 import com.calcsuits.domain.model.finance.LoanTermUnit
 import com.calcsuits.domain.model.finance.PaymentFrequency
+import com.calcsuits.domain.model.finance.RateCompoundingFrequency
 import com.calcsuits.domain.model.finance.RateConvention
 import com.calcsuits.features.finance.ui.viewmodel.FinanceState
 import com.calcsuits.ui.components.CalcCard
@@ -129,6 +130,7 @@ internal fun LoanSection(
     onLoanSimulationModeSelected: (LoanSimulationMode) -> Unit,
     onAmortizationSystemSelected: (AmortizationSystem) -> Unit,
     onPaymentFrequencySelected: (PaymentFrequency) -> Unit,
+    onCompoundingFrequencySelected: (RateCompoundingFrequency) -> Unit,
     onLoanTermUnitSelected: (LoanTermUnit) -> Unit,
     onRateConventionSelected: (RateConvention) -> Unit,
     onAmountChange: (String) -> Unit,
@@ -195,6 +197,7 @@ internal fun LoanSection(
                     onLoanSimulationModeSelected = onLoanSimulationModeSelected,
                     onAmortizationSystemSelected = onAmortizationSystemSelected,
                     onPaymentFrequencySelected = onPaymentFrequencySelected,
+                    onCompoundingFrequencySelected = onCompoundingFrequencySelected,
                     onLoanTermUnitSelected = onLoanTermUnitSelected,
                     onRateConventionSelected = onRateConventionSelected,
                     onAmountChange = onAmountChange,
@@ -310,6 +313,7 @@ internal fun LoanSection(
                             onLoanSimulationModeSelected = onLoanSimulationModeSelected,
                             onAmortizationSystemSelected = onAmortizationSystemSelected,
                             onPaymentFrequencySelected = onPaymentFrequencySelected,
+                            onCompoundingFrequencySelected = onCompoundingFrequencySelected,
                             onLoanTermUnitSelected = onLoanTermUnitSelected,
                             onRateConventionSelected = onRateConventionSelected,
                             onAmountChange = onAmountChange,
@@ -505,6 +509,7 @@ private fun LoanParametersCard(
     onLoanSimulationModeSelected: (LoanSimulationMode) -> Unit,
     onAmortizationSystemSelected: (AmortizationSystem) -> Unit,
     onPaymentFrequencySelected: (PaymentFrequency) -> Unit,
+    onCompoundingFrequencySelected: (RateCompoundingFrequency) -> Unit,
     onLoanTermUnitSelected: (LoanTermUnit) -> Unit,
     onRateConventionSelected: (RateConvention) -> Unit,
     onAmountChange: (String) -> Unit,
@@ -809,16 +814,55 @@ private fun LoanParametersCard(
                     }
                 }
 
+                if (state.rateConvention == RateConvention.NOMINAL_PER_PAYMENT_PERIOD) {
+                    Text(
+                        text = stringResource(R.string.finance_rate_compounding_label),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        RateCompoundingFrequency.entries.forEach { freq ->
+                            CalcFilterChip(
+                                selected = state.compoundingFrequency == freq,
+                                onClick = { onCompoundingFrequencySelected(freq) },
+                                label = {
+                                    Text(
+                                        text = stringResource(freq.labelRes()),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                },
+                                modifier = Modifier.testTag("loan_rate_comp_${freq.name.lowercase(Locale.ROOT)}")
+                            )
+                        }
+                    }
+                }
+
                 state.loanResult?.let { res ->
                     val periodicPct = formatRatePercent(res.periodicRate * 100.0, locale, maxFraction = 4)
                     val earPct = formatRatePercent(res.effectiveAnnualRate * 100.0, locale, maxFraction = 4)
                     val noteText = if (state.rateConvention == RateConvention.NOMINAL_PER_PAYMENT_PERIOD) {
-                        stringResource(
-                            R.string.finance_rate_note_nominal,
-                            res.paymentFrequency.periodsPerYear,
-                            periodicPct,
-                            earPct
-                        )
+                        if (res.compoundingFrequency.periodsPerYear == res.paymentFrequency.periodsPerYear) {
+                            stringResource(
+                                R.string.finance_rate_note_nominal,
+                                res.compoundingFrequency.periodsPerYear,
+                                periodicPct,
+                                earPct
+                            )
+                        } else {
+                            stringResource(
+                                R.string.finance_rate_note_nominal_split,
+                                res.compoundingFrequency.periodsPerYear,
+                                earPct,
+                                periodicPct,
+                                res.paymentFrequency.periodsPerYear
+                            )
+                        }
                     } else {
                         stringResource(
                             R.string.finance_rate_note_effective,
@@ -885,6 +929,16 @@ internal fun PaymentFrequency.labelRes(): Int = when (this) {
     PaymentFrequency.QUARTERLY -> R.string.finance_pay_freq_quarterly
     PaymentFrequency.SEMIANNUAL -> R.string.finance_pay_freq_semiannual
     PaymentFrequency.ANNUAL -> R.string.finance_pay_freq_annual
+}
+
+@StringRes
+internal fun RateCompoundingFrequency.labelRes(): Int = when (this) {
+    RateCompoundingFrequency.MONTHLY -> R.string.finance_pay_freq_monthly
+    RateCompoundingFrequency.SEMIMONTHLY -> R.string.finance_pay_freq_semimonthly
+    RateCompoundingFrequency.QUARTERLY -> R.string.finance_pay_freq_quarterly
+    RateCompoundingFrequency.SEMIANNUAL -> R.string.finance_pay_freq_semiannual
+    RateCompoundingFrequency.ANNUAL -> R.string.finance_pay_freq_annual
+    RateCompoundingFrequency.DAILY -> R.string.finance_freq_daily
 }
 
 @StringRes

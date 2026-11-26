@@ -32,6 +32,17 @@ import androidx.compose.ui.unit.dp
  * automatically falls back to a single scrollable container so no control or result is
  * clipped or unreachable.
  */
+/**
+ * Determines whether [CalcPinnedScaffold] should combine pinned controls and body into a single
+ * outer vertical scroll container based on the stable window viewport height (measured *before*
+ * soft-keyboard IME insets). Keeping this decision independent of IME height prevents opening
+ * the soft keyboard from switching composition branches and destroying focus on active inputs.
+ */
+internal fun shouldUseCompactPinnedLayout(
+    viewportHeightDp: Float,
+    compactHeightThresholdDp: Float
+): Boolean = viewportHeightDp < compactHeightThresholdDp
+
 @Composable
 fun CalcPinnedScaffold(
     topBar: @Composable () -> Unit,
@@ -55,17 +66,23 @@ fun CalcPinnedScaffold(
         snackbarHost = snackbarHost,
         containerColor = containerColor
     ) { padding ->
-        val rootModifier = Modifier
+        // Measure available height BEFORE imePadding() so opening/animating the soft keyboard
+        // never flips between compact and standard branches or disposes focused text inputs.
+        val viewportModifier = Modifier
             .fillMaxSize()
             .padding(padding)
             .consumeWindowInsets(padding)
-            .let { if (applyImePadding) it.imePadding() else it }
 
-        BoxWithConstraints(modifier = rootModifier) {
-            if (maxHeight < compactHeightThreshold) {
+        BoxWithConstraints(modifier = viewportModifier) {
+            val useCompactLayout = shouldUseCompactPinnedLayout(
+                viewportHeightDp = maxHeight.value,
+                compactHeightThresholdDp = compactHeightThreshold.value
+            )
+            if (useCompactLayout) {
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
+                        .let { if (applyImePadding) it.imePadding() else it }
                         .verticalScroll(scrollState)
                 ) {
                     Column(
@@ -84,7 +101,11 @@ fun CalcPinnedScaffold(
                     )
                 }
             } else {
-                Column(modifier = Modifier.fillMaxSize()) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .let { if (applyImePadding) it.imePadding() else it }
+                ) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()

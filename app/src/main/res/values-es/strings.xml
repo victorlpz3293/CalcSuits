@@ -284,7 +284,9 @@
     <string name="finance_rate_convention_short_tna">TNA</string>
     <string name="finance_rate_convention_short_tea">TEA</string>
     <string name="finance_rate_note_nominal">Tasa nominal anual (TNA) capitalizable según periodicidad de pago: i = TNA / %1$d = %2$s por período (TEA equiv. %3$s).</string>
+    <string name="finance_rate_note_nominal_split">Tasa nominal anual (TNA) con capitalización %1$d/año: TEA = (1 + TNA/%1$d)^%1$d - 1 = %2$s, equivalente a %3$s por cuota (%4$d/año).</string>
     <string name="finance_rate_note_effective">Tasa efectiva anual (TEA) convertida a tasa periódica equivalente: i = (1 + TEA)^(1/%1$d) - 1 = %2$s por período.</string>
+    <string name="finance_rate_compounding_label">Capitalización de la TNA</string>
 
     <string name="finance_loan_principal">Capital del préstamo</string>
     <string name="finance_loan_down_payment_optional">Prima (opcional)</string>

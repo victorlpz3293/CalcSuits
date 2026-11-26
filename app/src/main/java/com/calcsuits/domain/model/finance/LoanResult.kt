@@ -48,7 +48,30 @@ enum class PaymentFrequency(val periodsPerYear: Int) {
     SEMIMONTHLY(24),
     QUARTERLY(4),
     SEMIANNUAL(2),
-    ANNUAL(1)
+    ANNUAL(1);
+
+    fun toCompoundingFrequency(): RateCompoundingFrequency = when (this) {
+        MONTHLY -> RateCompoundingFrequency.MONTHLY
+        SEMIMONTHLY -> RateCompoundingFrequency.SEMIMONTHLY
+        QUARTERLY -> RateCompoundingFrequency.QUARTERLY
+        SEMIANNUAL -> RateCompoundingFrequency.SEMIANNUAL
+        ANNUAL -> RateCompoundingFrequency.ANNUAL
+    }
+}
+
+/**
+ * Nominal rate compounding frequency (number of capitalization periods per year for TNA).
+ * Kept explicitly separate from [PaymentFrequency] so operations whose capitalization schedule
+ * differs from their installment schedule (e.g., 24% TNA compounded monthly with quarterly
+ * installments) are represented and calculated accurately without conflating both periodicities.
+ */
+enum class RateCompoundingFrequency(val periodsPerYear: Int) {
+    MONTHLY(12),
+    SEMIMONTHLY(24),
+    QUARTERLY(4),
+    SEMIANNUAL(2),
+    ANNUAL(1),
+    DAILY(365)
 }
 
 /**
@@ -67,14 +90,15 @@ enum class LoanTermUnit {
  */
 enum class RateConvention {
     /**
-     * Nominal Annual Rate (TNA / APR nominal) capitalized at the same frequency as payments:
-     * i_period = annualRate / periodsPerYear.
+     * Nominal Annual Rate (TNA / APR nominal) compounded [RateCompoundingFrequency.periodsPerYear]
+     * times per year (`c`): `EAR = (1 + TNA / c)^c - 1`, and effective rate per payment period (`p`)
+     * is `i_p = TNA / c` when `c == p` or `i_p = (1 + EAR)^(1 / p) - 1` when `c != p`.
      */
     NOMINAL_PER_PAYMENT_PERIOD,
 
     /**
-     * Effective Annual Rate (TEA / EAR) converted to an equivalent periodic rate:
-     * i_period = (1 + annualRate)^(1 / periodsPerYear) - 1.
+     * Effective Annual Rate (TEA / EAR) converted to an equivalent periodic rate for payment
+     * periodicity `p`: `i_p = (1 + EAR)^(1 / p) - 1`.
      */
     EFFECTIVE_ANNUAL
 }
@@ -99,7 +123,13 @@ data class LoanRequest(
      * milliseconds (see `CalculateLoanUseCase.civilDateUtcMillis`). Used to project due dates
      * deterministically independent of device timezone changes.
      */
-    val issuedAtMillis: Long? = null
+    val issuedAtMillis: Long? = null,
+    /**
+     * Optional compounding frequency for [RateConvention.NOMINAL_PER_PAYMENT_PERIOD] (TNA).
+     * When `null`, defaults to matching [paymentFrequency] for backwards compatibility.
+     * Ignored when [rateConvention] is [RateConvention.EFFECTIVE_ANNUAL] (TEA).
+     */
+    val compoundingFrequency: RateCompoundingFrequency? = null
 )
 
 data class AmortizationRow(
@@ -142,6 +172,7 @@ data class LoanResult(
     val system: AmortizationSystem = AmortizationSystem.FRENCH,
     val paymentFrequency: PaymentFrequency = PaymentFrequency.MONTHLY,
     val rateConvention: RateConvention = RateConvention.NOMINAL_PER_PAYMENT_PERIOD,
+    val compoundingFrequency: RateCompoundingFrequency = paymentFrequency.toCompoundingFrequency(),
     val currency: FinanceCurrency = FinanceCurrencies.USD,
     /** Gross loan amount requested before deducting [downPayment]. */
     val requestedAmount: Double = 0.0,

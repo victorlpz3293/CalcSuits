@@ -142,10 +142,13 @@ class CalculateLoanUseCase @Inject constructor() {
         }
 
         val normalizedIssuedAtMillis = request.issuedAtMillis?.let { normalizeCivilDateUtcMillis(it) }
+        val effectiveCompounding = request.compoundingFrequency
+            ?: request.paymentFrequency.toCompoundingFrequency()
 
         val (periodicRateBd, effectiveAnnualRateBd) = resolveRates(
             annualRatePercent = request.annualRate,
-            periodsPerYear = periodsPerYear,
+            paymentPeriodsPerYear = periodsPerYear,
+            compoundingPeriodsPerYear = effectiveCompounding.periodsPerYear,
             convention = request.rateConvention
         )
 
@@ -193,6 +196,7 @@ class CalculateLoanUseCase @Inject constructor() {
             system = request.system,
             paymentFrequency = request.paymentFrequency,
             rateConvention = request.rateConvention,
+            compoundingFrequency = effectiveCompounding,
             currency = request.currency,
             requestedAmount = requestedBd.toDouble(),
             downPayment = downPaymentBd.toDouble(),
@@ -244,9 +248,96 @@ class CalculateLoanUseCase @Inject constructor() {
         return periodic
     }
 
+    /**
+     * Converts a Nominal Annual Rate (TNA, in percent) compounded [compoundingPeriodsPerYear]
+     * times per year into its equivalent Effective Annual Rate (TEA, as a decimal) in pure
+     * [BigDecimal] ([MathContext.DECIMAL128]): `TEA = (1 + TNA / m)^m - 1`.
+     */
+    fun nominalToEffectiveAnnualRate(
+        nominalAnnualRatePercent: Double,
+        compoundingPeriodsPerYear: Int
+    ): BigDecimal {
+        require(nominalAnnualRatePercent.isFinite() && nominalAnnualRatePercent >= 0.0) {
+            "Nominal annual interest rate must be finite and non-negative"
+        }
+        require(compoundingPeriodsPerYear >= 1) {
+            "Compounding periods per year must be >= 1"
+        }
+        if (nominalAnnualRatePercent == 0.0) return BigDecimal.ZERO
+        val nominalDecimal = BigDecimal.valueOf(nominalAnnualRatePercent)
+            .divide(BigDecimal(100), mathContext)
+        if (compoundingPeriodsPerYear == 1) return nominalDecimal
+        val perCompoundingPeriod = nominalDecimal.divide(BigDecimal(compoundingPeriodsPerYear), mathContext)
+        return BigDecimal.ONE.add(perCompoundingPeriod, mathContext)
+            .pow(compoundingPeriodsPerYear, mathContext)
+            .subtract(BigDecimal.ONE, mathContext)
+    }
+
+    /**
+     * Converts an Effective Annual Rate (TEA, in percent) into its equivalent Nominal Annual Rate
+     * (TNA, as a decimal) compounded [compoundingPeriodsPerYear] times per year in pure
+     * [BigDecimal] ([MathContext.DECIMAL128]): `TNA = m * ((1 + TEA)^(1 / m) - 1)`.
+     */
+    fun effectiveAnnualToNominalRate(
+        effectiveAnnualRatePercent: Double,
+        compoundingPeriodsPerYear: Int
+    ): BigDecimal {
+        val periodic = computeEffectivePeriodicRate(effectiveAnnualRatePercent, compoundingPeriodsPerYear)
+        return periodic.multiply(BigDecimal(compoundingPeriodsPerYear), mathContext)
+    }
+
+    /**
+     * Computes the effective interest rate per payment period (`p = paymentPeriodsPerYear`) for a
+     * Nominal Annual Rate (TNA, in percent) compounded `c = compoundingPeriodsPerYear` times per year:
+     * - When `c == p`: exact `i_p = TNA / c`.
+     * - When `c != p` and `c % p == 0`: exact `i_p = (1 + TNA / c)^(c / p) - 1`.
+     * - Otherwise: `i_p = (1 + EAR)^(1 / p) - 1` via [nthRootBigDecimal] where `1 + EAR = (1 + TNA / c)^c`.
+     */
+    internal fun computePeriodicRateFromNominal(
+        nominalAnnualRatePercent: Double,
+        compoundingPeriodsPerYear: Int,
+        paymentPeriodsPerYear: Int
+    ): Pair<BigDecimal, BigDecimal> {
+        require(nominalAnnualRatePercent.isFinite() && nominalAnnualRatePercent >= 0.0) {
+            "Nominal annual interest rate must be finite and non-negative"
+        }
+        require(compoundingPeriodsPerYear >= 1) {
+            "Compounding periods per year must be >= 1"
+        }
+        require(paymentPeriodsPerYear >= 1) {
+            "Payment periods per year must be >= 1"
+        }
+        if (nominalAnnualRatePercent == 0.0) return BigDecimal.ZERO to BigDecimal.ZERO
+
+        val nominalDecimal = BigDecimal.valueOf(nominalAnnualRatePercent)
+            .divide(BigDecimal(100), mathContext)
+        val ratePerCompounding = nominalDecimal.divide(BigDecimal(compoundingPeriodsPerYear), mathContext)
+        val onePlusComp = BigDecimal.ONE.add(ratePerCompounding, mathContext)
+        val onePlusEar = if (compoundingPeriodsPerYear == 1) {
+            onePlusComp
+        } else {
+            onePlusComp.pow(compoundingPeriodsPerYear, mathContext)
+        }
+        val earBd = onePlusEar.subtract(BigDecimal.ONE, mathContext)
+
+        val periodicRate = when {
+            compoundingPeriodsPerYear == paymentPeriodsPerYear -> ratePerCompounding
+            paymentPeriodsPerYear == 1 -> earBd
+            compoundingPeriodsPerYear % paymentPeriodsPerYear == 0 -> {
+                val ratio = compoundingPeriodsPerYear / paymentPeriodsPerYear
+                onePlusComp.pow(ratio, mathContext).subtract(BigDecimal.ONE, mathContext)
+            }
+            else -> {
+                nthRootBigDecimal(onePlusEar, paymentPeriodsPerYear).subtract(BigDecimal.ONE, mathContext)
+            }
+        }
+        return periodicRate to earBd
+    }
+
     private fun resolveRates(
         annualRatePercent: Double,
-        periodsPerYear: Int,
+        paymentPeriodsPerYear: Int,
+        compoundingPeriodsPerYear: Int,
         convention: RateConvention
     ): Pair<BigDecimal, BigDecimal> {
         if (annualRatePercent == 0.0) {
@@ -257,14 +348,14 @@ class CalculateLoanUseCase @Inject constructor() {
 
         return when (convention) {
             RateConvention.NOMINAL_PER_PAYMENT_PERIOD -> {
-                val periodic = annualDecimal.divide(BigDecimal(periodsPerYear), mathContext)
-                val earBd = BigDecimal.ONE.add(periodic, mathContext)
-                    .pow(periodsPerYear, mathContext)
-                    .subtract(BigDecimal.ONE, mathContext)
-                periodic to earBd
+                computePeriodicRateFromNominal(
+                    nominalAnnualRatePercent = annualRatePercent,
+                    compoundingPeriodsPerYear = compoundingPeriodsPerYear,
+                    paymentPeriodsPerYear = paymentPeriodsPerYear
+                )
             }
             RateConvention.EFFECTIVE_ANNUAL -> {
-                val periodic = computeEffectivePeriodicRate(annualRatePercent, periodsPerYear)
+                val periodic = computeEffectivePeriodicRate(annualRatePercent, paymentPeriodsPerYear)
                 periodic to annualDecimal
             }
         }
@@ -283,16 +374,20 @@ class CalculateLoanUseCase @Inject constructor() {
 
         val base10Exponent = value.precision() - value.scale() - 1
         return when {
-            // For 1 < value < 10 (0% < TEA < 900%), Bernoulli's inequality guarantees
-            // (1 + (value - 1) / m)^m >= value, yielding a tight upper bound.
-            value > BigDecimal.ONE && base10Exponent <= 0 -> {
+            // For value > 1, both Bernoulli's inequality (1 + (value - 1)/m)^m >= value and
+            // 10^ceil((e + 1)/m) > value^(1/m) are strict upper bounds. Taking the smaller of the
+            // two gives a tight seed across both high degrees (e.g. m = 365 at 1000% TEA) and
+            // astronomical magnitudes (e.g. 1E400).
+            value > BigDecimal.ONE -> {
                 val delta = value.subtract(BigDecimal.ONE, mathContext)
-                BigDecimal.ONE.add(delta.divide(BigDecimal(degree), mathContext), mathContext)
-            }
-            // For value >= 10, value < 10^(e + 1), so 10^ceil((e + 1) / m) > value^(1 / m).
-            value >= BigDecimal.TEN -> {
-                val shift = (base10Exponent + degree) / degree
-                BigDecimal.ONE.movePointRight(shift)
+                val bernoulliBound = BigDecimal.ONE.add(delta.divide(BigDecimal(degree), mathContext), mathContext)
+                if (base10Exponent <= 0) {
+                    bernoulliBound
+                } else {
+                    val shift = (base10Exponent + degree) / degree
+                    val powerOfTenBound = BigDecimal.ONE.movePointRight(shift)
+                    bernoulliBound.min(powerOfTenBound)
+                }
             }
             // For 0 < value < 1, value < 10^(e + 1) <= 1, so 10^(-floor((-e - 1) / m)) > value^(1 / m).
             else -> {

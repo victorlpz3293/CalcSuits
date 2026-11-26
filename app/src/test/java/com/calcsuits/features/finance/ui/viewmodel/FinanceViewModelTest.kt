@@ -5,6 +5,7 @@ import com.calcsuits.domain.model.finance.FinanceCurrencies
 import com.calcsuits.domain.model.finance.LoanSimulationMode
 import com.calcsuits.domain.model.finance.LoanTermUnit
 import com.calcsuits.domain.model.finance.PaymentFrequency
+import com.calcsuits.domain.model.finance.RateCompoundingFrequency
 import com.calcsuits.domain.model.finance.RateConvention
 import com.calcsuits.domain.usecase.CalculateLoanUseCase
 import com.calcsuits.features.finance.ui.screens.MAX_NON_LAZY_SCHEDULE_ROWS
@@ -13,6 +14,7 @@ import com.calcsuits.features.finance.ui.screens.resolveScheduleLayoutMode
 import com.calcsuits.features.finance.ui.screens.resolveVisibleScheduleRows
 import com.calcsuits.features.finance.ui.screens.shouldUseNonLazyLoanLayout
 import com.calcsuits.features.finance.ui.screens.shouldUseStackedComparisonLayout
+import com.calcsuits.ui.components.shouldUseCompactPinnedLayout
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -405,5 +407,82 @@ class FinanceViewModelTest {
 
         viewModel.onTaxBaseChange("")
         assertNull(viewModel.state.value.taxResult)
+    }
+
+    @Test
+    fun compoundingFrequencyCanBeConfiguredIndependentlyFromPaymentPeriodicityAndPreservesUserChoice() {
+        // Default: compounding follows payment periodicity
+        assertEquals(PaymentFrequency.MONTHLY, viewModel.state.value.paymentFrequency)
+        assertEquals(RateCompoundingFrequency.MONTHLY, viewModel.state.value.compoundingFrequency)
+        assertTrue(viewModel.state.value.compoundingFollowsPayment)
+
+        // Changing payment frequency while coupled keeps compounding synced (standard TNA/m convention)
+        viewModel.onInterestRateChange("24")
+        viewModel.onPaymentFrequencySelected(PaymentFrequency.QUARTERLY)
+        assertEquals(RateCompoundingFrequency.QUARTERLY, viewModel.state.value.compoundingFrequency)
+        assertEquals(0.06, viewModel.state.value.loanResult!!.periodicRate, 1e-12)
+
+        // Explicitly choosing monthly compounding with quarterly payments decouples the two periodicities
+        viewModel.onCompoundingFrequencySelected(RateCompoundingFrequency.MONTHLY)
+        val splitState = viewModel.state.value
+        assertFalse(splitState.compoundingFollowsPayment)
+        assertEquals(PaymentFrequency.QUARTERLY, splitState.paymentFrequency)
+        assertEquals(RateCompoundingFrequency.MONTHLY, splitState.compoundingFrequency)
+        // 24% TNA compounded monthly -> i_q = (1.02)^3 - 1 = 0.061208, TEA = (1.02)^12 - 1 ≈ 0.26824179
+        assertEquals(0.061208, splitState.loanResult!!.periodicRate, 1e-12)
+        assertEquals(0.268241794562545, splitState.loanResult!!.effectiveAnnualRate, 1e-12)
+
+        // Subsequent payment frequency change preserves user's explicit monthly compounding choice
+        viewModel.onPaymentFrequencySelected(PaymentFrequency.SEMIANNUAL)
+        val updatedState = viewModel.state.value
+        assertEquals(PaymentFrequency.SEMIANNUAL, updatedState.paymentFrequency)
+        assertEquals(RateCompoundingFrequency.MONTHLY, updatedState.compoundingFrequency)
+        // i_s = (1.02)^6 - 1 = 0.126162419264
+        assertEquals(0.126162419264, updatedState.loanResult!!.periodicRate, 1e-12)
+    }
+
+    @Test
+    fun pinnedScaffoldCompactLayoutDecisionDependsOnlyOnViewportHeightNotImeInsets() {
+        // Portrait phones (~680–840dp viewport before IME) and Finance/Engineering threshold (200dp)
+        assertFalse(shouldUseCompactPinnedLayout(viewportHeightDp = 760f, compactHeightThresholdDp = 200f))
+        assertFalse(shouldUseCompactPinnedLayout(viewportHeightDp = 300f, compactHeightThresholdDp = 200f))
+        assertFalse(shouldUseCompactPinnedLayout(viewportHeightDp = 200f, compactHeightThresholdDp = 200f))
+        // Multi-window / split-screen genuinely below threshold uses compact scroll layout
+        assertTrue(shouldUseCompactPinnedLayout(viewportHeightDp = 199.9f, compactHeightThresholdDp = 200f))
+        // Converter threshold (420dp) matches existing behavior
+        assertTrue(shouldUseCompactPinnedLayout(viewportHeightDp = 360f, compactHeightThresholdDp = 420f))
+        assertFalse(shouldUseCompactPinnedLayout(viewportHeightDp = 760f, compactHeightThresholdDp = 420f))
+    }
+
+    @Test
+    fun loanFieldStatePersistsAcrossTabModeSystemAndCurrencyChanges() {
+        viewModel.onAmountChange("250000")
+        viewModel.onDownPaymentChange("50000")
+        viewModel.onInterestRateChange("18.5")
+        viewModel.onYearsChange("5")
+        viewModel.onPaymentFrequencySelected(PaymentFrequency.QUARTERLY)
+        viewModel.onCompoundingFrequencySelected(RateCompoundingFrequency.MONTHLY)
+        viewModel.onRateConventionSelected(RateConvention.NOMINAL_PER_PAYMENT_PERIOD)
+
+        viewModel.onTabSelected(FinanceTab.INTEREST)
+        viewModel.onTabSelected(FinanceTab.TAX)
+        viewModel.onTabSelected(FinanceTab.LOAN)
+        viewModel.onLoanSimulationModeSelected(LoanSimulationMode.COMPARISON)
+        viewModel.onAmortizationSystemSelected(AmortizationSystem.GERMAN)
+        viewModel.onCurrencySelected(FinanceCurrencies.NIO)
+        viewModel.onLoanSimulationModeSelected(LoanSimulationMode.INDIVIDUAL)
+
+        val restored = viewModel.state.value
+        assertEquals("250000", restored.amount)
+        assertEquals("50000", restored.downPayment)
+        assertEquals("18.5", restored.interestRate)
+        assertEquals("5", restored.years)
+        assertEquals(PaymentFrequency.QUARTERLY, restored.paymentFrequency)
+        assertEquals(RateCompoundingFrequency.MONTHLY, restored.compoundingFrequency)
+        assertEquals(RateConvention.NOMINAL_PER_PAYMENT_PERIOD, restored.rateConvention)
+        assertEquals(AmortizationSystem.GERMAN, restored.amortizationSystem)
+        assertEquals(FinanceCurrencies.NIO, restored.selectedCurrency)
+        assertNotNull(restored.loanResult)
+        assertEquals(200_000.0, restored.loanResult!!.principalAmount, 1e-6)
     }
 }

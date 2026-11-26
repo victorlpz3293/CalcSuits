@@ -7,6 +7,7 @@ import com.calcsuits.domain.model.finance.LoanRequest
 import com.calcsuits.domain.model.finance.LoanResult
 import com.calcsuits.domain.model.finance.LoanTermUnit
 import com.calcsuits.domain.model.finance.PaymentFrequency
+import com.calcsuits.domain.model.finance.RateCompoundingFrequency
 import com.calcsuits.domain.model.finance.RateConvention
 import com.calcsuits.ui.util.formatCompactMoneyAxis
 import com.calcsuits.ui.util.formatMoney
@@ -1066,6 +1067,235 @@ class CalculateLoanUseCaseTest {
         } catch (_: ArithmeticException) {
             // Expected controlled exception
         }
+    }
+
+    @Test
+    fun nominal24PercentMonthlyMatchesExact26Point8242TeaAndProducesIdenticalSchedulesUnderEquivalence() {
+        val mc = MathContext.DECIMAL128
+        val expectedTeaBd = useCase.nominalToEffectiveAnnualRate(24.0, 12)
+        // Exact (1 + 0.24 / 12)^12 - 1 = 1.02^12 - 1 = 0.268241794562545163644928 (24 decimal places)
+        assertEquals(0.268241794562545, expectedTeaBd.toDouble(), 1e-12)
+        assertEquals(BigDecimal("26.8242"), expectedTeaBd.multiply(BigDecimal(100), mc).setScale(4, RoundingMode.HALF_UP))
+
+        // Pure BigDecimal round-trip equivalence: (1 + exactTEA)^(1/12) - 1 == exact 0.02 to DECIMAL128 precision
+        val exactPeriodicFromTea = useCase.nthRootBigDecimal(BigDecimal.ONE.add(expectedTeaBd, mc), 12)
+            .subtract(BigDecimal.ONE, mc)
+        assertTrue(
+            "Pure BigDecimal periodic equivalence error exceeded 1E-30",
+            exactPeriodicFromTea.subtract(BigDecimal("0.02"), mc).abs() <= BigDecimal("1E-30")
+        )
+
+        val equivalentTeaPercent = expectedTeaBd.multiply(BigDecimal(100), mc).toDouble()
+
+        for (system in AmortizationSystem.simulatorSystems) {
+            val nominal24 = useCase(
+                LoanRequest(
+                    amount = 100_000.0,
+                    annualRate = 24.0,
+                    termValue = 2,
+                    termUnit = LoanTermUnit.YEARS,
+                    paymentFrequency = PaymentFrequency.MONTHLY,
+                    compoundingFrequency = RateCompoundingFrequency.MONTHLY,
+                    system = system,
+                    rateConvention = RateConvention.NOMINAL_PER_PAYMENT_PERIOD,
+                    currency = FinanceCurrencies.USD
+                )
+            )
+            val effective24 = useCase(
+                LoanRequest(
+                    amount = 100_000.0,
+                    annualRate = 24.0,
+                    termValue = 2,
+                    termUnit = LoanTermUnit.YEARS,
+                    paymentFrequency = PaymentFrequency.MONTHLY,
+                    system = system,
+                    rateConvention = RateConvention.EFFECTIVE_ANNUAL,
+                    currency = FinanceCurrencies.USD
+                )
+            )
+            val equivalentTeaLoan = useCase(
+                LoanRequest(
+                    amount = 100_000.0,
+                    annualRate = equivalentTeaPercent,
+                    termValue = 2,
+                    termUnit = LoanTermUnit.YEARS,
+                    paymentFrequency = PaymentFrequency.MONTHLY,
+                    system = system,
+                    rateConvention = RateConvention.EFFECTIVE_ANNUAL,
+                    currency = FinanceCurrencies.USD
+                )
+            )
+
+            // 24% TNA monthly -> 2.00% monthly, TEA ≈ 26.8242%
+            assertEquals(0.02, nominal24.periodicRate, 1e-12)
+            assertEquals(0.268241794562545, nominal24.effectiveAnnualRate, 1e-12)
+
+            // 24% TEA monthly -> (1.24)^(1/12) - 1 ≈ 1.808758%, strictly less total interest than 24% TNA
+            assertEquals(1.24.pow(1.0 / 12.0) - 1.0, effective24.periodicRate, 1e-12)
+            assertEquals(0.24, effective24.effectiveAnnualRate, 1e-12)
+            assertTrue(effective24.totalInterest < nominal24.totalInterest)
+
+            // Rate equivalence invariant: theoretical annuity and periodic rate match to Double precision;
+            // individual HALF_UP rounded rows may differ by at most 1 minor unit (0.01) only when an
+            // exact .xx5 midpoint encounters the 1-ULP IEEE-754 truncation of the 26-digit TEA input.
+            assertEquals(nominal24.periodicRate, equivalentTeaLoan.periodicRate, 1e-12)
+            assertEquals(nominal24.theoreticalPeriodicPayment, equivalentTeaLoan.theoreticalPeriodicPayment, 1e-9)
+            assertEquals(nominal24.monthlyPayment, equivalentTeaLoan.monthlyPayment, 1e-9)
+            assertEquals(nominal24.totalInterest, equivalentTeaLoan.totalInterest, 0.01 + 1e-9)
+            assertEquals(nominal24.totalPayment, equivalentTeaLoan.totalPayment, 0.01 + 1e-9)
+            assertEquals(nominal24.schedule.size, equivalentTeaLoan.schedule.size)
+            nominal24.schedule.zip(equivalentTeaLoan.schedule).forEach { (nomRow, teaRow) ->
+                assertEquals(nomRow.payment, teaRow.payment, 0.01 + 1e-9)
+                assertEquals(nomRow.principal, teaRow.principal, 0.01 + 1e-9)
+                assertEquals(nomRow.interest, teaRow.interest, 0.01 + 1e-9)
+                assertEquals(nomRow.balance, teaRow.balance, 0.01 + 1e-9)
+            }
+
+            assertLedgerInvariants(nominal24, expectedPrincipal = 100_000.0, scale = 2)
+            assertLedgerInvariants(effective24, expectedPrincipal = 100_000.0, scale = 2)
+            assertLedgerInvariants(equivalentTeaLoan, expectedPrincipal = 100_000.0, scale = 2)
+        }
+    }
+
+    @Test
+    fun separatedCompoundingAndPaymentPeriodicitiesConvertAccuratelyAndMatchEquivalentTea() {
+        val mc = MathContext.DECIMAL128
+
+        data class SplitCase(
+            val compounding: RateCompoundingFrequency,
+            val payment: PaymentFrequency,
+            val expectedPeriodic: Double,
+            val expectedTea: Double
+        )
+
+        val cases = listOf(
+            // 24% TNA compounded monthly (c=12), quarterly payments (p=4) -> i_q = 1.02^3 - 1 = 0.061208
+            SplitCase(
+                compounding = RateCompoundingFrequency.MONTHLY,
+                payment = PaymentFrequency.QUARTERLY,
+                expectedPeriodic = 1.02.pow(3) - 1.0,
+                expectedTea = 1.02.pow(12) - 1.0
+            ),
+            // 24% TNA compounded semiannually (c=2), monthly payments (p=12) -> TEA = 1.12^2 - 1 = 0.2544
+            SplitCase(
+                compounding = RateCompoundingFrequency.SEMIANNUAL,
+                payment = PaymentFrequency.MONTHLY,
+                expectedPeriodic = 1.2544.pow(1.0 / 12.0) - 1.0,
+                expectedTea = 0.2544
+            ),
+            // 24% TNA compounded daily (c=365), monthly payments (p=12)
+            SplitCase(
+                compounding = RateCompoundingFrequency.DAILY,
+                payment = PaymentFrequency.MONTHLY,
+                expectedPeriodic = (1.0 + 0.24 / 365.0).pow(365.0 / 12.0) - 1.0,
+                expectedTea = (1.0 + 0.24 / 365.0).pow(365) - 1.0
+            ),
+            // 24% TNA compounded monthly (c=12), annual payments (p=1) -> i_a = TEA
+            SplitCase(
+                compounding = RateCompoundingFrequency.MONTHLY,
+                payment = PaymentFrequency.ANNUAL,
+                expectedPeriodic = 1.02.pow(12) - 1.0,
+                expectedTea = 1.02.pow(12) - 1.0
+            )
+        )
+
+        for (c in cases) {
+            val exactTeaPercent = useCase.nominalToEffectiveAnnualRate(24.0, c.compounding.periodsPerYear)
+                .multiply(BigDecimal(100), mc)
+                .toDouble()
+
+            for (system in AmortizationSystem.simulatorSystems) {
+                val nominalSplit = useCase(
+                    LoanRequest(
+                        amount = 50_000.0,
+                        annualRate = 24.0,
+                        termValue = 2,
+                        termUnit = LoanTermUnit.YEARS,
+                        paymentFrequency = c.payment,
+                        compoundingFrequency = c.compounding,
+                        system = system,
+                        rateConvention = RateConvention.NOMINAL_PER_PAYMENT_PERIOD,
+                        currency = FinanceCurrencies.USD
+                    )
+                )
+                val equivalentTea = useCase(
+                    LoanRequest(
+                        amount = 50_000.0,
+                        annualRate = exactTeaPercent,
+                        termValue = 2,
+                        termUnit = LoanTermUnit.YEARS,
+                        paymentFrequency = c.payment,
+                        system = system,
+                        rateConvention = RateConvention.EFFECTIVE_ANNUAL,
+                        currency = FinanceCurrencies.USD
+                    )
+                )
+
+                assertEquals(c.compounding, nominalSplit.compoundingFrequency)
+                assertEquals(c.expectedPeriodic, nominalSplit.periodicRate, 1e-12)
+                assertEquals(c.expectedTea, nominalSplit.effectiveAnnualRate, 1e-12)
+                assertEquals(nominalSplit.totalInterest, equivalentTea.totalInterest, 1e-9)
+                assertEquals(nominalSplit.totalPayment, equivalentTea.totalPayment, 1e-9)
+                nominalSplit.schedule.zip(equivalentTea.schedule).forEach { (a, b) ->
+                    assertEquals(a.payment, b.payment, 1e-9)
+                    assertEquals(a.principal, b.principal, 1e-9)
+                    assertEquals(a.interest, b.interest, 1e-9)
+                    assertEquals(a.balance, b.balance, 1e-9)
+                }
+                assertLedgerInvariants(nominalSplit, expectedPrincipal = 50_000.0, scale = 2)
+            }
+        }
+    }
+
+    @Test
+    fun nominalAndEffectiveAnnualRoundTripCoversAllCompoundingFrequenciesAndExtremeRates() {
+        val mc = MathContext.DECIMAL128
+        val tolerance = BigDecimal("1E-28")
+        val rates = listOf(0.0, 0.5, 12.0, 24.0, 100.0, 300.0)
+
+        for (freq in RateCompoundingFrequency.entries) {
+            val c = freq.periodsPerYear
+            for (ratePercent in rates) {
+                val expectedDecimal = BigDecimal.valueOf(ratePercent).divide(BigDecimal(100), mc)
+
+                // TNA -> TEA -> TNA round-trip
+                val teaFromTna = useCase.nominalToEffectiveAnnualRate(ratePercent, c)
+                val teaPercent = teaFromTna.multiply(BigDecimal(100), mc).toDouble()
+                val recoveredTna = useCase.effectiveAnnualToNominalRate(teaPercent, c)
+                // Double boundary on teaPercent limits exact equality to ~1e-13 when passing via Double;
+                // verify pure BigDecimal nth-root residual directly to <= 1E-28 as well.
+                assertEquals(
+                    "TNA->TEA->TNA mismatch for c=$c, rate=$ratePercent%",
+                    expectedDecimal.toDouble(),
+                    recoveredTna.toDouble(),
+                    1e-12
+                )
+
+                // Direct pure-BigDecimal TEA -> TNA -> TEA round-trip
+                val tnaFromTea = useCase.effectiveAnnualToNominalRate(ratePercent, c)
+                val reconstructedTea = if (c == 1) {
+                    tnaFromTea
+                } else {
+                    BigDecimal.ONE.add(tnaFromTea.divide(BigDecimal(c), mc), mc)
+                        .pow(c, mc)
+                        .subtract(BigDecimal.ONE, mc)
+                }
+                val residual = reconstructedTea.subtract(expectedDecimal, mc).abs()
+                assertTrue(
+                    "TEA->TNA->TEA BigDecimal residual $residual exceeded $tolerance for c=$c, rate=$ratePercent%",
+                    residual <= tolerance
+                )
+            }
+        }
+
+        // Verify extreme 1000% TEA with daily (365) degree converges cleanly via tightened seed
+        val daily1000Tna = useCase.effectiveAnnualToNominalRate(1000.0, 365)
+        val reconstructed1000Tea = BigDecimal.ONE.add(daily1000Tna.divide(BigDecimal(365), mc), mc)
+            .pow(365, mc)
+            .subtract(BigDecimal.ONE, mc)
+        val extremeError = reconstructed1000Tea.subtract(BigDecimal.TEN, mc).abs()
+            .divide(BigDecimal.TEN, mc)
+        assertTrue("Daily 1000% TEA relative error $extremeError exceeded $tolerance", extremeError <= tolerance)
     }
 
     /**

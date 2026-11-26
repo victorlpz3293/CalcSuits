@@ -180,6 +180,12 @@ internal fun LoanSummaryCard(
                 value = "${formatRatePercent(result.annualRatePercent, locale, maxFraction = 4)} ($rateConventionShort)",
                 monospace = true
             )
+            if (result.rateConvention == RateConvention.NOMINAL_PER_PAYMENT_PERIOD) {
+                SummaryMetadataRow(
+                    label = stringResource(R.string.finance_rate_compounding_label),
+                    value = stringResource(result.compoundingFrequency.labelRes())
+                )
+            }
             SummaryMetadataRow(
                 label = stringResource(R.string.finance_payment_frequency),
                 value = stringResource(result.paymentFrequency.labelRes())

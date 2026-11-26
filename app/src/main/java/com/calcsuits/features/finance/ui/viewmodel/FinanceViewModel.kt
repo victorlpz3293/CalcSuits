@@ -12,6 +12,7 @@ import com.calcsuits.domain.model.finance.LoanResult
 import com.calcsuits.domain.model.finance.LoanSimulationMode
 import com.calcsuits.domain.model.finance.LoanTermUnit
 import com.calcsuits.domain.model.finance.PaymentFrequency
+import com.calcsuits.domain.model.finance.RateCompoundingFrequency
 import com.calcsuits.domain.model.finance.RateConvention
 import com.calcsuits.domain.usecase.CalculateLoanUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -67,6 +68,8 @@ data class FinanceState(
     val loanSimulationMode: LoanSimulationMode = LoanSimulationMode.INDIVIDUAL,
     val amortizationSystem: AmortizationSystem = AmortizationSystem.FRENCH,
     val paymentFrequency: PaymentFrequency = PaymentFrequency.MONTHLY,
+    val compoundingFrequency: RateCompoundingFrequency = RateCompoundingFrequency.MONTHLY,
+    val compoundingFollowsPayment: Boolean = true,
     val loanTermUnit: LoanTermUnit = LoanTermUnit.YEARS,
     val rateConvention: RateConvention = RateConvention.NOMINAL_PER_PAYMENT_PERIOD,
     val amount: String = "10000",
@@ -134,7 +137,26 @@ class FinanceViewModel @Inject constructor(
     }
 
     fun onPaymentFrequencySelected(frequency: PaymentFrequency) {
-        _state.update { it.copy(paymentFrequency = frequency) }
+        _state.update {
+            it.copy(
+                paymentFrequency = frequency,
+                compoundingFrequency = if (it.compoundingFollowsPayment) {
+                    frequency.toCompoundingFrequency()
+                } else {
+                    it.compoundingFrequency
+                }
+            )
+        }
+        calculateLoan()
+    }
+
+    fun onCompoundingFrequencySelected(frequency: RateCompoundingFrequency) {
+        _state.update {
+            it.copy(
+                compoundingFrequency = frequency,
+                compoundingFollowsPayment = false
+            )
+        }
         calculateLoan()
     }
 
@@ -225,7 +247,8 @@ class FinanceViewModel @Inject constructor(
                 system = activeSystem,
                 rateConvention = s.rateConvention,
                 currency = s.selectedCurrency,
-                issuedAtMillis = CalculateLoanUseCase.todayCivilDateUtcMillis()
+                issuedAtMillis = CalculateLoanUseCase.todayCivilDateUtcMillis(),
+                compoundingFrequency = s.compoundingFrequency
             )
             val comparison = runCatching { calculateLoanUseCase.compare(request) }.getOrNull()
             val activeResult = comparison?.let {

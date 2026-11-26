@@ -284,7 +284,9 @@
     <string name="finance_rate_convention_short_tna">TNA</string>
     <string name="finance_rate_convention_short_tea">EAR</string>
     <string name="finance_rate_note_nominal">Nominal annual rate (TNA) capitalized at payment periodicity: i = TNA / %1$d = %2$s per period (equiv. EAR %3$s).</string>
+    <string name="finance_rate_note_nominal_split">Nominal annual rate (TNA) with %1$d/yr compounding: EAR = (1 + TNA/%1$d)^%1$d - 1 = %2$s, yielding %3$s per payment (%4$d/yr).</string>
     <string name="finance_rate_note_effective">Effective annual rate (EAR) converted to equivalent periodic rate: i = (1 + EAR)^(1/%1$d) - 1 = %2$s per period.</string>
+    <string name="finance_rate_compounding_label">TNA compounding frequency</string>
 
     <string name="finance_loan_principal">Loan amount</string>
     <string name="finance_loan_down_payment_optional">Down payment (optional)</string>

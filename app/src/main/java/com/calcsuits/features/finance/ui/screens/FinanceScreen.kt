@@ -51,6 +51,7 @@ import com.calcsuits.domain.model.finance.FinanceCurrency
 import com.calcsuits.domain.model.finance.LoanSimulationMode
 import com.calcsuits.domain.model.finance.LoanTermUnit
 import com.calcsuits.domain.model.finance.PaymentFrequency
+import com.calcsuits.domain.model.finance.RateCompoundingFrequency
 import com.calcsuits.domain.model.finance.RateConvention
 import com.calcsuits.features.finance.ui.viewmodel.CompoundingFrequency
 import com.calcsuits.features.finance.ui.viewmodel.FinanceState
@@ -72,6 +73,7 @@ fun FinanceScreen(
     onLoanSimulationModeSelected: (LoanSimulationMode) -> Unit,
     onAmortizationSystemSelected: (AmortizationSystem) -> Unit,
     onPaymentFrequencySelected: (PaymentFrequency) -> Unit,
+    onCompoundingFrequencySelected: (RateCompoundingFrequency) -> Unit,
     onLoanTermUnitSelected: (LoanTermUnit) -> Unit,
     onRateConventionSelected: (RateConvention) -> Unit,
     onAmountChange: (String) -> Unit,
@@ -146,6 +148,7 @@ fun FinanceScreen(
                 onLoanSimulationModeSelected = onLoanSimulationModeSelected,
                 onAmortizationSystemSelected = onAmortizationSystemSelected,
                 onPaymentFrequencySelected = onPaymentFrequencySelected,
+                onCompoundingFrequencySelected = onCompoundingFrequencySelected,
                 onLoanTermUnitSelected = onLoanTermUnitSelected,
                 onRateConventionSelected = onRateConventionSelected,
                 onAmountChange = onAmountChange,

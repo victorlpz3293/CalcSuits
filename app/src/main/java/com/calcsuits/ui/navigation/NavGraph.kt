@@ -63,6 +63,7 @@ fun NavGraph(navController: NavHostController, onOpenDrawer: () -> Unit) {
                 onLoanSimulationModeSelected = vm::onLoanSimulationModeSelected,
                 onAmortizationSystemSelected = vm::onAmortizationSystemSelected,
                 onPaymentFrequencySelected = vm::onPaymentFrequencySelected,
+                onCompoundingFrequencySelected = vm::onCompoundingFrequencySelected,
                 onLoanTermUnitSelected = vm::onLoanTermUnitSelected,
                 onRateConventionSelected = vm::onRateConventionSelected,
                 onAmountChange = vm::onAmountChange,
