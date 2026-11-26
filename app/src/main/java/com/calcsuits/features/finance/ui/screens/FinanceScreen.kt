@@ -48,6 +48,7 @@ import com.calcsuits.R
 import com.calcsuits.domain.model.finance.AmortizationSystem
 import com.calcsuits.domain.model.finance.FinanceCurrencies
 import com.calcsuits.domain.model.finance.FinanceCurrency
+import com.calcsuits.domain.model.finance.LoanSimulationMode
 import com.calcsuits.domain.model.finance.LoanTermUnit
 import com.calcsuits.domain.model.finance.PaymentFrequency
 import com.calcsuits.domain.model.finance.RateConvention
@@ -68,11 +69,13 @@ fun FinanceScreen(
     onMenuClick: () -> Unit,
     onTabSelected: (FinanceTab) -> Unit,
     onCurrencySelected: (FinanceCurrency) -> Unit,
+    onLoanSimulationModeSelected: (LoanSimulationMode) -> Unit,
     onAmortizationSystemSelected: (AmortizationSystem) -> Unit,
     onPaymentFrequencySelected: (PaymentFrequency) -> Unit,
     onLoanTermUnitSelected: (LoanTermUnit) -> Unit,
     onRateConventionSelected: (RateConvention) -> Unit,
     onAmountChange: (String) -> Unit,
+    onDownPaymentChange: (String) -> Unit,
     onInterestRateChange: (String) -> Unit,
     onYearsChange: (String) -> Unit,
     onPrincipalChange: (String) -> Unit,
@@ -92,11 +95,17 @@ fun FinanceScreen(
         scrollState.scrollTo(0)
     }
 
+    val headerSubtitleRes = if (state.selectedTab == FinanceTab.LOAN) {
+        R.string.finance_loan_simulator_title
+    } else {
+        state.selectedTab.labelRes
+    }
+
     CalcPinnedScaffold(
         topBar = {
             CalcSuitsHeader(
                 title = stringResource(R.string.finance),
-                subtitle = stringResource(state.selectedTab.labelRes).uppercase(locale),
+                subtitle = stringResource(headerSubtitleRes).uppercase(locale),
                 onMenuClick = onMenuClick
             )
         },
@@ -134,11 +143,13 @@ fun FinanceScreen(
                 state = state,
                 locale = locale,
                 onCurrencySelected = onCurrencySelected,
+                onLoanSimulationModeSelected = onLoanSimulationModeSelected,
                 onAmortizationSystemSelected = onAmortizationSystemSelected,
                 onPaymentFrequencySelected = onPaymentFrequencySelected,
                 onLoanTermUnitSelected = onLoanTermUnitSelected,
                 onRateConventionSelected = onRateConventionSelected,
                 onAmountChange = onAmountChange,
+                onDownPaymentChange = onDownPaymentChange,
                 onInterestRateChange = onInterestRateChange,
                 onYearsChange = onYearsChange
             )

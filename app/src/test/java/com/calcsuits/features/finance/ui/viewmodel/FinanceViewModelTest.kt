@@ -2,11 +2,15 @@ package com.calcsuits.features.finance.ui.viewmodel
 
 import com.calcsuits.domain.model.finance.AmortizationSystem
 import com.calcsuits.domain.model.finance.FinanceCurrencies
+import com.calcsuits.domain.model.finance.LoanSimulationMode
 import com.calcsuits.domain.model.finance.LoanTermUnit
 import com.calcsuits.domain.model.finance.PaymentFrequency
 import com.calcsuits.domain.model.finance.RateConvention
 import com.calcsuits.domain.usecase.CalculateLoanUseCase
+import com.calcsuits.features.finance.ui.screens.ScheduleLayoutMode
+import com.calcsuits.features.finance.ui.screens.resolveScheduleLayoutMode
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -23,47 +27,124 @@ class FinanceViewModelTest {
     }
 
     @Test
-    fun initialLoanStateCalculatesDefault10000At12PercentFor3Years() {
-        val loan = viewModel.state.value.loanResult
+    fun initialLoanStateCalculatesDefault10000At12PercentFor3YearsWithComparisonReady() {
+        val state = viewModel.state.value
+        val loan = state.loanResult
         assertNotNull(loan)
+        assertNotNull(state.loanComparison)
+        assertEquals(LoanSimulationMode.INDIVIDUAL, state.loanSimulationMode)
         assertEquals(AmortizationSystem.FRENCH, loan!!.system)
         assertEquals(332.14, loan.monthlyPayment, 0.01)
         assertEquals(1_957.15, loan.totalInterest, 0.05)
         assertEquals(36, loan.schedule.size)
         assertEquals(0.0, loan.finalBalance, 1e-9)
+        assertNotNull(loan.issuedAtMillis)
+        assertFalse(state.downPaymentError)
     }
 
     @Test
-    fun switchingLoanSystemFrequencyTermUnitRateConventionAndCurrencyUpdatesResult() {
-        viewModel.onCurrencySelected(FinanceCurrencies.NIO)
-        viewModel.onAmountChange("24000")
-        viewModel.onInterestRateChange("12")
-        viewModel.onLoanTermUnitSelected(LoanTermUnit.PERIODS)
-        viewModel.onYearsChange("12")
-        viewModel.onPaymentFrequencySelected(PaymentFrequency.MONTHLY)
+    fun simulatorOnlyExposesFrenchAndGermanAndIgnoresLegacyAmericanSelection() {
+        assertEquals(
+            listOf(AmortizationSystem.FRENCH, AmortizationSystem.GERMAN),
+            AmortizationSystem.simulatorSystems
+        )
 
         viewModel.onAmortizationSystemSelected(AmortizationSystem.GERMAN)
-        val german = viewModel.state.value.loanResult!!
-        assertEquals(FinanceCurrencies.NIO, german.currency)
-        assertEquals(AmortizationSystem.GERMAN, german.system)
-        assertEquals(2_000.0, german.constantPrincipalPerPeriod!!, 1e-6)
-        assertEquals(0.0, german.finalBalance, 1e-9)
+        assertEquals(AmortizationSystem.GERMAN, viewModel.state.value.amortizationSystem)
+        assertEquals(AmortizationSystem.GERMAN, viewModel.state.value.loanResult!!.system)
 
+        // Attempt to select retired AMERICAN system must be ignored by simulator ViewModel
         viewModel.onAmortizationSystemSelected(AmortizationSystem.AMERICAN)
-        val american = viewModel.state.value.loanResult!!
-        assertEquals(AmortizationSystem.AMERICAN, american.system)
-        assertEquals(240.0, american.firstPayment, 1e-6)
-        assertEquals(24_240.0, american.lastPayment, 1e-6)
-        assertTrue(american.totalInterest > german.totalInterest)
+        assertEquals(AmortizationSystem.GERMAN, viewModel.state.value.amortizationSystem)
+        assertEquals(AmortizationSystem.GERMAN, viewModel.state.value.loanResult!!.system)
+    }
 
-        // Switching to effective annual rate reduces periodic rate vs nominal 12%/12
+    @Test
+    fun switchingLoanSystemFrequencyTermUnitRateConventionCurrencyAndComparisonModeUpdatesState() {
+        viewModel.onCurrencySelected(FinanceCurrencies.NIO)
+        viewModel.onAmountChange("600000")
+        viewModel.onInterestRateChange("36")
+        viewModel.onPaymentFrequencySelected(PaymentFrequency.QUARTERLY)
+        viewModel.onLoanTermUnitSelected(LoanTermUnit.YEARS)
+        viewModel.onYearsChange("2")
+
+        // Verify French in Individual mode (INATEC case)
+        viewModel.onAmortizationSystemSelected(AmortizationSystem.FRENCH)
+        val french = viewModel.state.value.loanResult!!
+        assertEquals(FinanceCurrencies.NIO, french.currency)
+        assertEquals(AmortizationSystem.FRENCH, french.system)
+        assertEquals(108_404.63, french.monthlyPayment, 1e-6)
+        assertEquals(8, french.schedule.size)
+
+        // Switch to German (INATEC case)
+        viewModel.onAmortizationSystemSelected(AmortizationSystem.GERMAN)
+        val german = viewModel.state.value.loanResult!!
+        assertEquals(AmortizationSystem.GERMAN, german.system)
+        assertEquals(75_000.0, german.constantPrincipalPerPeriod!!, 1e-6)
+        assertEquals(243_000.0, german.totalInterest, 1e-6)
+        assertEquals(843_000.0, german.totalPayment, 1e-6)
+
+        // Switch to Comparison mode
+        viewModel.onLoanSimulationModeSelected(LoanSimulationMode.COMPARISON)
+        val comparison = viewModel.state.value.loanComparison!!
+        assertEquals(LoanSimulationMode.COMPARISON, viewModel.state.value.loanSimulationMode)
+        assertEquals(french.totalInterest, comparison.french.totalInterest, 1e-6)
+        assertEquals(german.totalInterest, comparison.german.totalInterest, 1e-6)
+        assertTrue(comparison.interestDifference > 0.0)
+        assertEquals(comparison.interestDifference, comparison.totalPaymentDifference, 1e-6)
+
+        // Switching to Effective Annual Rate lowers periodic rate vs Nominal TNA/4
         viewModel.onRateConventionSelected(RateConvention.EFFECTIVE_ANNUAL)
-        val americanEar = viewModel.state.value.loanResult!!
-        assertTrue(americanEar.totalInterest < american.totalInterest)
+        val earGerman = viewModel.state.value.loanResult!!
+        assertTrue(earGerman.totalInterest < german.totalInterest)
 
-        // Switching currency to EUR updates result currency without altering term or system
+        // Switching currency to EUR updates result currency without altering system or term
         viewModel.onCurrencySelected(FinanceCurrencies.EUR)
         assertEquals(FinanceCurrencies.EUR, viewModel.state.value.loanResult!!.currency)
+        assertEquals(FinanceCurrencies.EUR, viewModel.state.value.loanComparison!!.french.currency)
+    }
+
+    @Test
+    fun downPaymentReducesFinancedPrincipalAndFlagsInvalidValuesEqualOrGreaterThanAmount() {
+        viewModel.onAmountChange("100000")
+        viewModel.onDownPaymentChange("25000")
+
+        val validState = viewModel.state.value
+        assertFalse(validState.downPaymentError)
+        assertNotNull(validState.loanResult)
+        assertEquals(100_000.0, validState.loanResult!!.requestedAmount, 1e-6)
+        assertEquals(25_000.0, validState.loanResult!!.downPayment, 1e-6)
+        assertEquals(75_000.0, validState.loanResult!!.principalAmount, 1e-6)
+        assertEquals(75_000.0, validState.loanComparison!!.german.principalAmount, 1e-6)
+
+        // Down payment equal to loan amount -> error and null results
+        viewModel.onDownPaymentChange("100000")
+        assertTrue(viewModel.state.value.downPaymentError)
+        assertNull(viewModel.state.value.loanResult)
+        assertNull(viewModel.state.value.loanComparison)
+
+        // Down payment greater than loan amount -> error and null results
+        viewModel.onDownPaymentChange("120000")
+        assertTrue(viewModel.state.value.downPaymentError)
+        assertNull(viewModel.state.value.loanResult)
+
+        // Clearing down payment restores full principal
+        viewModel.onDownPaymentChange("")
+        assertFalse(viewModel.state.value.downPaymentError)
+        assertEquals(100_000.0, viewModel.state.value.loanResult!!.principalAmount, 1e-6)
+        assertEquals(0.0, viewModel.state.value.loanResult!!.downPayment, 1e-6)
+    }
+
+    @Test
+    fun responsiveScheduleBreakpointResolverMatchesCompactMediumAndExpandedThresholds() {
+        assertEquals(ScheduleLayoutMode.COMPACT_CARDS, resolveScheduleLayoutMode(360f))
+        assertEquals(ScheduleLayoutMode.COMPACT_CARDS, resolveScheduleLayoutMode(412f))
+        assertEquals(ScheduleLayoutMode.COMPACT_CARDS, resolveScheduleLayoutMode(599.9f))
+        assertEquals(ScheduleLayoutMode.MEDIUM_COMPACT, resolveScheduleLayoutMode(600f))
+        assertEquals(ScheduleLayoutMode.MEDIUM_COMPACT, resolveScheduleLayoutMode(720f))
+        assertEquals(ScheduleLayoutMode.MEDIUM_COMPACT, resolveScheduleLayoutMode(839.9f))
+        assertEquals(ScheduleLayoutMode.EXPANDED_TABLE, resolveScheduleLayoutMode(840f))
+        assertEquals(ScheduleLayoutMode.EXPANDED_TABLE, resolveScheduleLayoutMode(1024f))
     }
 
     @Test
@@ -181,7 +262,6 @@ class FinanceViewModelTest {
         assertEquals(269.29, added.totalAmount, 1e-6)
         assertEquals(added.totalAmount, added.baseAmount + added.taxAmount, 1e-6)
 
-        // Extract with configurable 13.25% rate
         viewModel.onTaxIncludedChange(true)
         viewModel.onTaxBaseChange("1000")
         viewModel.onTaxRateChange("13.25")

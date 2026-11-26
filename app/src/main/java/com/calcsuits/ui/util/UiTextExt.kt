@@ -8,7 +8,9 @@ import androidx.compose.ui.res.stringResource
 import com.calcsuits.domain.model.UiText
 import com.calcsuits.domain.model.finance.FinanceCurrency
 import java.math.RoundingMode
+import java.text.DateFormat
 import java.text.NumberFormat
+import java.util.Date
 import java.util.Locale
 import kotlin.math.abs
 
@@ -122,6 +124,13 @@ fun formatRatePercent(percentValue: Double, locale: Locale, maxFraction: Int = 4
     }
     return "${formatter.format(safeValue)}%"
 }
+
+/**
+ * Formats an epoch millisecond timestamp as a concise localized calendar date
+ * (e.g., "Nov 26, 2026" or "26 nov 2026").
+ */
+fun formatShortDate(epochMillis: Long, locale: Locale): String =
+    DateFormat.getDateInstance(DateFormat.MEDIUM, locale).format(Date(epochMillis))
 
 private fun resolveCurrencyLocale(locale: Locale): Locale {
     if (locale.country.isNotEmpty()) return locale

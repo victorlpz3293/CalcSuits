@@ -6,8 +6,10 @@ import com.calcsuits.R
 import com.calcsuits.domain.model.finance.AmortizationSystem
 import com.calcsuits.domain.model.finance.FinanceCurrencies
 import com.calcsuits.domain.model.finance.FinanceCurrency
+import com.calcsuits.domain.model.finance.LoanComparisonResult
 import com.calcsuits.domain.model.finance.LoanRequest
 import com.calcsuits.domain.model.finance.LoanResult
+import com.calcsuits.domain.model.finance.LoanSimulationMode
 import com.calcsuits.domain.model.finance.LoanTermUnit
 import com.calcsuits.domain.model.finance.PaymentFrequency
 import com.calcsuits.domain.model.finance.RateConvention
@@ -62,14 +64,18 @@ data class TaxResult(
 data class FinanceState(
     val selectedTab: FinanceTab = FinanceTab.LOAN,
     val selectedCurrency: FinanceCurrency = FinanceCurrencies.USD,
+    val loanSimulationMode: LoanSimulationMode = LoanSimulationMode.INDIVIDUAL,
     val amortizationSystem: AmortizationSystem = AmortizationSystem.FRENCH,
     val paymentFrequency: PaymentFrequency = PaymentFrequency.MONTHLY,
     val loanTermUnit: LoanTermUnit = LoanTermUnit.YEARS,
     val rateConvention: RateConvention = RateConvention.NOMINAL_PER_PAYMENT_PERIOD,
     val amount: String = "10000",
+    val downPayment: String = "",
+    val downPaymentError: Boolean = false,
     val interestRate: String = "12",
     val years: String = "3",
     val loanResult: LoanResult? = null,
+    val loanComparison: LoanComparisonResult? = null,
     val principal: String = "5000",
     val annualRate: String = "8",
     val termYears: String = "5",
@@ -107,9 +113,24 @@ class FinanceViewModel @Inject constructor(
         calculateTax()
     }
 
+    fun onLoanSimulationModeSelected(mode: LoanSimulationMode) {
+        _state.update { it.copy(loanSimulationMode = mode) }
+    }
+
     fun onAmortizationSystemSelected(system: AmortizationSystem) {
-        _state.update { it.copy(amortizationSystem = system) }
-        calculateLoan()
+        if (system !in AmortizationSystem.simulatorSystems) return
+        val existingComparison = _state.value.loanComparison
+        if (existingComparison != null) {
+            val active = if (system == AmortizationSystem.GERMAN) {
+                existingComparison.german
+            } else {
+                existingComparison.french
+            }
+            _state.update { it.copy(amortizationSystem = system, loanResult = active) }
+        } else {
+            _state.update { it.copy(amortizationSystem = system) }
+            calculateLoan()
+        }
     }
 
     fun onPaymentFrequencySelected(frequency: PaymentFrequency) {
@@ -145,6 +166,11 @@ class FinanceViewModel @Inject constructor(
         calculateLoan()
     }
 
+    fun onDownPaymentChange(value: String) {
+        _state.update { it.copy(downPayment = sanitizeDecimal(value)) }
+        calculateLoan()
+    }
+
     fun onInterestRateChange(value: String) {
         _state.update { it.copy(interestRate = sanitizeDecimal(value)) }
         calculateLoan()
@@ -159,6 +185,7 @@ class FinanceViewModel @Inject constructor(
     private fun calculateLoan() {
         val s = _state.value
         val amount = s.amount.toDoubleOrNull()
+        val downPayment = if (s.downPayment.isBlank()) 0.0 else s.downPayment.toDoubleOrNull()
         val rate = s.interestRate.toDoubleOrNull()
         val term = s.years.toIntOrNull()
 
@@ -167,26 +194,59 @@ class FinanceViewModel @Inject constructor(
             LoanTermUnit.PERIODS -> term != null && term in 1..MAX_LOAN_PERIODS
         }
 
-        if (amount != null && rate != null && term != null &&
-            amount > 0.0 && rate >= 0.0 && rate <= MAX_ANNUAL_RATE_PERCENT && validTerm
-        ) {
-            val result = runCatching {
-                calculateLoanUseCase(
-                    LoanRequest(
-                        amount = amount,
-                        annualRate = rate,
-                        termValue = term,
-                        termUnit = s.loanTermUnit,
-                        paymentFrequency = s.paymentFrequency,
-                        system = s.amortizationSystem,
-                        rateConvention = s.rateConvention,
-                        currency = s.selectedCurrency
-                    )
+        val isDownPaymentTooHigh = amount != null && amount > 0.0 && downPayment != null && downPayment >= amount
+        if (isDownPaymentTooHigh) {
+            _state.update {
+                it.copy(
+                    downPaymentError = true,
+                    loanResult = null,
+                    loanComparison = null
                 )
-            }.getOrNull()
-            _state.update { it.copy(loanResult = result) }
+            }
+            return
+        }
+
+        if (amount != null && downPayment != null && rate != null && term != null &&
+            amount > 0.0 && downPayment >= 0.0 && downPayment < amount &&
+            rate >= 0.0 && rate <= MAX_ANNUAL_RATE_PERCENT && validTerm
+        ) {
+            val activeSystem = if (s.amortizationSystem in AmortizationSystem.simulatorSystems) {
+                s.amortizationSystem
+            } else {
+                AmortizationSystem.FRENCH
+            }
+            val request = LoanRequest(
+                amount = amount,
+                downPayment = downPayment,
+                annualRate = rate,
+                termValue = term,
+                termUnit = s.loanTermUnit,
+                paymentFrequency = s.paymentFrequency,
+                system = activeSystem,
+                rateConvention = s.rateConvention,
+                currency = s.selectedCurrency,
+                issuedAtMillis = System.currentTimeMillis()
+            )
+            val comparison = runCatching { calculateLoanUseCase.compare(request) }.getOrNull()
+            val activeResult = comparison?.let {
+                if (activeSystem == AmortizationSystem.GERMAN) it.german else it.french
+            }
+            _state.update {
+                it.copy(
+                    amortizationSystem = activeSystem,
+                    downPaymentError = false,
+                    loanResult = activeResult,
+                    loanComparison = comparison
+                )
+            }
         } else {
-            _state.update { it.copy(loanResult = null) }
+            _state.update {
+                it.copy(
+                    downPaymentError = false,
+                    loanResult = null,
+                    loanComparison = null
+                )
+            }
         }
     }
 

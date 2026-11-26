@@ -226,13 +226,20 @@
     <string name="finance_freq_monthly">Monthly</string>
     <string name="finance_freq_daily">Daily</string>
 
+    <string name="finance_loan_simulator_title">Loan Simulator</string>
+    <string name="finance_simulation_mode_label">Simulation mode</string>
+    <string name="finance_mode_individual">Single system</string>
+    <string name="finance_mode_comparison">Compare systems</string>
+
     <string name="finance_system_label">Amortization system</string>
-    <string name="finance_system_french">French</string>
-    <string name="finance_system_german">German</string>
-    <string name="finance_system_american">American</string>
-    <string name="finance_system_french_desc">Constant installment, decreasing interest, and increasing principal amortization.</string>
-    <string name="finance_system_german_desc">Constant principal amortization, decreasing interest, and decreasing installments.</string>
-    <string name="finance_system_american_desc">Periodic interest-only payments with full principal repaid at maturity.</string>
+    <string name="finance_system_french_title">Fixed Installment</string>
+    <string name="finance_system_french_academic">French Amortization</string>
+    <string name="finance_system_french_short">Fixed Installment</string>
+    <string name="finance_system_german_title">Declining Installment</string>
+    <string name="finance_system_german_academic">German Amortization</string>
+    <string name="finance_system_german_short">Declining Installment</string>
+    <string name="finance_system_french_desc">Fixed periodic installment, decreasing interest, and increasing principal repayment.</string>
+    <string name="finance_system_german_desc">Constant principal repayment per period, decreasing interest, and declining installments.</string>
 
     <string name="finance_payment_frequency">Payment periodicity</string>
     <string name="finance_pay_freq_monthly">Monthly (12/yr)</string>
@@ -240,49 +247,96 @@
     <string name="finance_pay_freq_quarterly">Quarterly (4/yr)</string>
     <string name="finance_pay_freq_semiannual">Semiannual (2/yr)</string>
     <string name="finance_pay_freq_annual">Annual (1/yr)</string>
+    <string name="finance_pay_freq_short_monthly">Monthly</string>
+    <string name="finance_pay_freq_short_semimonthly">Semi-monthly</string>
+    <string name="finance_pay_freq_short_quarterly">Quarterly</string>
+    <string name="finance_pay_freq_short_semiannual">Semiannual</string>
+    <string name="finance_pay_freq_short_annual">Annual</string>
+
+    <string name="finance_installment_monthly">Monthly installment</string>
+    <string name="finance_installment_semimonthly">Semi-monthly installment</string>
+    <string name="finance_installment_quarterly">Quarterly installment</string>
+    <string name="finance_installment_semiannual">Semiannual installment</string>
+    <string name="finance_installment_annual">Annual installment</string>
 
     <string name="finance_term_unit_years">Years</string>
-    <string name="finance_term_unit_periods">Payments</string>
-    <string name="finance_term_periods">Term (payments)</string>
+    <string name="finance_term_unit_periods">Installments</string>
+    <string name="finance_term_periods">Term (installments)</string>
+    <string name="finance_term_summary_years_fmt">%1$d yr (%2$d installments)</string>
+    <plurals name="finance_term_summary_periods">
+        <item quantity="one">%d installment</item>
+        <item quantity="other">%d installments</item>
+    </plurals>
 
-    <string name="finance_rate_convention_label">Rate assumption</string>
+    <string name="finance_rate_convention_label">Rate basis</string>
     <string name="finance_rate_nominal">Nominal (TNA / m)</string>
     <string name="finance_rate_effective">Effective annual (EAR)</string>
+    <string name="finance_rate_convention_short_tna">TNA</string>
+    <string name="finance_rate_convention_short_tea">EAR</string>
     <string name="finance_rate_note_nominal">Nominal annual rate (TNA) capitalized at payment periodicity: i = TNA / %1$d = %2$s per period (equiv. EAR %3$s).</string>
     <string name="finance_rate_note_effective">Effective annual rate (EAR) converted to equivalent periodic rate: i = (1 + EAR)^(1/%1$d) - 1 = %2$s per period.</string>
 
-    <string name="finance_loan_params">Loan parameters</string>
-    <string name="finance_loan_principal">Principal amount</string>
+    <string name="finance_loan_principal">Loan amount</string>
+    <string name="finance_loan_down_payment_optional">Down payment (optional)</string>
+    <string name="finance_loan_down_payment_short">Down payment</string>
+    <string name="finance_loan_down_payment_error">Down payment must be less than the loan amount.</string>
+    <string name="finance_loan_requested_amount">Requested amount</string>
+    <string name="finance_loan_financed_principal">Financed principal</string>
+    <string name="finance_loan_financed_principal_inline">Financed principal: %1$s</string>
     <string name="finance_annual_rate">Annual rate</string>
     <string name="finance_term_years">Term (years)</string>
-    <string name="finance_loan_primary_french">CONSTANT PERIODIC PAYMENT</string>
-    <string name="finance_loan_primary_german">FIRST PAYMENT (DECREASING)</string>
-    <string name="finance_loan_primary_american">PERIODIC INTEREST PAYMENT</string>
-    <string name="finance_loan_primary_american_single">SINGLE PAYMENT AT MATURITY</string>
-    <string name="finance_loan_german_range">Decreases down to %1$s on the last payment</string>
-    <string name="finance_loan_american_balloon">Final payment at maturity: %1$s</string>
-    <string name="finance_loan_principal_amortized">Amortized principal</string>
+    <string name="finance_loan_hero_french_fmt">%1$s · Fixed</string>
+    <string name="finance_loan_hero_german_fmt">Initial %1$s · Declining</string>
+    <string name="finance_loan_german_range">Declines down to %1$s on the final installment</string>
+
+    <string name="finance_plan_summary_section">Payment plan summary</string>
+    <string name="finance_plan_issue_date">Simulation date</string>
+    <string name="finance_issue_date_inline">Issued: %1$s</string>
+    <string name="finance_plan_term_label">Term</string>
+    <string name="finance_loan_initial_installment_fmt">Initial %1$s</string>
+    <string name="finance_loan_final_installment_fmt">Final %1$s</string>
+    <string name="finance_loan_principal_amortized">Principal repaid</string>
     <string name="finance_loan_constant_principal">Principal per period</string>
-    <string name="finance_loan_first_payment">First payment</string>
-    <string name="finance_loan_last_payment">Last payment</string>
-    <string name="finance_loan_final_balance">Ending balance</string>
     <string name="finance_loan_periodic_rate">Periodic rate</string>
     <string name="finance_loan_effective_rate">Effective annual rate (EAR)</string>
-    <string name="finance_legend_principal">Principal (%1$s)</string>
-    <string name="finance_legend_interest">Interest (%1$s)</string>
     <string name="finance_total_interest">Total interest</string>
-    <string name="finance_total_payment">Total amount to pay</string>
+    <string name="finance_total_payment">Total amount paid</string>
+
+    <string name="finance_comparison_title">French vs. German Comparison</string>
+    <string name="finance_comparison_context">Principal %1$s · %2$s · %3$s · %4$d periods</string>
+    <string name="finance_comparison_down_payment_note">Requested %1$s minus %2$s down payment</string>
+    <string name="finance_comparison_differences_title">Differences (French − German)</string>
+    <string name="finance_comparison_interest_diff">Interest difference</string>
+    <string name="finance_comparison_total_diff">Total paid difference</string>
+    <string name="finance_comparison_neutral_note">French provides predictable fixed installments; German reduces total interest in exchange for higher initial installments.</string>
+    <string name="finance_comparison_schedule_selector">Schedule to inspect</string>
+
+    <string name="finance_charts_title">Financial evolution</string>
+    <string name="finance_chart_tab_balance">Balance</string>
+    <string name="finance_chart_tab_components">Interest vs. Principal</string>
+    <string name="finance_chart_tab_comparison">French vs. German</string>
+    <string name="finance_chart_legend_balance">Outstanding balance</string>
+
     <string name="finance_hide_schedule">Hide amortization schedule</string>
     <plurals name="finance_show_schedule">
-        <item quantity="one">View amortization schedule (%d payment)</item>
-        <item quantity="other">View amortization schedule (%d payments)</item>
+        <item quantity="one">View amortization schedule (%d installment)</item>
+        <item quantity="other">View amortization schedule (%d installments)</item>
     </plurals>
-    <string name="finance_schedule_currency_caption">Amounts in %1$s (%2$s) · %3$d periods</string>
-    <string name="finance_col_payment">Payment</string>
-    <string name="finance_col_principal">Principal</string>
+    <string name="finance_schedule_currency_caption">Amounts in %1$s (%2$s) · %3$d installments</string>
+    <string name="finance_schedule_tap_expand_hint">Tap any installment to view full breakdown</string>
+    <string name="cd_finance_expand_installment">Expand installment %1$d details</string>
+    <string name="cd_finance_collapse_installment">Collapse installment %1$d details</string>
+
+    <string name="finance_col_period_short">No.</string>
+    <string name="finance_col_period_full">Installment No.</string>
+    <string name="finance_col_due_date">Due date</string>
+    <string name="finance_col_opening_balance">Opening balance</string>
     <string name="finance_col_interest">Interest</string>
-    <string name="finance_col_balance">Balance</string>
+    <string name="finance_col_principal">Principal repayment</string>
+    <string name="finance_col_payment">Total installment</string>
+    <string name="finance_col_closing_balance">Closing balance</string>
     <string name="finance_schedule_totals">Totals</string>
+    <string name="finance_schedule_totals_title">Schedule totals</string>
     <string name="finance_show_first_12">Show first 12</string>
     <plurals name="finance_show_all_periods">
         <item quantity="one">Show all (%d)</item>

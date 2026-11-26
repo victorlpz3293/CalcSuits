@@ -226,13 +226,20 @@
     <string name="finance_freq_monthly">Mensual</string>
     <string name="finance_freq_daily">Diaria</string>
 
+    <string name="finance_loan_simulator_title">Simulador de Préstamos</string>
+    <string name="finance_simulation_mode_label">Modo de simulación</string>
+    <string name="finance_mode_individual">Simulación individual</string>
+    <string name="finance_mode_comparison">Comparar sistemas</string>
+
     <string name="finance_system_label">Sistema de amortización</string>
-    <string name="finance_system_french">Francés</string>
-    <string name="finance_system_german">Alemán</string>
-    <string name="finance_system_american">Americano</string>
-    <string name="finance_system_french_desc">Cuota constante, interés decreciente y amortización creciente.</string>
+    <string name="finance_system_french_title">Sistema de Cuota Fija</string>
+    <string name="finance_system_french_academic">Sistema Francés</string>
+    <string name="finance_system_french_short">Cuota Fija</string>
+    <string name="finance_system_german_title">Sistema de Cuota Decreciente</string>
+    <string name="finance_system_german_academic">Sistema Alemán</string>
+    <string name="finance_system_german_short">Cuota Decreciente</string>
+    <string name="finance_system_french_desc">Cuota fija periódica, intereses decrecientes y amortización de capital creciente.</string>
     <string name="finance_system_german_desc">Amortización de capital constante, intereses decrecientes y cuotas decrecientes.</string>
-    <string name="finance_system_american_desc">Pago periódico de intereses y devolución íntegra del capital al vencimiento.</string>
 
     <string name="finance_payment_frequency">Periodicidad de pagos</string>
     <string name="finance_pay_freq_monthly">Mensual (12/año)</string>
@@ -240,49 +247,96 @@
     <string name="finance_pay_freq_quarterly">Trimestral (4/año)</string>
     <string name="finance_pay_freq_semiannual">Semestral (2/año)</string>
     <string name="finance_pay_freq_annual">Anual (1/año)</string>
+    <string name="finance_pay_freq_short_monthly">Mensual</string>
+    <string name="finance_pay_freq_short_semimonthly">Quincenal</string>
+    <string name="finance_pay_freq_short_quarterly">Trimestral</string>
+    <string name="finance_pay_freq_short_semiannual">Semestral</string>
+    <string name="finance_pay_freq_short_annual">Anual</string>
+
+    <string name="finance_installment_monthly">Cuota mensual</string>
+    <string name="finance_installment_semimonthly">Cuota quincenal</string>
+    <string name="finance_installment_quarterly">Cuota trimestral</string>
+    <string name="finance_installment_semiannual">Cuota semestral</string>
+    <string name="finance_installment_annual">Cuota anual</string>
 
     <string name="finance_term_unit_years">Años</string>
     <string name="finance_term_unit_periods">Cuotas</string>
     <string name="finance_term_periods">Plazo (cuotas)</string>
+    <string name="finance_term_summary_years_fmt">%1$d años (%2$d cuotas)</string>
+    <plurals name="finance_term_summary_periods">
+        <item quantity="one">%d cuota</item>
+        <item quantity="other">%d cuotas</item>
+    </plurals>
 
     <string name="finance_rate_convention_label">Supuesto de tasa</string>
     <string name="finance_rate_nominal">Nominal (TNA / m)</string>
     <string name="finance_rate_effective">Efectiva anual (TEA)</string>
+    <string name="finance_rate_convention_short_tna">TNA</string>
+    <string name="finance_rate_convention_short_tea">TEA</string>
     <string name="finance_rate_note_nominal">Tasa nominal anual (TNA) capitalizable según periodicidad de pago: i = TNA / %1$d = %2$s por período (TEA equiv. %3$s).</string>
     <string name="finance_rate_note_effective">Tasa efectiva anual (TEA) convertida a tasa periódica equivalente: i = (1 + TEA)^(1/%1$d) - 1 = %2$s por período.</string>
 
-    <string name="finance_loan_params">Parámetros del préstamo</string>
-    <string name="finance_loan_principal">Importe del préstamo</string>
+    <string name="finance_loan_principal">Capital del préstamo</string>
+    <string name="finance_loan_down_payment_optional">Prima (opcional)</string>
+    <string name="finance_loan_down_payment_short">Prima</string>
+    <string name="finance_loan_down_payment_error">La prima debe ser menor que el capital del préstamo.</string>
+    <string name="finance_loan_requested_amount">Capital solicitado</string>
+    <string name="finance_loan_financed_principal">Capital financiado</string>
+    <string name="finance_loan_financed_principal_inline">Capital financiado: %1$s</string>
     <string name="finance_annual_rate">Tasa anual</string>
     <string name="finance_term_years">Plazo (años)</string>
-    <string name="finance_loan_primary_french">CUOTA PERIÓDICA CONSTANTE</string>
-    <string name="finance_loan_primary_german">PRIMERA CUOTA (DECRECIENTE)</string>
-    <string name="finance_loan_primary_american">CUOTA PERIÓDICA DE INTERÉS</string>
-    <string name="finance_loan_primary_american_single">PAGO ÚNICO AL VENCIMIENTO</string>
+    <string name="finance_loan_hero_french_fmt">%1$s · Cuota fija</string>
+    <string name="finance_loan_hero_german_fmt">%1$s inicial · Decreciente</string>
     <string name="finance_loan_german_range">Disminuye hasta %1$s en la última cuota</string>
-    <string name="finance_loan_american_balloon">Pago final al vencimiento: %1$s</string>
+
+    <string name="finance_plan_summary_section">Resumen del plan de pagos</string>
+    <string name="finance_plan_issue_date">Fecha de emisión</string>
+    <string name="finance_issue_date_inline">Emitido: %1$s</string>
+    <string name="finance_plan_term_label">Plazo</string>
+    <string name="finance_loan_initial_installment_fmt">%1$s inicial</string>
+    <string name="finance_loan_final_installment_fmt">%1$s final</string>
     <string name="finance_loan_principal_amortized">Capital amortizado</string>
-    <string name="finance_loan_constant_principal">Capital por cuota</string>
-    <string name="finance_loan_first_payment">Primera cuota</string>
-    <string name="finance_loan_last_payment">Última cuota</string>
-    <string name="finance_loan_final_balance">Saldo pendiente final</string>
+    <string name="finance_loan_constant_principal">Amortización por período</string>
     <string name="finance_loan_periodic_rate">Tasa periódica</string>
     <string name="finance_loan_effective_rate">Tasa efectiva anual (TEA)</string>
-    <string name="finance_legend_principal">Capital (%1$s)</string>
-    <string name="finance_legend_interest">Interés (%1$s)</string>
-    <string name="finance_total_interest">Intereses pagados</string>
+    <string name="finance_total_interest">Total de intereses</string>
     <string name="finance_total_payment">Total pagado</string>
-    <string name="finance_hide_schedule">Ocultar tabla de amortización</string>
+
+    <string name="finance_comparison_title">Comparación: Francés vs. Alemán</string>
+    <string name="finance_comparison_context">Capital %1$s · %2$s · %3$s · %4$d cuotas</string>
+    <string name="finance_comparison_down_payment_note">Solicitado %1$s menos prima de %2$s</string>
+    <string name="finance_comparison_differences_title">Diferencias (Francés − Alemán)</string>
+    <string name="finance_comparison_interest_diff">Diferencia en intereses</string>
+    <string name="finance_comparison_total_diff">Diferencia en total pagado</string>
+    <string name="finance_comparison_neutral_note">El sistema francés ofrece cuotas fijas previsibles; el sistema alemán reduce el total de intereses a cambio de cuotas iniciales más altas.</string>
+    <string name="finance_comparison_schedule_selector">Plan de pagos a inspeccionar</string>
+
+    <string name="finance_charts_title">Evolución financiera</string>
+    <string name="finance_chart_tab_balance">Saldo pendiente</string>
+    <string name="finance_chart_tab_components">Intereses vs. Amort.</string>
+    <string name="finance_chart_tab_comparison">Francés vs. Alemán</string>
+    <string name="finance_chart_legend_balance">Saldo pendiente</string>
+
+    <string name="finance_hide_schedule">Ocultar plan de pagos</string>
     <plurals name="finance_show_schedule">
-        <item quantity="one">Ver tabla de amortización (%d cuota)</item>
-        <item quantity="other">Ver tabla de amortización (%d cuotas)</item>
+        <item quantity="one">Ver plan de pagos (%d cuota)</item>
+        <item quantity="other">Ver plan de pagos (%d cuotas)</item>
     </plurals>
     <string name="finance_schedule_currency_caption">Importes en %1$s (%2$s) · %3$d cuotas</string>
-    <string name="finance_col_payment">Cuota</string>
-    <string name="finance_col_principal">Capital</string>
-    <string name="finance_col_interest">Interés</string>
-    <string name="finance_col_balance">Saldo</string>
+    <string name="finance_schedule_tap_expand_hint">Toca una cuota para ver el desglose completo</string>
+    <string name="cd_finance_expand_installment">Expandir detalle de la cuota %1$d</string>
+    <string name="cd_finance_collapse_installment">Contraer detalle de la cuota %1$d</string>
+
+    <string name="finance_col_period_short">N.º</string>
+    <string name="finance_col_period_full">N.º de cuota</string>
+    <string name="finance_col_due_date">Fecha de vencimiento</string>
+    <string name="finance_col_opening_balance">Saldo inicial</string>
+    <string name="finance_col_interest">Intereses</string>
+    <string name="finance_col_principal">Amortización</string>
+    <string name="finance_col_payment">Cuota total</string>
+    <string name="finance_col_closing_balance">Saldo final</string>
     <string name="finance_schedule_totals">Totales</string>
+    <string name="finance_schedule_totals_title">Totales del plan de pagos</string>
     <string name="finance_show_first_12">Mostrar primeras 12</string>
     <plurals name="finance_show_all_periods">
         <item quantity="one">Mostrar todas (%d)</item>

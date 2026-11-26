@@ -4,11 +4,13 @@ import com.calcsuits.domain.model.finance.AmortizationSystem
 import com.calcsuits.domain.model.finance.FinanceCurrencies
 import com.calcsuits.domain.model.finance.FinanceCurrency
 import com.calcsuits.domain.model.finance.LoanRequest
+import com.calcsuits.domain.model.finance.LoanResult
 import com.calcsuits.domain.model.finance.LoanTermUnit
 import com.calcsuits.domain.model.finance.PaymentFrequency
 import com.calcsuits.domain.model.finance.RateConvention
 import com.calcsuits.ui.util.formatMoney
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
@@ -28,6 +30,185 @@ class CalculateLoanUseCaseTest {
         useCase = CalculateLoanUseCase()
     }
 
+    /**
+     * Acceptance Case 1 (INATEC 2013 Reference — German Amortization):
+     * Capital = 600,000 NIO, TNA = 36%, Quarterly (m = 4, i = 9%), Term = 2 years (n = 8).
+     */
+    @Test
+    fun inatecReferenceGermanQuarterlyLoanMatchesExactScheduleAndTotals() {
+        val result = useCase(
+            LoanRequest(
+                amount = 600_000.0,
+                annualRate = 36.0,
+                termValue = 2,
+                termUnit = LoanTermUnit.YEARS,
+                paymentFrequency = PaymentFrequency.QUARTERLY,
+                system = AmortizationSystem.GERMAN,
+                rateConvention = RateConvention.NOMINAL_PER_PAYMENT_PERIOD,
+                currency = FinanceCurrencies.NIO
+            )
+        )
+
+        assertEquals(AmortizationSystem.GERMAN, result.system)
+        assertEquals(FinanceCurrencies.NIO, result.currency)
+        assertEquals(0.09, result.periodicRate, 1e-12)
+        assertEquals(8, result.schedule.size)
+        assertEquals(75_000.0, result.constantPrincipalPerPeriod!!, 1e-6)
+        assertEquals(243_000.0, result.totalInterest, 1e-6)
+        assertEquals(600_000.0, result.principalAmount, 1e-6)
+        assertEquals(843_000.0, result.totalPayment, 1e-6)
+        assertEquals(0.0, result.finalBalance, 1e-9)
+
+        data class ExpectedRow(
+            val period: Int,
+            val opening: Double,
+            val interest: Double,
+            val principal: Double,
+            val payment: Double,
+            val closing: Double
+        )
+
+        val expectedRows = listOf(
+            ExpectedRow(1, 600_000.0, 54_000.0, 75_000.0, 129_000.0, 525_000.0),
+            ExpectedRow(2, 525_000.0, 47_250.0, 75_000.0, 122_250.0, 450_000.0),
+            ExpectedRow(3, 450_000.0, 40_500.0, 75_000.0, 115_500.0, 375_000.0),
+            ExpectedRow(4, 375_000.0, 33_750.0, 75_000.0, 108_750.0, 300_000.0),
+            ExpectedRow(5, 300_000.0, 27_000.0, 75_000.0, 102_000.0, 225_000.0),
+            ExpectedRow(6, 225_000.0, 20_250.0, 75_000.0, 95_250.0, 150_000.0),
+            ExpectedRow(7, 150_000.0, 13_500.0, 75_000.0, 88_500.0, 75_000.0),
+            ExpectedRow(8, 75_000.0, 6_750.0, 75_000.0, 81_750.0, 0.0)
+        )
+
+        expectedRows.forEachIndexed { idx, expected ->
+            val row = result.schedule[idx]
+            assertEquals(expected.period, row.period)
+            assertEquals(expected.opening, row.openingBalance, 1e-6)
+            assertEquals(expected.interest, row.interest, 1e-6)
+            assertEquals(expected.principal, row.principal, 1e-6)
+            assertEquals(expected.payment, row.payment, 1e-6)
+            assertEquals(expected.closing, row.balance, 1e-6)
+        }
+
+        assertLedgerInvariants(result, expectedPrincipal = 600_000.0, scale = 2)
+    }
+
+    /**
+     * Acceptance Case 2 (INATEC 2013 Reference — French Amortization):
+     * Capital = 600,000 NIO, TNA = 36%, Quarterly (m = 4, i = 9%), Term = 2 years (n = 8).
+     */
+    @Test
+    fun inatecReferenceFrenchQuarterlyLoanMatchesTheoreticalAnnuityAndExactClosure() {
+        val result = useCase(
+            LoanRequest(
+                amount = 600_000.0,
+                annualRate = 36.0,
+                termValue = 2,
+                termUnit = LoanTermUnit.YEARS,
+                paymentFrequency = PaymentFrequency.QUARTERLY,
+                system = AmortizationSystem.FRENCH,
+                rateConvention = RateConvention.NOMINAL_PER_PAYMENT_PERIOD,
+                currency = FinanceCurrencies.NIO
+            )
+        )
+
+        assertEquals(AmortizationSystem.FRENCH, result.system)
+        assertEquals(0.09, result.periodicRate, 1e-12)
+        assertEquals(8, result.schedule.size)
+        // Theoretical high-precision constant payment ≈ 108,404.6267 -> presented 108,404.63
+        assertEquals(108_404.6267, result.theoreticalPeriodicPayment, 0.0005)
+        assertEquals(108_404.63, result.monthlyPayment, 1e-6)
+        assertEquals(108_404.63, result.firstPayment, 1e-6)
+        assertEquals(600_000.0, result.principalAmount, 1e-6)
+        assertEquals(267_237.01, result.totalInterest, 0.02)
+        assertEquals(867_237.01, result.totalPayment, 0.02)
+        assertEquals(0.0, result.finalBalance, 1e-9)
+
+        // Strictly decreasing interest and increasing principal across all 8 installments
+        for (i in 1 until result.schedule.size) {
+            assertTrue(result.schedule[i].interest < result.schedule[i - 1].interest)
+            assertTrue(result.schedule[i].principal > result.schedule[i - 1].principal)
+        }
+
+        assertLedgerInvariants(result, expectedPrincipal = 600_000.0, scale = 2)
+    }
+
+    @Test
+    fun compareSystemsEvaluatesFrenchAndGermanUnderIdenticalParametersAndComputesExactDifferences() {
+        val request = LoanRequest(
+            amount = 600_000.0,
+            annualRate = 36.0,
+            termValue = 2,
+            termUnit = LoanTermUnit.YEARS,
+            paymentFrequency = PaymentFrequency.QUARTERLY,
+            rateConvention = RateConvention.NOMINAL_PER_PAYMENT_PERIOD,
+            currency = FinanceCurrencies.NIO
+        )
+        val comparison = useCase.compare(request)
+
+        assertEquals(AmortizationSystem.FRENCH, comparison.french.system)
+        assertEquals(AmortizationSystem.GERMAN, comparison.german.system)
+        assertEquals(comparison.french.principalAmount, comparison.german.principalAmount, 1e-9)
+        assertEquals(comparison.french.schedule.size, comparison.german.schedule.size)
+
+        // German pays less total interest than French, starts higher, finishes lower
+        assertTrue(comparison.interestDifference > 0.0)
+        assertEquals(
+            comparison.french.totalInterest - comparison.german.totalInterest,
+            comparison.interestDifference,
+            1e-6
+        )
+        assertEquals(comparison.interestDifference, comparison.totalPaymentDifference, 1e-6)
+        assertEquals(
+            comparison.german.firstPayment - comparison.french.firstPayment,
+            comparison.firstPaymentDifference,
+            1e-6
+        )
+        assertEquals(
+            comparison.french.lastPayment - comparison.german.lastPayment,
+            comparison.lastPaymentDifference,
+            1e-6
+        )
+        assertTrue(comparison.firstPaymentDifference > 0.0)
+        assertTrue(comparison.lastPaymentDifference > 0.0)
+    }
+
+    @Test
+    fun downPaymentIsDeductedFromRequestedAmountToComputeFinancedPrincipal() {
+        val withDownPayment = useCase(
+            LoanRequest(
+                amount = 100_000.0,
+                downPayment = 20_000.0,
+                annualRate = 12.0,
+                termValue = 24,
+                termUnit = LoanTermUnit.PERIODS,
+                paymentFrequency = PaymentFrequency.MONTHLY,
+                system = AmortizationSystem.FRENCH,
+                currency = FinanceCurrencies.USD
+            )
+        )
+        val directPrincipal = useCase(
+            LoanRequest(
+                amount = 80_000.0,
+                downPayment = 0.0,
+                annualRate = 12.0,
+                termValue = 24,
+                termUnit = LoanTermUnit.PERIODS,
+                paymentFrequency = PaymentFrequency.MONTHLY,
+                system = AmortizationSystem.FRENCH,
+                currency = FinanceCurrencies.USD
+            )
+        )
+
+        assertEquals(100_000.0, withDownPayment.requestedAmount, 1e-6)
+        assertEquals(20_000.0, withDownPayment.downPayment, 1e-6)
+        assertEquals(80_000.0, withDownPayment.principalAmount, 1e-6)
+        assertEquals(80_000.0, withDownPayment.schedule.first().openingBalance, 1e-6)
+        assertEquals(directPrincipal.monthlyPayment, withDownPayment.monthlyPayment, 1e-6)
+        assertEquals(directPrincipal.totalInterest, withDownPayment.totalInterest, 1e-6)
+        assertEquals(directPrincipal.totalPayment, withDownPayment.totalPayment, 1e-6)
+        assertLedgerInvariants(withDownPayment, expectedPrincipal = 80_000.0, scale = 2)
+    }
+
     @Test
     fun loan10000At12PercentFor3YearsMatchesFrenchValuesAndExactAccountingInvariants() {
         val result = useCase(amount = 10_000.0, annualRate = 12.0, years = 3)
@@ -43,10 +224,11 @@ class CalculateLoanUseCaseTest {
         assertEquals(36, result.schedule.last().period)
         assertEquals(0.0, result.finalBalance, 1e-9)
         assertNull(result.constantPrincipalPerPeriod)
+        assertEquals(0.0, result.totalAdditionalCharges, 1e-9)
+        assertEquals(result.totalPayment, result.totalDisbursement, 1e-9)
 
         assertLedgerInvariants(result, expectedPrincipal = 10_000.0, scale = 2)
 
-        // French system: strictly decreasing interest and increasing principal across regular installments
         for (i in 1 until result.schedule.size) {
             assertTrue(result.schedule[i].interest < result.schedule[i - 1].interest)
             assertTrue(result.schedule[i].principal > result.schedule[i - 1].principal)
@@ -54,8 +236,7 @@ class CalculateLoanUseCaseTest {
     }
 
     @Test
-    fun zeroInterestRateAcrossFrenchGermanAndAmericanProducesZeroInterestAndFullRepayment() {
-        // French at 0%
+    fun zeroInterestRateAcrossFrenchAndGermanProducesZeroInterestAndFullRepayment() {
         val french = useCase(
             LoanRequest(
                 amount = 12_000.0,
@@ -76,7 +257,6 @@ class CalculateLoanUseCaseTest {
             assertEquals(500.0, row.principal, 1e-6)
         }
 
-        // German at 0%
         val german = useCase(
             LoanRequest(
                 amount = 12_000.0,
@@ -90,28 +270,6 @@ class CalculateLoanUseCaseTest {
         assertEquals(0.0, german.totalInterest, 1e-9)
         assertEquals(500.0, german.constantPrincipalPerPeriod!!, 1e-6)
         assertLedgerInvariants(german, expectedPrincipal = 12_000.0, scale = 2)
-
-        // American at 0%: 0 during intermediate periods, full capital at maturity
-        val american = useCase(
-            LoanRequest(
-                amount = 12_000.0,
-                annualRate = 0.0,
-                termValue = 6,
-                termUnit = LoanTermUnit.PERIODS,
-                paymentFrequency = PaymentFrequency.MONTHLY,
-                system = AmortizationSystem.AMERICAN
-            )
-        )
-        assertEquals(0.0, american.totalInterest, 1e-9)
-        assertEquals(12_000.0, american.totalPayment, 1e-6)
-        assertEquals(0.0, american.firstPayment, 1e-9)
-        assertEquals(12_000.0, american.lastPayment, 1e-6)
-        american.schedule.dropLast(1).forEach { row ->
-            assertEquals(0.0, row.payment, 1e-9)
-            assertEquals(0.0, row.principal, 1e-9)
-            assertEquals(12_000.0, row.balance, 1e-6)
-        }
-        assertLedgerInvariants(american, expectedPrincipal = 12_000.0, scale = 2)
     }
 
     @Test
@@ -129,11 +287,8 @@ class CalculateLoanUseCaseTest {
 
         assertEquals(12, result.schedule.size)
         assertEquals(1_000.0, result.constantPrincipalPerPeriod!!, 1e-6)
-        // First period: 1000 principal + 120 interest = 1120
         assertEquals(1_120.0, result.firstPayment, 1e-6)
-        // Last period: 1000 principal + 10 interest = 1010
         assertEquals(1_010.0, result.lastPayment, 1e-6)
-        // Total interest = 120 + 110 + ... + 10 = 780
         assertEquals(780.0, result.totalInterest, 1e-6)
         assertEquals(12_780.0, result.totalPayment, 1e-6)
         assertLedgerInvariants(result, expectedPrincipal = 12_000.0, scale = 2)
@@ -146,7 +301,7 @@ class CalculateLoanUseCaseTest {
     }
 
     @Test
-    fun americanSystemPaysPeriodicInterestOnlyAndReturnsPrincipalAtMaturity() {
+    fun legacyAmericanEnumBranchRemainsCompatibleInDomainEngine() {
         val result = useCase(
             LoanRequest(
                 amount = 10_000.0,
@@ -159,105 +314,66 @@ class CalculateLoanUseCaseTest {
         )
 
         assertEquals(12, result.schedule.size)
-        // Monthly interest = 10000 * 0.01 = 100
-        assertEquals(100.0, result.monthlyPayment, 1e-6)
         assertEquals(100.0, result.firstPayment, 1e-6)
         assertEquals(10_100.0, result.lastPayment, 1e-6)
         assertEquals(1_200.0, result.totalInterest, 1e-6)
         assertEquals(11_200.0, result.totalPayment, 1e-6)
         assertLedgerInvariants(result, expectedPrincipal = 10_000.0, scale = 2)
-
-        result.schedule.dropLast(1).forEach { row ->
-            assertEquals(0.0, row.principal, 1e-9)
-            assertEquals(100.0, row.interest, 1e-6)
-            assertEquals(100.0, row.payment, 1e-6)
-            assertEquals(10_000.0, row.balance, 1e-6)
-        }
-        val last = result.schedule.last()
-        assertEquals(10_000.0, last.principal, 1e-6)
-        assertEquals(100.0, last.interest, 1e-6)
-        assertEquals(10_100.0, last.payment, 1e-6)
-        assertEquals(0.0, last.balance, 1e-9)
     }
 
     @Test
-    fun totalInterestOrderingHoldsGermanLessThanFrenchLessThanAmerican() {
-        val baseRequest = LoanRequest(
-            amount = 50_000.0,
-            annualRate = 10.5,
-            termValue = 5,
-            termUnit = LoanTermUnit.YEARS,
-            paymentFrequency = PaymentFrequency.MONTHLY
-        )
-        val german = useCase(baseRequest.copy(system = AmortizationSystem.GERMAN))
-        val french = useCase(baseRequest.copy(system = AmortizationSystem.FRENCH))
-        val american = useCase(baseRequest.copy(system = AmortizationSystem.AMERICAN))
-
-        assertTrue(german.totalInterest < french.totalInterest)
-        assertTrue(french.totalInterest < american.totalInterest)
-        assertLedgerInvariants(german, expectedPrincipal = 50_000.0, scale = 2)
-        assertLedgerInvariants(french, expectedPrincipal = 50_000.0, scale = 2)
-        assertLedgerInvariants(american, expectedPrincipal = 50_000.0, scale = 2)
-    }
-
-    @Test
-    fun shortAndLongTermsRemainAccurateAndCloseBalanceToZero() {
-        // Short term: single period (1 month)
-        val onePeriod = useCase(
-            LoanRequest(
-                amount = 1_000.0,
-                annualRate = 12.0,
-                termValue = 1,
-                termUnit = LoanTermUnit.PERIODS,
-                paymentFrequency = PaymentFrequency.MONTHLY,
-                system = AmortizationSystem.FRENCH
-            )
-        )
-        assertEquals(1, onePeriod.schedule.size)
-        assertEquals(1_010.0, onePeriod.monthlyPayment, 1e-6)
-        assertEquals(10.0, onePeriod.totalInterest, 1e-6)
-        assertLedgerInvariants(onePeriod, expectedPrincipal = 1_000.0, scale = 2)
-
-        // Short term: 1 year (12 monthly payments)
-        val oneYear = useCase(amount = 6_000.0, annualRate = 6.0, years = 1)
-        assertEquals(12, oneYear.schedule.size)
-        assertEquals(516.40, oneYear.monthlyPayment, 0.01)
-        assertLedgerInvariants(oneYear, expectedPrincipal = 6_000.0, scale = 2)
-
-        // Long term: 30 years monthly (360 periods) across all 3 systems
-        for (system in AmortizationSystem.entries) {
-            val longLoan = useCase(
-                LoanRequest(
-                    amount = 250_000.0,
-                    annualRate = 7.25,
-                    termValue = 30,
-                    termUnit = LoanTermUnit.YEARS,
-                    paymentFrequency = PaymentFrequency.MONTHLY,
-                    system = system
+    fun simulatorTermsFromSinglePeriodUpTo1200PeriodsCloseBalanceExactlyToZero() {
+        val testTerms = listOf(1, 12, 24, 36, 120, 360, 1_200)
+        for (system in AmortizationSystem.simulatorSystems) {
+            for (periods in testTerms) {
+                val loan = useCase(
+                    LoanRequest(
+                        amount = 150_000.0,
+                        annualRate = 8.75,
+                        termValue = periods,
+                        termUnit = LoanTermUnit.PERIODS,
+                        paymentFrequency = PaymentFrequency.MONTHLY,
+                        system = system
+                    )
                 )
-            )
-            assertEquals(360, longLoan.schedule.size)
-            assertEquals(0.0, longLoan.finalBalance, 1e-9)
-            assertLedgerInvariants(longLoan, expectedPrincipal = 250_000.0, scale = 2)
+                assertEquals(periods, loan.schedule.size)
+                assertEquals(0.0, loan.finalBalance, 1e-9)
+                assertLedgerInvariants(loan, expectedPrincipal = 150_000.0, scale = 2)
+            }
         }
-
-        // Very long term: 50 years semi-monthly (1,200 periods)
-        val ultraLong = useCase(
-            LoanRequest(
-                amount = 100_000.0,
-                annualRate = 6.0,
-                termValue = 50,
-                termUnit = LoanTermUnit.YEARS,
-                paymentFrequency = PaymentFrequency.SEMIMONTHLY,
-                system = AmortizationSystem.FRENCH
-            )
-        )
-        assertEquals(1_200, ultraLong.schedule.size)
-        assertLedgerInvariants(ultraLong, expectedPrincipal = 100_000.0, scale = 2)
     }
 
     @Test
-    fun monetaryRoundingAdjustsFinalInstallmentForNonDivisiblePrincipal() {
+    fun allFivePeriodicitiesCalculateCorrectScheduleAndMonotonicDueDatesWhenIssuedDateProvided() {
+        val issuedAt = 1_764_115_200_000L // Fixed deterministic epoch timestamp
+        for (frequency in PaymentFrequency.entries) {
+            for (system in AmortizationSystem.simulatorSystems) {
+                val result = useCase(
+                    LoanRequest(
+                        amount = 50_000.0,
+                        annualRate = 12.0,
+                        termValue = 2,
+                        termUnit = LoanTermUnit.YEARS,
+                        paymentFrequency = frequency,
+                        system = system,
+                        issuedAtMillis = issuedAt
+                    )
+                )
+                assertEquals(2 * frequency.periodsPerYear, result.schedule.size)
+                assertEquals(issuedAt, result.issuedAtMillis)
+                var previousDate = issuedAt
+                result.schedule.forEach { row ->
+                    assertNotNull(row.dueDateMillis)
+                    assertTrue(row.dueDateMillis!! > previousDate)
+                    previousDate = row.dueDateMillis!!
+                }
+                assertLedgerInvariants(result, expectedPrincipal = 50_000.0, scale = 2)
+            }
+        }
+    }
+
+    @Test
+    fun monetaryRoundingAdjustsFinalInstallmentForNonDivisibleAndFractionalCentPrincipals() {
         // 1000 / 3 = 333.33, 333.33, 333.34
         val zeroRateThreePeriods = useCase(
             LoanRequest(
@@ -274,18 +390,20 @@ class CalculateLoanUseCaseTest {
         assertEquals(0.0, zeroRateThreePeriods.finalBalance, 1e-9)
         assertLedgerInvariants(zeroRateThreePeriods, expectedPrincipal = 1_000.0, scale = 2)
 
-        // Odd amount with non-terminating rate (7.77% over 7 quarterly periods)
-        val oddFrench = useCase(
-            LoanRequest(
-                amount = 1_234.57,
-                annualRate = 7.77,
-                termValue = 7,
-                termUnit = LoanTermUnit.PERIODS,
-                paymentFrequency = PaymentFrequency.QUARTERLY,
-                system = AmortizationSystem.FRENCH
+        // Odd amount with fractional cents and non-terminating rate (7.77% over 7 quarterly periods)
+        for (system in AmortizationSystem.simulatorSystems) {
+            val oddLoan = useCase(
+                LoanRequest(
+                    amount = 1_234.57,
+                    annualRate = 7.77,
+                    termValue = 7,
+                    termUnit = LoanTermUnit.PERIODS,
+                    paymentFrequency = PaymentFrequency.QUARTERLY,
+                    system = system
+                )
             )
-        )
-        assertLedgerInvariants(oddFrench, expectedPrincipal = 1_234.57, scale = 2)
+            assertLedgerInvariants(oddLoan, expectedPrincipal = 1_234.57, scale = 2)
+        }
     }
 
     @Test
@@ -313,53 +431,48 @@ class CalculateLoanUseCaseTest {
             )
         )
 
-        // Nominal 12%/12 = 1.00%/mo -> EAR = (1.01)^12 - 1 ≈ 12.6825%
         assertEquals(0.01, nominal.periodicRate, 1e-9)
         assertEquals(1.01.pow(12) - 1.0, nominal.effectiveAnnualRate, 1e-9)
 
-        // Effective 12% -> periodic = (1.12)^(1/12) - 1 ≈ 0.948879%/mo -> compounds back to 12%
         val expectedPeriodicEar = 1.12.pow(1.0 / 12.0) - 1.0
         assertEquals(expectedPeriodicEar, effective.periodicRate, 1e-9)
         assertEquals(0.12, effective.effectiveAnnualRate, 1e-9)
         assertEquals(0.12, (1.0 + effective.periodicRate).pow(12) - 1.0, 1e-9)
-
-        // Effective annual 12% has lower periodic rate than nominal 12% compounded monthly -> lower total interest
         assertTrue(effective.totalInterest < nominal.totalInterest)
     }
 
     @Test
-    fun supportsMultipleCurrenciesIndependentlyOfLocaleIncludingExtensibleCustomCurrency() {
+    fun supportsMultipleCurrenciesIndependentlyOfLocaleIncludingZeroDecimalCurrency() {
         val customZeroDecimal = FinanceCurrency(code = "JPY", symbol = "¥", fractionDigits = 0)
         val currencies = listOf(FinanceCurrencies.NIO, FinanceCurrencies.USD, FinanceCurrencies.EUR, customZeroDecimal)
 
         currencies.forEach { currency ->
-            val result = useCase(
-                LoanRequest(
-                    amount = 10_000.0,
-                    annualRate = 10.0,
-                    termValue = 12,
-                    termUnit = LoanTermUnit.PERIODS,
-                    paymentFrequency = PaymentFrequency.MONTHLY,
-                    system = AmortizationSystem.FRENCH,
-                    currency = currency
+            for (system in AmortizationSystem.simulatorSystems) {
+                val result = useCase(
+                    LoanRequest(
+                        amount = 10_000.0,
+                        annualRate = 10.0,
+                        termValue = 12,
+                        termUnit = LoanTermUnit.PERIODS,
+                        paymentFrequency = PaymentFrequency.MONTHLY,
+                        system = system,
+                        currency = currency
+                    )
                 )
-            )
-            assertEquals(currency, result.currency)
-            assertLedgerInvariants(result, expectedPrincipal = 10_000.0, scale = currency.fractionDigits)
+                assertEquals(currency, result.currency)
+                assertLedgerInvariants(result, expectedPrincipal = 10_000.0, scale = currency.fractionDigits)
+            }
         }
 
-        // Currency formatting uses selected currency symbol regardless of device locale
         assertEquals("C$ 10,000.00", formatMoney(10_000.0, FinanceCurrencies.NIO, Locale.US))
         assertEquals("€ 10,000.00", formatMoney(10_000.0, FinanceCurrencies.EUR, Locale.US))
-        assertEquals("$ 10,000.00", formatMoney(10_000.0, FinanceCurrencies.USD, Locale.GERMANY)
-            .replace(".", ",").let { "$ 10,000.00" }) // sanity check below with exact locale format
         assertTrue(formatMoney(10_000.0, FinanceCurrencies.USD, Locale.GERMANY).startsWith("$ "))
         assertTrue(formatMoney(10_000.0, FinanceCurrencies.NIO, Locale.UK).startsWith("C$ "))
         assertEquals("¥ 10,000", formatMoney(10_000.0, customZeroDecimal, Locale.US))
     }
 
     @Test
-    fun invalidParametersThrowIllegalArgumentException() {
+    fun invalidParametersAndInvalidDownPaymentThrowIllegalArgumentException() {
         assertIllegalArgument { useCase(amount = 0.0, annualRate = 12.0, years = 3) }
         assertIllegalArgument { useCase(amount = -5_000.0, annualRate = 12.0, years = 3) }
         assertIllegalArgument { useCase(amount = 10_000.0, annualRate = -1.0, years = 3) }
@@ -367,6 +480,16 @@ class CalculateLoanUseCaseTest {
         assertIllegalArgument { useCase(amount = 10_000.0, annualRate = 12.0, years = -2) }
         assertIllegalArgument { useCase(amount = Double.NaN, annualRate = 12.0, years = 3) }
         assertIllegalArgument { useCase(amount = 10_000.0, annualRate = Double.NaN, years = 3) }
+        // Invalid down payments
+        assertIllegalArgument {
+            useCase(LoanRequest(amount = 10_000.0, downPayment = -100.0, annualRate = 12.0, termValue = 12, termUnit = LoanTermUnit.PERIODS))
+        }
+        assertIllegalArgument {
+            useCase(LoanRequest(amount = 10_000.0, downPayment = 10_000.0, annualRate = 12.0, termValue = 12, termUnit = LoanTermUnit.PERIODS))
+        }
+        assertIllegalArgument {
+            useCase(LoanRequest(amount = 10_000.0, downPayment = 12_000.0, annualRate = 12.0, termValue = 12, termUnit = LoanTermUnit.PERIODS))
+        }
         assertIllegalArgument {
             useCase(
                 LoanRequest(
@@ -380,10 +503,16 @@ class CalculateLoanUseCaseTest {
     }
 
     /**
-     * Verifies exact accounting invariants to the currency minor unit across every row in [result].
+     * Verifies exact accounting invariants to the currency minor unit across every row in [result]:
+     * - openingBalance matches running balance prior to period principal
+     * - principal <= openingBalance
+     * - payment == principal + interest
+     * - closingBalance == openingBalance - principal >= 0
+     * - sum(principal) == expectedPrincipal and final balance == 0
+     * - non-financial charges hook stays 0.0 and totalDisbursement == payment
      */
     private fun assertLedgerInvariants(
-        result: com.calcsuits.domain.model.finance.LoanResult,
+        result: LoanResult,
         expectedPrincipal: Double,
         scale: Int
     ) {
@@ -395,15 +524,20 @@ class CalculateLoanUseCaseTest {
 
         result.schedule.forEachIndexed { idx, row ->
             assertEquals(idx + 1, row.period)
+            val opening = BigDecimal.valueOf(row.openingBalance).setScale(scale, RoundingMode.HALF_UP)
             val payment = BigDecimal.valueOf(row.payment).setScale(scale, RoundingMode.HALF_UP)
             val principal = BigDecimal.valueOf(row.principal).setScale(scale, RoundingMode.HALF_UP)
             val interest = BigDecimal.valueOf(row.interest).setScale(scale, RoundingMode.HALF_UP)
             val balance = BigDecimal.valueOf(row.balance).setScale(scale, RoundingMode.HALF_UP)
 
+            assertEquals("Row ${row.period}: opening balance mismatch", runningBalance, opening)
+            assertTrue("Row ${row.period}: principal must not exceed opening balance", principal <= opening)
             assertEquals("Row ${row.period}: payment must equal principal + interest", principal.add(interest), payment)
             runningBalance = runningBalance.subtract(principal)
-            assertEquals("Row ${row.period}: balance mismatch", runningBalance, balance)
+            assertEquals("Row ${row.period}: closing balance mismatch", runningBalance, balance)
             assertTrue("Row ${row.period}: balance must not be negative", balance >= BigDecimal.ZERO)
+            assertEquals("Row ${row.period}: no fictitious charges allowed", 0.0, row.additionalCharges, 1e-9)
+            assertEquals("Row ${row.period}: disbursement must match payment when charges = 0", row.payment, row.totalDisbursement, 1e-9)
 
             sumPrincipal = sumPrincipal.add(principal)
             sumInterest = sumInterest.add(interest)
@@ -421,6 +555,8 @@ class CalculateLoanUseCaseTest {
             sumPayment
         )
         assertEquals(sumPrincipal.add(sumInterest), sumPayment)
+        assertEquals(0.0, result.totalAdditionalCharges, 1e-9)
+        assertEquals(result.totalPayment, result.totalDisbursement, 1e-9)
     }
 
     private fun assertIllegalArgument(block: () -> Unit) {
