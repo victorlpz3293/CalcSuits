@@ -141,6 +141,39 @@ class ConvertUnitsUseCaseTest {
     }
 
     @Test
+    fun categoryOrderMatchesPhase3SpecificationAndPreservesAllUnits() {
+        assertEquals(
+            listOf(
+                ConversionCategory.Length,
+                ConversionCategory.Mass,
+                ConversionCategory.Area,
+                ConversionCategory.Volume,
+                ConversionCategory.Temperature,
+                ConversionCategory.Speed,
+                ConversionCategory.Time,
+                ConversionCategory.Data,
+                ConversionCategory.Currency
+            ),
+            ConversionCategory.all
+        )
+        assertEquals(9, ConversionCategory.all.size)
+        ConversionCategory.all.forEach { category ->
+            assert(category.units.size >= 3) { "Expected at least 3 units in ${category.key}" }
+        }
+    }
+
+    @Test
+    fun temperatureAbsoluteZeroAndCrossScaleInverseConversionsAreAccurate() {
+        val c = unitOf(ConversionCategory.Temperature, "°C")
+        val f = unitOf(ConversionCategory.Temperature, "°F")
+        val k = unitOf(ConversionCategory.Temperature, "K")
+
+        assertEquals(-273.15, useCase(0.0, k, c, locale = Locale.US).toDouble(), 1e-6)
+        assertEquals(-459.67, useCase(0.0, k, f, locale = Locale.US).toDouble(), 1e-2)
+        assertEquals(0.0, useCase(-459.67, f, k, locale = Locale.US).toDouble(), 1e-2)
+    }
+
+    @Test
     fun identityZeroAndNonFiniteInputsBehaveSafely() {
         val m = unitOf(ConversionCategory.Length, "m")
         val km = unitOf(ConversionCategory.Length, "km")

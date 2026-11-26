@@ -170,6 +170,44 @@ class ConverterViewModelTest {
         assertFalse("EUR" in vm.state.value.referenceCurrencySymbols)
     }
 
+    @Test
+    fun selectingAllCategoriesAndSwappingUnitsProducesInverseConversions() = runTest {
+        val remoteSnapshot = CurrencyRatesSnapshot(
+            baseCode = "USD",
+            rates = mapOf("USD" to 1.0, "EUR" to 0.90, "NIO" to 36.60, "MXN" to 18.0, "CRC" to 510.0, "GBP" to 0.80),
+            updatedAtMillis = 1_732_700_000_000L
+        )
+        val repo = FakeCurrencyRepository(
+            cached = remoteSnapshot,
+            refreshHandler = { _, _ ->
+                Result.success(
+                    CurrencyRatesResult(
+                        snapshot = remoteSnapshot,
+                        source = CurrencyRatesSource.REMOTE,
+                        isStale = false
+                    )
+                )
+            }
+        )
+        val vm = ConverterViewModel(ConvertUnitsUseCase(), repo)
+        vm.updateLocale(Locale.US)
+        vm.onValueChange("100")
+
+        ConversionCategory.all.forEach { category ->
+            vm.onCategorySelected(category)
+            advanceUntilIdle()
+            val forward = vm.state.value.toValue.replace(",", "")
+            assertTrue("Expected non-blank result for ${category.key}", forward.isNotBlank())
+
+            vm.swapUnits()
+            vm.onValueChange(forward)
+            val roundTrip = vm.state.value.toValue.replace(",", "").toDouble()
+            assertEquals("Round-trip failed for ${category.key}", 100.0, roundTrip, 0.05)
+
+            vm.onValueChange("100")
+        }
+    }
+
     private class FakeCurrencyRepository(
         private val cached: CurrencyRatesSnapshot?,
         private val refreshHandler: suspend (String, Boolean) -> Result<CurrencyRatesResult>

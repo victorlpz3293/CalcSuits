@@ -3,12 +3,22 @@ package com.calcsuits.features.finance.ui.viewmodel
 import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import com.calcsuits.R
+import com.calcsuits.domain.model.finance.AmortizationSystem
+import com.calcsuits.domain.model.finance.FinanceCurrencies
+import com.calcsuits.domain.model.finance.FinanceCurrency
+import com.calcsuits.domain.model.finance.LoanRequest
 import com.calcsuits.domain.model.finance.LoanResult
+import com.calcsuits.domain.model.finance.LoanTermUnit
+import com.calcsuits.domain.model.finance.PaymentFrequency
+import com.calcsuits.domain.model.finance.RateConvention
 import com.calcsuits.domain.usecase.CalculateLoanUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import java.math.BigDecimal
+import java.math.MathContext
+import java.math.RoundingMode
 import javax.inject.Inject
 import kotlin.math.pow
 
@@ -26,6 +36,15 @@ enum class CompoundingFrequency(@StringRes val labelRes: Int, val periodsPerYear
     DAILY(R.string.finance_freq_daily, 365)
 }
 
+enum class TaxType(@StringRes val labelRes: Int) {
+    VAT(R.string.finance_tax_type_vat),
+    SALES(R.string.finance_tax_type_sales),
+    EXCISE(R.string.finance_tax_type_excise),
+    WITHHOLDING(R.string.finance_tax_type_withholding),
+    SERVICE(R.string.finance_tax_type_service),
+    CUSTOM(R.string.finance_tax_type_custom)
+}
+
 data class InterestComparisonResult(
     val simpleInterest: Double,
     val simpleTotal: Double,
@@ -36,11 +55,17 @@ data class InterestComparisonResult(
 data class TaxResult(
     val baseAmount: Double,
     val taxAmount: Double,
-    val totalAmount: Double
+    val totalAmount: Double,
+    val appliedRatePercent: Double = 0.0
 )
 
 data class FinanceState(
     val selectedTab: FinanceTab = FinanceTab.LOAN,
+    val selectedCurrency: FinanceCurrency = FinanceCurrencies.USD,
+    val amortizationSystem: AmortizationSystem = AmortizationSystem.FRENCH,
+    val paymentFrequency: PaymentFrequency = PaymentFrequency.MONTHLY,
+    val loanTermUnit: LoanTermUnit = LoanTermUnit.YEARS,
+    val rateConvention: RateConvention = RateConvention.NOMINAL_PER_PAYMENT_PERIOD,
     val amount: String = "10000",
     val interestRate: String = "12",
     val years: String = "3",
@@ -50,8 +75,10 @@ data class FinanceState(
     val termYears: String = "5",
     val frequency: CompoundingFrequency = CompoundingFrequency.MONTHLY,
     val interestResult: InterestComparisonResult? = null,
+    val taxType: TaxType = TaxType.VAT,
+    val customTaxLabel: String = "",
     val taxBaseInput: String = "1000",
-    val taxRatePercent: String = "15",
+    val taxRatePercent: String = "0",
     val taxIncluded: Boolean = false,
     val taxResult: TaxResult? = null
 )
@@ -74,6 +101,45 @@ class FinanceViewModel @Inject constructor(
         _state.update { it.copy(selectedTab = tab) }
     }
 
+    fun onCurrencySelected(currency: FinanceCurrency) {
+        _state.update { it.copy(selectedCurrency = currency) }
+        calculateLoan()
+        calculateTax()
+    }
+
+    fun onAmortizationSystemSelected(system: AmortizationSystem) {
+        _state.update { it.copy(amortizationSystem = system) }
+        calculateLoan()
+    }
+
+    fun onPaymentFrequencySelected(frequency: PaymentFrequency) {
+        _state.update { it.copy(paymentFrequency = frequency) }
+        calculateLoan()
+    }
+
+    fun onLoanTermUnitSelected(unit: LoanTermUnit) {
+        val current = _state.value
+        if (current.loanTermUnit == unit) return
+        val convertedTerm = current.years.toIntOrNull()?.let { value ->
+            when (unit) {
+                LoanTermUnit.PERIODS -> (value * current.paymentFrequency.periodsPerYear)
+                    .coerceIn(1, MAX_LOAN_PERIODS)
+                    .toString()
+                LoanTermUnit.YEARS -> ((value + current.paymentFrequency.periodsPerYear - 1) /
+                    current.paymentFrequency.periodsPerYear)
+                    .coerceIn(1, MAX_LOAN_YEARS)
+                    .toString()
+            }
+        } ?: current.years
+        _state.update { it.copy(loanTermUnit = unit, years = convertedTerm) }
+        calculateLoan()
+    }
+
+    fun onRateConventionSelected(convention: RateConvention) {
+        _state.update { it.copy(rateConvention = convention) }
+        calculateLoan()
+    }
+
     fun onAmountChange(value: String) {
         _state.update { it.copy(amount = sanitizeDecimal(value)) }
         calculateLoan()
@@ -85,7 +151,8 @@ class FinanceViewModel @Inject constructor(
     }
 
     fun onYearsChange(value: String) {
-        _state.update { it.copy(years = value.filter { c -> c.isDigit() }.take(2)) }
+        val maxDigits = if (_state.value.loanTermUnit == LoanTermUnit.YEARS) 2 else 4
+        _state.update { it.copy(years = value.filter { c -> c.isDigit() }.take(maxDigits)) }
         calculateLoan()
     }
 
@@ -93,10 +160,30 @@ class FinanceViewModel @Inject constructor(
         val s = _state.value
         val amount = s.amount.toDoubleOrNull()
         val rate = s.interestRate.toDoubleOrNull()
-        val years = s.years.toIntOrNull()
+        val term = s.years.toIntOrNull()
 
-        if (amount != null && rate != null && years != null && amount > 0 && rate >= 0 && years in 1..50) {
-            val result = calculateLoanUseCase(amount, rate, years)
+        val validTerm = when (s.loanTermUnit) {
+            LoanTermUnit.YEARS -> term != null && term in 1..MAX_LOAN_YEARS
+            LoanTermUnit.PERIODS -> term != null && term in 1..MAX_LOAN_PERIODS
+        }
+
+        if (amount != null && rate != null && term != null &&
+            amount > 0.0 && rate >= 0.0 && rate <= MAX_ANNUAL_RATE_PERCENT && validTerm
+        ) {
+            val result = runCatching {
+                calculateLoanUseCase(
+                    LoanRequest(
+                        amount = amount,
+                        annualRate = rate,
+                        termValue = term,
+                        termUnit = s.loanTermUnit,
+                        paymentFrequency = s.paymentFrequency,
+                        system = s.amortizationSystem,
+                        rateConvention = s.rateConvention,
+                        currency = s.selectedCurrency
+                    )
+                )
+            }.getOrNull()
             _state.update { it.copy(loanResult = result) }
         } else {
             _state.update { it.copy(loanResult = null) }
@@ -153,6 +240,15 @@ class FinanceViewModel @Inject constructor(
         _state.update { it.copy(interestResult = null) }
     }
 
+    fun onTaxTypeSelected(type: TaxType) {
+        _state.update { it.copy(taxType = type) }
+    }
+
+    fun onCustomTaxLabelChange(value: String) {
+        val cleaned = value.replace("\n", " ").replace("\r", "").take(MAX_CUSTOM_TAX_LABEL_LENGTH)
+        _state.update { it.copy(customTaxLabel = cleaned) }
+    }
+
     fun onTaxBaseChange(value: String) {
         _state.update { it.copy(taxBaseInput = sanitizeDecimal(value)) }
         calculateTax()
@@ -173,15 +269,33 @@ class FinanceViewModel @Inject constructor(
         val input = s.taxBaseInput.toDoubleOrNull()
         val ratePct = s.taxRatePercent.toDoubleOrNull()
 
-        if (input != null && ratePct != null && input >= 0 && ratePct >= 0) {
-            val rate = ratePct / 100.0
+        if (input != null && ratePct != null && input >= 0.0 && ratePct >= 0.0) {
+            val mc = MathContext.DECIMAL128
+            val inputBd = BigDecimal.valueOf(input)
+            val rateBd = BigDecimal.valueOf(ratePct).divide(BigDecimal(100), mc)
+            val scale = s.selectedCurrency.fractionDigits
+
             val result = if (s.taxIncluded) {
-                val base = input / (1.0 + rate)
-                val tax = input - base
-                TaxResult(baseAmount = base, taxAmount = tax, totalAmount = input)
+                val baseBd = inputBd.divide(BigDecimal.ONE.add(rateBd, mc), mc)
+                val roundedTotal = inputBd.setScale(scale, RoundingMode.HALF_UP)
+                val roundedBase = baseBd.setScale(scale, RoundingMode.HALF_UP)
+                val roundedTax = roundedTotal.subtract(roundedBase)
+                TaxResult(
+                    baseAmount = roundedBase.toDouble(),
+                    taxAmount = roundedTax.toDouble(),
+                    totalAmount = roundedTotal.toDouble(),
+                    appliedRatePercent = ratePct
+                )
             } else {
-                val tax = input * rate
-                TaxResult(baseAmount = input, taxAmount = tax, totalAmount = input + tax)
+                val roundedBase = inputBd.setScale(scale, RoundingMode.HALF_UP)
+                val roundedTax = roundedBase.multiply(rateBd, mc).setScale(scale, RoundingMode.HALF_UP)
+                val roundedTotal = roundedBase.add(roundedTax)
+                TaxResult(
+                    baseAmount = roundedBase.toDouble(),
+                    taxAmount = roundedTax.toDouble(),
+                    totalAmount = roundedTotal.toDouble(),
+                    appliedRatePercent = ratePct
+                )
             }
             _state.update { it.copy(taxResult = result) }
         } else {
@@ -202,5 +316,12 @@ class FinanceViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    companion object {
+        const val MAX_LOAN_YEARS = 50
+        const val MAX_LOAN_PERIODS = 1_200
+        const val MAX_ANNUAL_RATE_PERCENT = 1_000.0
+        const val MAX_CUSTOM_TAX_LABEL_LENGTH = 32
     }
 }

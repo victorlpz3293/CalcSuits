@@ -23,7 +23,7 @@
     <string name="drawer_sub_graphs">Plotter interactivo</string>
     <string name="drawer_sub_solver">Ecuaciones y expresiones</string>
     <string name="drawer_sub_converter">9 categorías de unidades</string>
-    <string name="drawer_sub_finance">Préstamos, interés e IVA</string>
+    <string name="drawer_sub_finance">Préstamos, interés e impuestos</string>
     <string name="drawer_sub_engineering">Eléctrica, redes y lógica digital</string>
     <string name="drawer_sub_programmer">HEX, BIN y bitwise</string>
     <string name="drawer_sub_settings">Tema y precisión</string>
@@ -136,15 +136,15 @@
     <string name="cd_converter_swap">Intercambiar unidades</string>
     <string name="cd_converter_select_unit">Seleccionar unidad</string>
 
-    <string name="cat_length">Longitud</string>
-    <string name="cat_mass">Masa</string>
+    <string name="cat_length">Longitud y distancia</string>
+    <string name="cat_mass">Masa y peso</string>
     <string name="cat_temperature">Temperatura</string>
-    <string name="cat_area">Área</string>
-    <string name="cat_volume">Volumen</string>
+    <string name="cat_area">Área y superficie</string>
+    <string name="cat_volume">Volumen y capacidad</string>
     <string name="cat_speed">Velocidad</string>
-    <string name="cat_data">Datos</string>
+    <string name="cat_data">Informática y almacenamiento</string>
     <string name="cat_time">Tiempo</string>
-    <string name="cat_currency">Moneda</string>
+    <string name="cat_currency">Monedas</string>
     <string name="cat_currency_note">Tasas de referencia locales aproximadas (base USD)</string>
     <string name="converter_rates_updated">Actualizado: %1$s</string>
     <string name="converter_rates_offline_cached">Sin conexión · tasas del %1$s</string>
@@ -213,9 +213,12 @@
     <string name="unit_gbp">Libra esterlina</string>
 
     <!-- Finance -->
-    <string name="finance_tab_loan">Préstamo</string>
-    <string name="finance_tab_interest">Interés</string>
-    <string name="finance_tab_tax">IVA / Impuestos</string>
+    <string name="finance_tab_loan">Préstamos</string>
+    <string name="finance_tab_interest">Intereses</string>
+    <string name="finance_tab_tax">Impuestos</string>
+
+    <string name="finance_currency_label">Moneda</string>
+    <string name="cd_finance_select_currency">Seleccionar moneda</string>
 
     <string name="finance_freq_annual">Anual</string>
     <string name="finance_freq_semiannual">Semestral</string>
@@ -223,23 +226,63 @@
     <string name="finance_freq_monthly">Mensual</string>
     <string name="finance_freq_daily">Diaria</string>
 
+    <string name="finance_system_label">Sistema de amortización</string>
+    <string name="finance_system_french">Francés</string>
+    <string name="finance_system_german">Alemán</string>
+    <string name="finance_system_american">Americano</string>
+    <string name="finance_system_french_desc">Cuota constante, interés decreciente y amortización creciente.</string>
+    <string name="finance_system_german_desc">Amortización de capital constante, intereses decrecientes y cuotas decrecientes.</string>
+    <string name="finance_system_american_desc">Pago periódico de intereses y devolución íntegra del capital al vencimiento.</string>
+
+    <string name="finance_payment_frequency">Periodicidad de pagos</string>
+    <string name="finance_pay_freq_monthly">Mensual (12/año)</string>
+    <string name="finance_pay_freq_semimonthly">Quincenal (24/año)</string>
+    <string name="finance_pay_freq_quarterly">Trimestral (4/año)</string>
+    <string name="finance_pay_freq_semiannual">Semestral (2/año)</string>
+    <string name="finance_pay_freq_annual">Anual (1/año)</string>
+
+    <string name="finance_term_unit_years">Años</string>
+    <string name="finance_term_unit_periods">Cuotas</string>
+    <string name="finance_term_periods">Plazo (cuotas)</string>
+
+    <string name="finance_rate_convention_label">Supuesto de tasa</string>
+    <string name="finance_rate_nominal">Nominal (TNA / m)</string>
+    <string name="finance_rate_effective">Efectiva anual (TEA)</string>
+    <string name="finance_rate_note_nominal">Tasa nominal anual (TNA) capitalizable según periodicidad de pago: i = TNA / %1$d = %2$s por período (TEA equiv. %3$s).</string>
+    <string name="finance_rate_note_effective">Tasa efectiva anual (TEA) convertida a tasa periódica equivalente: i = (1 + TEA)^(1/%1$d) - 1 = %2$s por período.</string>
+
     <string name="finance_loan_params">Parámetros del préstamo</string>
-    <string name="finance_loan_principal">Capital a financiar</string>
+    <string name="finance_loan_principal">Importe del préstamo</string>
     <string name="finance_annual_rate">Tasa anual</string>
     <string name="finance_term_years">Plazo (años)</string>
-    <string name="finance_monthly_payment_label">CUOTA MENSUAL ESTIMADA</string>
+    <string name="finance_loan_primary_french">CUOTA PERIÓDICA CONSTANTE</string>
+    <string name="finance_loan_primary_german">PRIMERA CUOTA (DECRECIENTE)</string>
+    <string name="finance_loan_primary_american">CUOTA PERIÓDICA DE INTERÉS</string>
+    <string name="finance_loan_primary_american_single">PAGO ÚNICO AL VENCIMIENTO</string>
+    <string name="finance_loan_german_range">Disminuye hasta %1$s en la última cuota</string>
+    <string name="finance_loan_american_balloon">Pago final al vencimiento: %1$s</string>
+    <string name="finance_loan_principal_amortized">Capital amortizado</string>
+    <string name="finance_loan_constant_principal">Capital por cuota</string>
+    <string name="finance_loan_first_payment">Primera cuota</string>
+    <string name="finance_loan_last_payment">Última cuota</string>
+    <string name="finance_loan_final_balance">Saldo pendiente final</string>
+    <string name="finance_loan_periodic_rate">Tasa periódica</string>
+    <string name="finance_loan_effective_rate">Tasa efectiva anual (TEA)</string>
     <string name="finance_legend_principal">Capital (%1$s)</string>
     <string name="finance_legend_interest">Interés (%1$s)</string>
-    <string name="finance_total_interest">Intereses totales</string>
-    <string name="finance_total_payment">Monto total a pagar</string>
+    <string name="finance_total_interest">Intereses pagados</string>
+    <string name="finance_total_payment">Total pagado</string>
     <string name="finance_hide_schedule">Ocultar tabla de amortización</string>
     <plurals name="finance_show_schedule">
         <item quantity="one">Ver tabla de amortización (%d cuota)</item>
         <item quantity="other">Ver tabla de amortización (%d cuotas)</item>
     </plurals>
+    <string name="finance_schedule_currency_caption">Importes en %1$s (%2$s) · %3$d cuotas</string>
+    <string name="finance_col_payment">Cuota</string>
     <string name="finance_col_principal">Capital</string>
     <string name="finance_col_interest">Interés</string>
     <string name="finance_col_balance">Saldo</string>
+    <string name="finance_schedule_totals">Totales</string>
     <string name="finance_show_first_12">Mostrar primeras 12</string>
     <plurals name="finance_show_all_periods">
         <item quantity="one">Mostrar todas (%d)</item>
@@ -254,14 +297,26 @@
     <string name="finance_compound">COMPUESTO</string>
     <string name="finance_compound_advantage">Ventaja del interés compuesto</string>
 
-    <string name="finance_tax_title">Cálculo de IVA / Impuestos</string>
-    <string name="finance_tax_add">Sumar IVA</string>
-    <string name="finance_tax_extract">Desglosar IVA incluido</string>
-    <string name="finance_tax_total_input">Monto total (IVA incluido)</string>
-    <string name="finance_tax_net_input">Monto neto (sin IVA)</string>
+    <string name="finance_tax_title">Calculadora de impuestos</string>
+    <string name="finance_tax_type_label">Tipo de impuesto</string>
+    <string name="finance_tax_type_vat">IVA</string>
+    <string name="finance_tax_type_sales">Ventas</string>
+    <string name="finance_tax_type_excise">Consumo / ISC</string>
+    <string name="finance_tax_type_withholding">Retención</string>
+    <string name="finance_tax_type_service">Servicio</string>
+    <string name="finance_tax_type_custom">Personalizado</string>
+    <string name="finance_tax_custom_name_label">Nombre del impuesto</string>
+    <string name="finance_tax_custom_name_placeholder">Ej. IGV, ITBMS, Municipal</string>
+    <string name="finance_tax_add">Añadir impuesto</string>
+    <string name="finance_tax_extract">Desglosar impuesto incluido</string>
+    <string name="finance_tax_total_input">Monto total (impuesto incluido)</string>
+    <string name="finance_tax_net_input">Base imponible (sin impuesto)</string>
     <string name="finance_tax_rate_label">Tasa de impuesto</string>
-    <string name="finance_tax_subtotal">Subtotal (base)</string>
-    <string name="finance_tax_amount">Impuesto (%1$s%%)</string>
+    <string name="finance_tax_rate_hint">La tasa es configurable; verifica el porcentaje vigente en tu jurisdicción.</string>
+    <string name="finance_tax_selected_type">Tipo de impuesto</string>
+    <string name="finance_tax_subtotal">Base imponible</string>
+    <string name="finance_tax_applied_rate">Tasa aplicada</string>
+    <string name="finance_tax_amount_plain">Importe del impuesto</string>
     <string name="finance_tax_total">Total final</string>
 
     <!-- Engineering -->

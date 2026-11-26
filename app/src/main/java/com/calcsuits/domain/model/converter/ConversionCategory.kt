@@ -145,7 +145,7 @@ sealed class ConversionCategory(
 
     companion object {
         val all: List<ConversionCategory> by lazy {
-            listOf(Length, Mass, Temperature, Area, Volume, Speed, Data, Time, Currency)
+            listOf(Length, Mass, Area, Volume, Temperature, Speed, Time, Data, Currency)
         }
     }
 }

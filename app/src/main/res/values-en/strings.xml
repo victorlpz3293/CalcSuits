@@ -23,7 +23,7 @@
     <string name="drawer_sub_graphs">Interactive plotter</string>
     <string name="drawer_sub_solver">Equations &amp; expressions</string>
     <string name="drawer_sub_converter">9 unit categories</string>
-    <string name="drawer_sub_finance">Loans, interest &amp; VAT</string>
+    <string name="drawer_sub_finance">Loans, interest &amp; taxes</string>
     <string name="drawer_sub_engineering">Electrical, networks &amp; digital logic</string>
     <string name="drawer_sub_programmer">HEX, BIN &amp; bitwise</string>
     <string name="drawer_sub_settings">Theme &amp; precision</string>
@@ -136,15 +136,15 @@
     <string name="cd_converter_swap">Swap units</string>
     <string name="cd_converter_select_unit">Select unit</string>
 
-    <string name="cat_length">Length</string>
-    <string name="cat_mass">Mass</string>
+    <string name="cat_length">Length &amp; distance</string>
+    <string name="cat_mass">Mass &amp; weight</string>
     <string name="cat_temperature">Temperature</string>
-    <string name="cat_area">Area</string>
-    <string name="cat_volume">Volume</string>
+    <string name="cat_area">Area &amp; surface</string>
+    <string name="cat_volume">Volume &amp; capacity</string>
     <string name="cat_speed">Speed</string>
-    <string name="cat_data">Data</string>
+    <string name="cat_data">Computing &amp; storage</string>
     <string name="cat_time">Time</string>
-    <string name="cat_currency">Currency</string>
+    <string name="cat_currency">Currencies</string>
     <string name="cat_currency_note">Approximate local reference rates (USD base)</string>
     <string name="converter_rates_updated">Updated: %1$s</string>
     <string name="converter_rates_offline_cached">Offline · rates from %1$s</string>
@@ -215,7 +215,10 @@
     <!-- Finance -->
     <string name="finance_tab_loan">Loan</string>
     <string name="finance_tab_interest">Interest</string>
-    <string name="finance_tab_tax">VAT / Tax</string>
+    <string name="finance_tab_tax">Taxes</string>
+
+    <string name="finance_currency_label">Currency</string>
+    <string name="cd_finance_select_currency">Select currency</string>
 
     <string name="finance_freq_annual">Annual</string>
     <string name="finance_freq_semiannual">Semiannual</string>
@@ -223,11 +226,48 @@
     <string name="finance_freq_monthly">Monthly</string>
     <string name="finance_freq_daily">Daily</string>
 
+    <string name="finance_system_label">Amortization system</string>
+    <string name="finance_system_french">French</string>
+    <string name="finance_system_german">German</string>
+    <string name="finance_system_american">American</string>
+    <string name="finance_system_french_desc">Constant installment, decreasing interest, and increasing principal amortization.</string>
+    <string name="finance_system_german_desc">Constant principal amortization, decreasing interest, and decreasing installments.</string>
+    <string name="finance_system_american_desc">Periodic interest-only payments with full principal repaid at maturity.</string>
+
+    <string name="finance_payment_frequency">Payment periodicity</string>
+    <string name="finance_pay_freq_monthly">Monthly (12/yr)</string>
+    <string name="finance_pay_freq_semimonthly">Semi-monthly (24/yr)</string>
+    <string name="finance_pay_freq_quarterly">Quarterly (4/yr)</string>
+    <string name="finance_pay_freq_semiannual">Semiannual (2/yr)</string>
+    <string name="finance_pay_freq_annual">Annual (1/yr)</string>
+
+    <string name="finance_term_unit_years">Years</string>
+    <string name="finance_term_unit_periods">Payments</string>
+    <string name="finance_term_periods">Term (payments)</string>
+
+    <string name="finance_rate_convention_label">Rate assumption</string>
+    <string name="finance_rate_nominal">Nominal (TNA / m)</string>
+    <string name="finance_rate_effective">Effective annual (EAR)</string>
+    <string name="finance_rate_note_nominal">Nominal annual rate (TNA) capitalized at payment periodicity: i = TNA / %1$d = %2$s per period (equiv. EAR %3$s).</string>
+    <string name="finance_rate_note_effective">Effective annual rate (EAR) converted to equivalent periodic rate: i = (1 + EAR)^(1/%1$d) - 1 = %2$s per period.</string>
+
     <string name="finance_loan_params">Loan parameters</string>
     <string name="finance_loan_principal">Principal amount</string>
     <string name="finance_annual_rate">Annual rate</string>
     <string name="finance_term_years">Term (years)</string>
-    <string name="finance_monthly_payment_label">ESTIMATED MONTHLY PAYMENT</string>
+    <string name="finance_loan_primary_french">CONSTANT PERIODIC PAYMENT</string>
+    <string name="finance_loan_primary_german">FIRST PAYMENT (DECREASING)</string>
+    <string name="finance_loan_primary_american">PERIODIC INTEREST PAYMENT</string>
+    <string name="finance_loan_primary_american_single">SINGLE PAYMENT AT MATURITY</string>
+    <string name="finance_loan_german_range">Decreases down to %1$s on the last payment</string>
+    <string name="finance_loan_american_balloon">Final payment at maturity: %1$s</string>
+    <string name="finance_loan_principal_amortized">Amortized principal</string>
+    <string name="finance_loan_constant_principal">Principal per period</string>
+    <string name="finance_loan_first_payment">First payment</string>
+    <string name="finance_loan_last_payment">Last payment</string>
+    <string name="finance_loan_final_balance">Ending balance</string>
+    <string name="finance_loan_periodic_rate">Periodic rate</string>
+    <string name="finance_loan_effective_rate">Effective annual rate (EAR)</string>
     <string name="finance_legend_principal">Principal (%1$s)</string>
     <string name="finance_legend_interest">Interest (%1$s)</string>
     <string name="finance_total_interest">Total interest</string>
@@ -237,9 +277,12 @@
         <item quantity="one">View amortization schedule (%d payment)</item>
         <item quantity="other">View amortization schedule (%d payments)</item>
     </plurals>
+    <string name="finance_schedule_currency_caption">Amounts in %1$s (%2$s) · %3$d periods</string>
+    <string name="finance_col_payment">Payment</string>
     <string name="finance_col_principal">Principal</string>
     <string name="finance_col_interest">Interest</string>
     <string name="finance_col_balance">Balance</string>
+    <string name="finance_schedule_totals">Totals</string>
     <string name="finance_show_first_12">Show first 12</string>
     <plurals name="finance_show_all_periods">
         <item quantity="one">Show all (%d)</item>
@@ -254,14 +297,26 @@
     <string name="finance_compound">COMPOUND</string>
     <string name="finance_compound_advantage">Compound interest advantage</string>
 
-    <string name="finance_tax_title">VAT / Tax calculator</string>
-    <string name="finance_tax_add">Add VAT</string>
-    <string name="finance_tax_extract">Extract included VAT</string>
-    <string name="finance_tax_total_input">Total amount (VAT included)</string>
-    <string name="finance_tax_net_input">Net amount (excl. VAT)</string>
+    <string name="finance_tax_title">Tax calculator</string>
+    <string name="finance_tax_type_label">Tax type</string>
+    <string name="finance_tax_type_vat">VAT</string>
+    <string name="finance_tax_type_sales">Sales tax</string>
+    <string name="finance_tax_type_excise">Excise / ISC</string>
+    <string name="finance_tax_type_withholding">Withholding</string>
+    <string name="finance_tax_type_service">Service tax</string>
+    <string name="finance_tax_type_custom">Custom</string>
+    <string name="finance_tax_custom_name_label">Tax name</string>
+    <string name="finance_tax_custom_name_placeholder">e.g. Municipal tax, GST</string>
+    <string name="finance_tax_add">Add tax</string>
+    <string name="finance_tax_extract">Extract included tax</string>
+    <string name="finance_tax_total_input">Total amount (tax included)</string>
+    <string name="finance_tax_net_input">Taxable base (excl. tax)</string>
     <string name="finance_tax_rate_label">Tax rate</string>
-    <string name="finance_tax_subtotal">Subtotal (base)</string>
-    <string name="finance_tax_amount">Tax (%1$s%%)</string>
+    <string name="finance_tax_rate_hint">Rate is configurable; verify the applicable percentage for your jurisdiction.</string>
+    <string name="finance_tax_selected_type">Tax type</string>
+    <string name="finance_tax_subtotal">Taxable base</string>
+    <string name="finance_tax_applied_rate">Applied rate</string>
+    <string name="finance_tax_amount_plain">Tax amount</string>
     <string name="finance_tax_total">Final total</string>
 
     <!-- Engineering -->

@@ -6,8 +6,11 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import com.calcsuits.domain.model.UiText
+import com.calcsuits.domain.model.finance.FinanceCurrency
+import java.math.RoundingMode
 import java.text.NumberFormat
 import java.util.Locale
+import kotlin.math.abs
 
 @Composable
 fun UiText.asString(): String = when (this) {
@@ -83,6 +86,42 @@ fun formatDecimal(value: Double, locale: Locale, minFraction: Int = 0, maxFracti
         maximumFractionDigits = maxFraction
         isGroupingUsed = false
     }.format(value)
+
+/**
+ * Formats a monetary value using the user-selected [FinanceCurrency] independently of the
+ * device/app regional currency. The [locale] is used solely for decimal/grouping punctuation.
+ */
+fun formatMoney(value: Double, currency: FinanceCurrency, locale: Locale): String =
+    "${currency.symbol} ${formatMoneyPlain(value, currency, locale)}"
+
+/**
+ * Formats a monetary value to [FinanceCurrency.fractionDigits] without repeating the symbol
+ * (ideal for dense tabular views like amortization schedules where currency is stated in the header).
+ */
+fun formatMoneyPlain(value: Double, currency: FinanceCurrency, locale: Locale): String {
+    val safeValue = if (!value.isFinite() || abs(value) < 1e-9) 0.0 else value
+    val formatter = NumberFormat.getNumberInstance(locale).apply {
+        roundingMode = RoundingMode.HALF_UP
+        isGroupingUsed = true
+        minimumFractionDigits = currency.fractionDigits
+        maximumFractionDigits = currency.fractionDigits
+    }
+    return formatter.format(safeValue)
+}
+
+/**
+ * Formats a percentage value (already expressed in percent, e.g. 15.0 -> "15%", 0.9489 -> "0.9489%").
+ */
+fun formatRatePercent(percentValue: Double, locale: Locale, maxFraction: Int = 4): String {
+    val safeValue = if (!percentValue.isFinite() || abs(percentValue) < 1e-12) 0.0 else percentValue
+    val formatter = NumberFormat.getNumberInstance(locale).apply {
+        roundingMode = RoundingMode.HALF_UP
+        isGroupingUsed = false
+        minimumFractionDigits = 0
+        maximumFractionDigits = maxFraction
+    }
+    return "${formatter.format(safeValue)}%"
+}
 
 private fun resolveCurrencyLocale(locale: Locale): Locale {
     if (locale.country.isNotEmpty()) return locale
