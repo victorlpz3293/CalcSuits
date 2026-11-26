@@ -18,6 +18,7 @@ import org.junit.Before
 import org.junit.Test
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.util.Calendar
 import java.util.Locale
 import kotlin.math.pow
 
@@ -370,6 +371,286 @@ class CalculateLoanUseCaseTest {
                 assertLedgerInvariants(result, expectedPrincipal = 50_000.0, scale = 2)
             }
         }
+    }
+
+    @Test
+    fun dueDatesFromJan28To31InNonLeapAndLeapYearsAvoidCumulativeDrift() {
+        fun localNoonMillis(year: Int, month: Int, day: Int): Long =
+            Calendar.getInstance().apply {
+                set(year, month, day, 12, 0, 0)
+                set(Calendar.MILLISECOND, 0)
+            }.timeInMillis
+
+        fun ymd(millis: Long): Triple<Int, Int, Int> =
+            Calendar.getInstance().apply { timeInMillis = millis }.let {
+                Triple(it.get(Calendar.YEAR), it.get(Calendar.MONTH), it.get(Calendar.DAY_OF_MONTH))
+            }
+
+        // Non-leap year (2025): Jan 28, 29, 30, 31 across 4 monthly periods (Feb, Mar, Apr, May)
+        val nonLeapCases = mapOf(
+            28 to listOf(
+                Triple(2025, Calendar.FEBRUARY, 28),
+                Triple(2025, Calendar.MARCH, 28),
+                Triple(2025, Calendar.APRIL, 28),
+                Triple(2025, Calendar.MAY, 28)
+            ),
+            29 to listOf(
+                Triple(2025, Calendar.FEBRUARY, 28),
+                Triple(2025, Calendar.MARCH, 29),
+                Triple(2025, Calendar.APRIL, 29),
+                Triple(2025, Calendar.MAY, 29)
+            ),
+            30 to listOf(
+                Triple(2025, Calendar.FEBRUARY, 28),
+                Triple(2025, Calendar.MARCH, 30),
+                Triple(2025, Calendar.APRIL, 30),
+                Triple(2025, Calendar.MAY, 30)
+            ),
+            31 to listOf(
+                Triple(2025, Calendar.FEBRUARY, 28),
+                Triple(2025, Calendar.MARCH, 31),
+                Triple(2025, Calendar.APRIL, 30),
+                Triple(2025, Calendar.MAY, 31)
+            )
+        )
+        nonLeapCases.forEach { (day, expectedDates) ->
+            val result = useCase(
+                LoanRequest(
+                    amount = 10_000.0,
+                    annualRate = 12.0,
+                    termValue = 4,
+                    termUnit = LoanTermUnit.PERIODS,
+                    paymentFrequency = PaymentFrequency.MONTHLY,
+                    issuedAtMillis = localNoonMillis(2025, Calendar.JANUARY, day)
+                )
+            )
+            assertEquals(
+                "Non-leap Jan $day monthly schedule mismatch",
+                expectedDates,
+                result.schedule.map { ymd(it.dueDateMillis!!) }
+            )
+        }
+
+        // Leap year (2024): Jan 28, 29, 30, 31 across 4 monthly periods (Feb 29 preserved, no drift)
+        val leapCases = mapOf(
+            28 to listOf(
+                Triple(2024, Calendar.FEBRUARY, 28),
+                Triple(2024, Calendar.MARCH, 28),
+                Triple(2024, Calendar.APRIL, 28),
+                Triple(2024, Calendar.MAY, 28)
+            ),
+            29 to listOf(
+                Triple(2024, Calendar.FEBRUARY, 29),
+                Triple(2024, Calendar.MARCH, 29),
+                Triple(2024, Calendar.APRIL, 29),
+                Triple(2024, Calendar.MAY, 29)
+            ),
+            30 to listOf(
+                Triple(2024, Calendar.FEBRUARY, 29),
+                Triple(2024, Calendar.MARCH, 30),
+                Triple(2024, Calendar.APRIL, 30),
+                Triple(2024, Calendar.MAY, 30)
+            ),
+            31 to listOf(
+                Triple(2024, Calendar.FEBRUARY, 29),
+                Triple(2024, Calendar.MARCH, 31),
+                Triple(2024, Calendar.APRIL, 30),
+                Triple(2024, Calendar.MAY, 31)
+            )
+        )
+        leapCases.forEach { (day, expectedDates) ->
+            val result = useCase(
+                LoanRequest(
+                    amount = 10_000.0,
+                    annualRate = 12.0,
+                    termValue = 4,
+                    termUnit = LoanTermUnit.PERIODS,
+                    paymentFrequency = PaymentFrequency.MONTHLY,
+                    issuedAtMillis = localNoonMillis(2024, Calendar.JANUARY, day)
+                )
+            )
+            assertEquals(
+                "Leap Jan $day monthly schedule mismatch",
+                expectedDates,
+                result.schedule.map { ymd(it.dueDateMillis!!) }
+            )
+        }
+    }
+
+    @Test
+    fun dueDatesForFebruaryLeapNonLeapAndQuarterlySemiannualAnnualPeriodsMatchCalendarAnchor() {
+        fun localNoonMillis(year: Int, month: Int, day: Int): Long =
+            Calendar.getInstance().apply {
+                set(year, month, day, 12, 0, 0)
+                set(Calendar.MILLISECOND, 0)
+            }.timeInMillis
+
+        fun ymd(millis: Long): Triple<Int, Int, Int> =
+            Calendar.getInstance().apply { timeInMillis = millis }.let {
+                Triple(it.get(Calendar.YEAR), it.get(Calendar.MONTH), it.get(Calendar.DAY_OF_MONTH))
+            }
+
+        // Leap day (2024-02-29) annual: 2025-02-28, 2026-02-28, 2027-02-28, 2028-02-29 (restores leap day)
+        val leapAnnual = useCase(
+            LoanRequest(
+                amount = 10_000.0,
+                annualRate = 10.0,
+                termValue = 4,
+                termUnit = LoanTermUnit.PERIODS,
+                paymentFrequency = PaymentFrequency.ANNUAL,
+                issuedAtMillis = localNoonMillis(2024, Calendar.FEBRUARY, 29)
+            )
+        )
+        assertEquals(
+            listOf(
+                Triple(2025, Calendar.FEBRUARY, 28),
+                Triple(2026, Calendar.FEBRUARY, 28),
+                Triple(2027, Calendar.FEBRUARY, 28),
+                Triple(2028, Calendar.FEBRUARY, 29)
+            ),
+            leapAnnual.schedule.map { ymd(it.dueDateMillis!!) }
+        )
+
+        // Non-leap Feb 28 (2025-02-28) annual stays on 28th even in leap year 2028
+        val nonLeapAnnual = useCase(
+            LoanRequest(
+                amount = 10_000.0,
+                annualRate = 10.0,
+                termValue = 4,
+                termUnit = LoanTermUnit.PERIODS,
+                paymentFrequency = PaymentFrequency.ANNUAL,
+                issuedAtMillis = localNoonMillis(2025, Calendar.FEBRUARY, 28)
+            )
+        )
+        assertEquals(
+            listOf(
+                Triple(2026, Calendar.FEBRUARY, 28),
+                Triple(2027, Calendar.FEBRUARY, 28),
+                Triple(2028, Calendar.FEBRUARY, 28),
+                Triple(2029, Calendar.FEBRUARY, 28)
+            ),
+            nonLeapAnnual.schedule.map { ymd(it.dueDateMillis!!) }
+        )
+
+        // Jan 31 quarterly (4 periods): Apr 30, Jul 31, Oct 31, Jan 31 (no drift to 30th)
+        val jan31Quarterly = useCase(
+            LoanRequest(
+                amount = 10_000.0,
+                annualRate = 12.0,
+                termValue = 4,
+                termUnit = LoanTermUnit.PERIODS,
+                paymentFrequency = PaymentFrequency.QUARTERLY,
+                issuedAtMillis = localNoonMillis(2025, Calendar.JANUARY, 31)
+            )
+        )
+        assertEquals(
+            listOf(
+                Triple(2025, Calendar.APRIL, 30),
+                Triple(2025, Calendar.JULY, 31),
+                Triple(2025, Calendar.OCTOBER, 31),
+                Triple(2026, Calendar.JANUARY, 31)
+            ),
+            jan31Quarterly.schedule.map { ymd(it.dueDateMillis!!) }
+        )
+
+        // Jan 31 semiannual (2 periods): Jul 31, Jan 31
+        val jan31Semiannual = useCase(
+            LoanRequest(
+                amount = 10_000.0,
+                annualRate = 12.0,
+                termValue = 2,
+                termUnit = LoanTermUnit.PERIODS,
+                paymentFrequency = PaymentFrequency.SEMIANNUAL,
+                issuedAtMillis = localNoonMillis(2025, Calendar.JANUARY, 31)
+            )
+        )
+        assertEquals(
+            listOf(
+                Triple(2025, Calendar.JULY, 31),
+                Triple(2026, Calendar.JANUARY, 31)
+            ),
+            jan31Semiannual.schedule.map { ymd(it.dueDateMillis!!) }
+        )
+
+        // Leap day (2024-02-29) quarterly & semiannual
+        val leapQuarterly = useCase(
+            LoanRequest(
+                amount = 10_000.0,
+                annualRate = 12.0,
+                termValue = 4,
+                termUnit = LoanTermUnit.PERIODS,
+                paymentFrequency = PaymentFrequency.QUARTERLY,
+                issuedAtMillis = localNoonMillis(2024, Calendar.FEBRUARY, 29)
+            )
+        )
+        assertEquals(
+            listOf(
+                Triple(2024, Calendar.MAY, 29),
+                Triple(2024, Calendar.AUGUST, 29),
+                Triple(2024, Calendar.NOVEMBER, 29),
+                Triple(2025, Calendar.FEBRUARY, 28)
+            ),
+            leapQuarterly.schedule.map { ymd(it.dueDateMillis!!) }
+        )
+
+        val leapSemiannual = useCase(
+            LoanRequest(
+                amount = 10_000.0,
+                annualRate = 12.0,
+                termValue = 2,
+                termUnit = LoanTermUnit.PERIODS,
+                paymentFrequency = PaymentFrequency.SEMIANNUAL,
+                issuedAtMillis = localNoonMillis(2024, Calendar.FEBRUARY, 29)
+            )
+        )
+        assertEquals(
+            listOf(
+                Triple(2024, Calendar.AUGUST, 29),
+                Triple(2025, Calendar.FEBRUARY, 28)
+            ),
+            leapSemiannual.schedule.map { ymd(it.dueDateMillis!!) }
+        )
+    }
+
+    @Test
+    fun compareSystemsEdgeCasesZeroRateSinglePeriodAndDownPaymentExclusionAreConsistent() {
+        // Zero rate: both systems identical -> all differences 0.0
+        val zeroRateCmp = useCase.compare(
+            LoanRequest(
+                amount = 50_000.0,
+                downPayment = 10_000.0,
+                annualRate = 0.0,
+                termValue = 10,
+                termUnit = LoanTermUnit.PERIODS,
+                paymentFrequency = PaymentFrequency.MONTHLY
+            )
+        )
+        assertEquals(50_000.0, zeroRateCmp.french.requestedAmount, 1e-6)
+        assertEquals(10_000.0, zeroRateCmp.french.downPayment, 1e-6)
+        assertEquals(40_000.0, zeroRateCmp.french.principalAmount, 1e-6)
+        assertEquals(40_000.0, zeroRateCmp.french.totalPayment, 1e-6)
+        assertEquals(40_000.0, zeroRateCmp.french.totalDisbursement, 1e-6)
+        assertEquals(0.0, zeroRateCmp.interestDifference, 1e-9)
+        assertEquals(0.0, zeroRateCmp.totalPaymentDifference, 1e-9)
+        assertEquals(0.0, zeroRateCmp.firstPaymentDifference, 1e-9)
+        assertEquals(0.0, zeroRateCmp.lastPaymentDifference, 1e-9)
+
+        // Single installment: French and German produce identical single payment
+        val singlePeriodCmp = useCase.compare(
+            LoanRequest(
+                amount = 10_000.0,
+                annualRate = 12.0,
+                termValue = 1,
+                termUnit = LoanTermUnit.PERIODS,
+                paymentFrequency = PaymentFrequency.MONTHLY
+            )
+        )
+        assertEquals(10_100.0, singlePeriodCmp.french.firstPayment, 1e-6)
+        assertEquals(10_100.0, singlePeriodCmp.german.firstPayment, 1e-6)
+        assertEquals(0.0, singlePeriodCmp.interestDifference, 1e-9)
+        assertEquals(0.0, singlePeriodCmp.totalPaymentDifference, 1e-9)
+        assertEquals(0.0, singlePeriodCmp.firstPaymentDifference, 1e-9)
+        assertEquals(0.0, singlePeriodCmp.lastPaymentDifference, 1e-9)
     }
 
     @Test
