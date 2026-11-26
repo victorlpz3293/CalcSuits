@@ -24,12 +24,13 @@
     <string name="drawer_sub_solver">Equations &amp; expressions</string>
     <string name="drawer_sub_converter">9 unit categories</string>
     <string name="drawer_sub_finance">Loans, interest &amp; VAT</string>
-    <string name="drawer_sub_engineering">Ohm, power &amp; IPv4</string>
+    <string name="drawer_sub_engineering">Electrical, networks &amp; digital logic</string>
     <string name="drawer_sub_programmer">HEX, BIN &amp; bitwise</string>
     <string name="drawer_sub_settings">Theme &amp; precision</string>
 
     <!-- Common Content Descriptions & Feedback -->
     <string name="cd_open_modules_menu">Open modules menu</string>
+    <string name="cd_back_to_engineering">Back to Engineering specialties</string>
     <string name="cd_copy_result">Copy result</string>
     <string name="cd_delete_last_digit">Delete last digit</string>
     <string name="cd_clear">Clear</string>
@@ -264,6 +265,25 @@
     <string name="finance_tax_total">Final total</string>
 
     <!-- Engineering -->
+    <string name="eng_specialties_subtitle">TECHNICAL SPECIALTIES</string>
+    <string name="eng_specialties_intro">Select a specialty to access its engineering tools.</string>
+    <string name="eng_specialty_electrical">Electrical Engineering</string>
+    <string name="eng_specialty_electrical_desc">Ohm\'s Law, electrical power, series/parallel resistors &amp; voltage divider.</string>
+    <string name="eng_tool_electrical_calculator">Electrical Calculator</string>
+    <string name="eng_specialty_networking">Networks, Telecom &amp; Telematics</string>
+    <string name="eng_specialty_networking_tools">IPv4 Analysis · Subnet Design</string>
+    <string name="eng_specialty_networking_desc">IPv4 network, broadcast, wildcard, usable hosts &amp; subnet design workspace.</string>
+    <string name="eng_tool_ipv4_analysis">IPv4 Analysis</string>
+    <string name="eng_tool_subnet_design">Subnet Design</string>
+    <string name="eng_subnet_design_badge">INTEGRATION SPACE</string>
+    <string name="eng_subnet_design_title">FLSM &amp; VLSM Subnet Design</string>
+    <string name="eng_subnet_design_desc">This space is prepared to integrate structured IPv4 subnetting (FLSM and VLSM) in the next phase. Meanwhile, you can use IPv4 Analysis to inspect any network and mask.</string>
+    <string name="eng_specialty_digital_electronics">Digital Electronics &amp; Number Systems</string>
+    <string name="eng_specialty_digital_electronics_desc">BIN, DEC, HEX &amp; OCT conversions, bitwise logic (NAND/NOR), shifts &amp; interactive bit matrix (8–64 bit).</string>
+    <string name="eng_tool_digital_logic">Number Systems &amp; Digital Logic Calculator</string>
+    <string name="eng_tool_digital_logic_short">Number Systems &amp; Logic</string>
+    <string name="eng_digital_subtitle_format">DIGITAL LOGIC · %1$d-BIT · BASE %2$d</string>
+
     <string name="eng_quick_cidr">QUICK CIDR</string>
     <string name="eng_calculated_result">CALCULATED RESULT</string>
     <string name="eng_subnet_summary_header">IPv4 Subnetting — %1$s</string>

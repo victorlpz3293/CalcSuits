@@ -90,6 +90,10 @@ sealed class EngineeringFormula(
     )
 
     companion object {
+        val electricalFormulas: List<EngineeringFormula> by lazy {
+            listOf(OhmsLaw, Power, Resistors, VoltageDivider)
+        }
+
         val all: List<EngineeringFormula> by lazy {
             listOf(OhmsLaw, Power, Resistors, VoltageDivider, Subnetting)
         }

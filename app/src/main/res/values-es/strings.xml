@@ -24,12 +24,13 @@
     <string name="drawer_sub_solver">Ecuaciones y expresiones</string>
     <string name="drawer_sub_converter">9 categorías de unidades</string>
     <string name="drawer_sub_finance">Préstamos, interés e IVA</string>
-    <string name="drawer_sub_engineering">Ohm, potencia e IPv4</string>
+    <string name="drawer_sub_engineering">Eléctrica, redes y lógica digital</string>
     <string name="drawer_sub_programmer">HEX, BIN y bitwise</string>
     <string name="drawer_sub_settings">Tema y precisión</string>
 
     <!-- Common Content Descriptions & Feedback -->
     <string name="cd_open_modules_menu">Abrir menú de módulos</string>
+    <string name="cd_back_to_engineering">Volver a especialidades de Ingeniería</string>
     <string name="cd_copy_result">Copiar resultado</string>
     <string name="cd_delete_last_digit">Borrar último dígito</string>
     <string name="cd_clear">Limpiar</string>
@@ -264,6 +265,25 @@
     <string name="finance_tax_total">Total final</string>
 
     <!-- Engineering -->
+    <string name="eng_specialties_subtitle">ESPECIALIDADES TÉCNICAS</string>
+    <string name="eng_specialties_intro">Selecciona una especialidad para acceder a sus herramientas técnicas.</string>
+    <string name="eng_specialty_electrical">Ingeniería Eléctrica</string>
+    <string name="eng_specialty_electrical_desc">Ley de Ohm, potencia eléctrica, resistencias en serie/paralelo y divisor de voltaje.</string>
+    <string name="eng_tool_electrical_calculator">Calculadora eléctrica</string>
+    <string name="eng_specialty_networking">Redes, Telecomunicaciones y Telemática</string>
+    <string name="eng_specialty_networking_tools">Análisis IPv4 · Diseño de subredes</string>
+    <string name="eng_specialty_networking_desc">Red, broadcast, wildcard, hosts útiles y espacio para diseño de subredes.</string>
+    <string name="eng_tool_ipv4_analysis">Análisis IPv4</string>
+    <string name="eng_tool_subnet_design">Diseño de subredes</string>
+    <string name="eng_subnet_design_badge">ESPACIO PREPARADO</string>
+    <string name="eng_subnet_design_title">Diseño de subredes FLSM y VLSM</string>
+    <string name="eng_subnet_design_desc">Este espacio queda preparado para integrar el diseño estructurado de subredes IPv4 (FLSM y VLSM) en la siguiente fase. Mientras tanto, puedes usar Análisis IPv4 para inspeccionar cualquier red y máscara.</string>
+    <string name="eng_specialty_digital_electronics">Electrónica Digital y Sistemas Numéricos</string>
+    <string name="eng_specialty_digital_electronics_desc">Conversiones BIN, DEC, HEX y OCT, lógica bitwise (NAND/NOR), desplazamientos y matriz interactiva de bits (8–64 bits).</string>
+    <string name="eng_tool_digital_logic">Calculadora de sistemas numéricos y lógica digital</string>
+    <string name="eng_tool_digital_logic_short">Sistemas Numéricos y Lógica</string>
+    <string name="eng_digital_subtitle_format">LÓGICA DIGITAL · %1$d-BIT · BASE %2$d</string>
+
     <string name="eng_quick_cidr">CIDR RÁPIDO</string>
     <string name="eng_calculated_result">RESULTADO CALCULADO</string>
     <string name="eng_subnet_summary_header">Subnetting IPv4 — %1$s</string>

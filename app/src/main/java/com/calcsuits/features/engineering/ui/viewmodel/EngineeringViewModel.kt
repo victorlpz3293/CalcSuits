@@ -2,6 +2,8 @@ package com.calcsuits.features.engineering.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import com.calcsuits.domain.model.engineering.EngineeringFormula
+import com.calcsuits.domain.model.engineering.EngineeringSpecialty
+import com.calcsuits.domain.model.engineering.NetworkingTool
 import com.calcsuits.domain.usecase.CalculateEngineeringUseCase
 import com.calcsuits.domain.usecase.EngineeringOutput
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -10,7 +12,12 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import javax.inject.Inject
 
+private val DEFAULT_IPV4_INPUTS = mapOf("ip" to "192.168.1.10", "mask" to "/24")
+
 data class EngineeringState(
+    val selectedSpecialty: EngineeringSpecialty? = null,
+    val selectedElectricalFormula: EngineeringFormula = EngineeringFormula.OhmsLaw,
+    val selectedNetworkingTool: NetworkingTool = NetworkingTool.IPV4_ANALYSIS,
     val selectedFormula: EngineeringFormula = EngineeringFormula.OhmsLaw,
     val inputs: Map<String, String> = emptyMap(),
     val output: EngineeringOutput = EngineeringOutput()
@@ -24,13 +31,77 @@ class EngineeringViewModel @Inject constructor(
     private val _state = MutableStateFlow(EngineeringState())
     val state = _state.asStateFlow()
 
-    fun onFormulaSelected(formula: EngineeringFormula) {
-        val defaultInputs = if (formula == EngineeringFormula.Subnetting) {
-            mapOf("ip" to "192.168.1.10", "mask" to "/24")
-        } else {
-            emptyMap()
+    private var electricalInputs: Map<String, String> = emptyMap()
+    private var networkingInputs: Map<String, String> = DEFAULT_IPV4_INPUTS
+
+    fun onSpecialtySelected(specialty: EngineeringSpecialty) {
+        when (specialty) {
+            EngineeringSpecialty.ELECTRICAL -> {
+                _state.update {
+                    it.copy(
+                        selectedSpecialty = specialty,
+                        selectedFormula = it.selectedElectricalFormula,
+                        inputs = electricalInputs,
+                        output = EngineeringOutput()
+                    )
+                }
+                calculate()
+            }
+            EngineeringSpecialty.NETWORKING -> {
+                _state.update {
+                    it.copy(
+                        selectedSpecialty = specialty,
+                        selectedFormula = EngineeringFormula.Subnetting,
+                        inputs = networkingInputs,
+                        output = EngineeringOutput()
+                    )
+                }
+                calculate()
+            }
+            EngineeringSpecialty.DIGITAL_ELECTRONICS -> {
+                _state.update { it.copy(selectedSpecialty = specialty) }
+            }
         }
-        _state.update { it.copy(selectedFormula = formula, inputs = defaultInputs, output = EngineeringOutput()) }
+    }
+
+    fun onBackToSpecialties() {
+        _state.update { it.copy(selectedSpecialty = null) }
+    }
+
+    fun onNetworkingToolSelected(tool: NetworkingTool) {
+        _state.update {
+            it.copy(
+                selectedNetworkingTool = tool,
+                selectedFormula = EngineeringFormula.Subnetting,
+                inputs = networkingInputs
+            )
+        }
+        if (tool == NetworkingTool.IPV4_ANALYSIS) {
+            calculate()
+        }
+    }
+
+    fun onFormulaSelected(formula: EngineeringFormula) {
+        if (formula == EngineeringFormula.Subnetting) {
+            networkingInputs = DEFAULT_IPV4_INPUTS
+            _state.update {
+                it.copy(
+                    selectedFormula = formula,
+                    inputs = networkingInputs,
+                    output = EngineeringOutput()
+                )
+            }
+        } else {
+            electricalInputs = emptyMap()
+            _state.update {
+                it.copy(
+                    selectedElectricalFormula = formula,
+                    selectedFormula = formula,
+                    inputs = electricalInputs,
+                    output = EngineeringOutput()
+                )
+            }
+        }
         calculate()
     }
 
@@ -55,13 +126,25 @@ class EngineeringViewModel @Inject constructor(
         _state.update {
             val newInputs = it.inputs.toMutableMap()
             newInputs[variableKey] = cleanValue
+            if (it.selectedFormula == EngineeringFormula.Subnetting) {
+                networkingInputs = newInputs.toMap()
+            } else {
+                electricalInputs = newInputs.toMap()
+            }
             it.copy(inputs = newInputs)
         }
         calculate()
     }
 
     fun clearInputs() {
-        _state.update { it.copy(inputs = emptyMap(), output = EngineeringOutput()) }
+        _state.update {
+            if (it.selectedFormula == EngineeringFormula.Subnetting) {
+                networkingInputs = emptyMap()
+            } else {
+                electricalInputs = emptyMap()
+            }
+            it.copy(inputs = emptyMap(), output = EngineeringOutput())
+        }
     }
 
     fun recalculate() {

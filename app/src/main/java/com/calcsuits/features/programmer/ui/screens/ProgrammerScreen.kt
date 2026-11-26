@@ -68,7 +68,6 @@ fun ProgrammerScreen(
     onToggleBit: (Int) -> Unit
 ) {
     var showBitGrid by remember { mutableStateOf(false) }
-    val extColors = CalcSuitsTheme.colors
 
     CalcPinnedScaffold(
         topBar = {
@@ -86,175 +85,217 @@ fun ProgrammerScreen(
         contentSpacing = 0.dp,
         compactHeightThreshold = 340.dp,
         pinnedContent = {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    listOf(8, 16, 32, 64).forEach { size ->
-                        CalcFilterChip(
-                            selected = state.wordSize == size,
-                            onClick = { onWordSizeSelected(size) },
-                            label = {
-                                Text(
-                                    text = stringResource(R.string.prog_word_size_chip, size),
-                                    fontFamily = JetBrainsMonoFontFamily
-                                )
-                            },
-                            modifier = Modifier.testTag("prog_word_$size")
-                        )
-                    }
-                }
-            }
-
-            CalcCard(
-                shape = MaterialTheme.shapes.extraLarge,
-                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
-            ) {
-                Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                    if (state.pendingExpression.isNotBlank()) {
-                        Text(
-                            text = state.pendingExpression,
-                            style = MaterialTheme.typography.labelMedium.copy(fontFamily = JetBrainsMonoFontFamily),
-                            color = extColors.technicalAccent,
-                            modifier = Modifier.fillMaxWidth(),
-                            textAlign = TextAlign.End
-                        )
-                    } else if (state.lastOperation != null) {
-                        Text(
-                            text = state.lastOperation.asString(),
-                            style = MaterialTheme.typography.labelSmall.copy(fontFamily = JetBrainsMonoFontFamily),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.fillMaxWidth(),
-                            textAlign = TextAlign.End
-                        )
-                    }
-
-                    BaseRow("HEX", state.hexValue, state.activeBase == 16) { onBaseSelected(16) }
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                    BaseRow("DEC", state.decValue, state.activeBase == 10) { onBaseSelected(10) }
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                    BaseRow("OCT", state.octValue, state.activeBase == 8) { onBaseSelected(8) }
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                    BaseRow("BIN", state.binValue, state.activeBase == 2) { onBaseSelected(2) }
-                }
-            }
-
-            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                SegmentedButton(
-                    selected = !showBitGrid,
-                    onClick = { showBitGrid = false },
-                    shape = SegmentedButtonDefaults.itemShape(0, 2),
-                    colors = calcSegmentedButtonColors(),
-                    modifier = Modifier.testTag("prog_view_keypad")
-                ) {
-                    Text(
-                        text = stringResource(R.string.prog_tab_keypad),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-                SegmentedButton(
-                    selected = showBitGrid,
-                    onClick = { showBitGrid = true },
-                    shape = SegmentedButtonDefaults.itemShape(1, 2),
-                    colors = calcSegmentedButtonColors(),
-                    modifier = Modifier.testTag("prog_view_bits")
-                ) {
-                    Text(
-                        text = stringResource(R.string.prog_tab_bits),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
+            ProgrammerPinnedControls(
+                state = state,
+                showBitGrid = showBitGrid,
+                onShowBitGridChange = { showBitGrid = it },
+                onWordSizeSelected = onWordSizeSelected,
+                onBaseSelected = onBaseSelected
+            )
         }
     ) {
-        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-            if (showBitGrid) {
-                val bitContainerModifier = if (constraints.hasBoundedHeight) {
-                    Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                } else {
-                    Modifier.fillMaxWidth()
-                }
-                Column(modifier = bitContainerModifier) {
-                    BitToggleMatrix(
-                        rawValue = state.rawValue,
-                        wordSize = state.wordSize.coerceAtMost(32),
-                        onToggleBit = onToggleBit
-                    )
-                    Spacer(Modifier.height(4.dp))
-                }
-            } else {
-                val bitwiseRows = listOf(
-                    listOf("AND", "OR", "XOR", "NOT"),
-                    listOf("NAND", "NOR", "SHL", "SHR")
-                )
-                val fitProportionally = constraints.hasBoundedHeight &&
-                    maxHeight >= MIN_PROPORTIONAL_KEYPAD_HEIGHT
-                val spacing = if (fitProportionally) 5.dp else 6.dp
-                val keypadContainerModifier = when {
-                    fitProportionally -> Modifier.fillMaxSize()
-                    constraints.hasBoundedHeight -> Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                    else -> Modifier.fillMaxWidth()
-                }
+        ProgrammerWorkspaceBody(
+            state = state,
+            showBitGrid = showBitGrid,
+            onKeyPress = onKeyPress,
+            onBackspace = onBackspace,
+            onClear = onClear,
+            onBitwise = onBitwise,
+            onToggleBit = onToggleBit
+        )
+    }
+}
 
-                Column(
-                    modifier = keypadContainerModifier,
-                    verticalArrangement = Arrangement.spacedBy(spacing)
-                ) {
-                    bitwiseRows.forEach { row ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .let { if (fitProportionally) it.weight(0.78f) else it.height(38.dp) },
-                            horizontalArrangement = Arrangement.spacedBy(spacing)
-                        ) {
-                            row.forEach { op ->
-                                val isActiveOp = state.pendingOperator == op
-                                Surface(
-                                    onClick = { onBitwise(op) },
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .fillMaxHeight()
-                                        .testTag("prog_op_$op"),
-                                    shape = RoundedCornerShape(10.dp),
-                                    color = if (isActiveOp) extColors.technicalContainer else extColors.scientificKey,
-                                    border = BorderStroke(
-                                        1.dp,
-                                        if (isActiveOp) extColors.technicalAccent else MaterialTheme.colorScheme.outlineVariant
+@Composable
+fun ProgrammerPinnedControls(
+    state: ProgrammerState,
+    showBitGrid: Boolean,
+    onShowBitGridChange: (Boolean) -> Unit,
+    onWordSizeSelected: (Int) -> Unit,
+    onBaseSelected: (Int) -> Unit
+) {
+    val extColors = CalcSuitsTheme.colors
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            listOf(8, 16, 32, 64).forEach { size ->
+                CalcFilterChip(
+                    selected = state.wordSize == size,
+                    onClick = { onWordSizeSelected(size) },
+                    label = {
+                        Text(
+                            text = stringResource(R.string.prog_word_size_chip, size),
+                            fontFamily = JetBrainsMonoFontFamily
+                        )
+                    },
+                    modifier = Modifier.testTag("prog_word_$size")
+                )
+            }
+        }
+    }
+
+    CalcCard(
+        shape = MaterialTheme.shapes.extraLarge,
+        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            if (state.pendingExpression.isNotBlank()) {
+                Text(
+                    text = state.pendingExpression,
+                    style = MaterialTheme.typography.labelMedium.copy(fontFamily = JetBrainsMonoFontFamily),
+                    color = extColors.technicalAccent,
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.End
+                )
+            } else if (state.lastOperation != null) {
+                Text(
+                    text = state.lastOperation.asString(),
+                    style = MaterialTheme.typography.labelSmall.copy(fontFamily = JetBrainsMonoFontFamily),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.End
+                )
+            }
+
+            BaseRow("HEX", state.hexValue, state.activeBase == 16) { onBaseSelected(16) }
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            BaseRow("DEC", state.decValue, state.activeBase == 10) { onBaseSelected(10) }
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            BaseRow("OCT", state.octValue, state.activeBase == 8) { onBaseSelected(8) }
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            BaseRow("BIN", state.binValue, state.activeBase == 2) { onBaseSelected(2) }
+        }
+    }
+
+    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+        SegmentedButton(
+            selected = !showBitGrid,
+            onClick = { onShowBitGridChange(false) },
+            shape = SegmentedButtonDefaults.itemShape(0, 2),
+            colors = calcSegmentedButtonColors(),
+            modifier = Modifier.testTag("prog_view_keypad")
+        ) {
+            Text(
+                text = stringResource(R.string.prog_tab_keypad),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        SegmentedButton(
+            selected = showBitGrid,
+            onClick = { onShowBitGridChange(true) },
+            shape = SegmentedButtonDefaults.itemShape(1, 2),
+            colors = calcSegmentedButtonColors(),
+            modifier = Modifier.testTag("prog_view_bits")
+        ) {
+            Text(
+                text = stringResource(R.string.prog_tab_bits),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+@Composable
+fun ProgrammerWorkspaceBody(
+    state: ProgrammerState,
+    showBitGrid: Boolean,
+    onKeyPress: (String) -> Unit,
+    onBackspace: () -> Unit,
+    onClear: () -> Unit,
+    onBitwise: (String) -> Unit,
+    onToggleBit: (Int) -> Unit
+) {
+    val extColors = CalcSuitsTheme.colors
+
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        if (showBitGrid) {
+            val bitContainerModifier = if (constraints.hasBoundedHeight) {
+                Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+            } else {
+                Modifier.fillMaxWidth()
+            }
+            Column(modifier = bitContainerModifier) {
+                BitToggleMatrix(
+                    rawValue = state.rawValue,
+                    wordSize = state.wordSize.coerceAtMost(32),
+                    onToggleBit = onToggleBit
+                )
+                Spacer(Modifier.height(4.dp))
+            }
+        } else {
+            val bitwiseRows = listOf(
+                listOf("AND", "OR", "XOR", "NOT"),
+                listOf("NAND", "NOR", "SHL", "SHR")
+            )
+            val fitProportionally = constraints.hasBoundedHeight &&
+                maxHeight >= MIN_PROPORTIONAL_KEYPAD_HEIGHT
+            val spacing = if (fitProportionally) 5.dp else 6.dp
+            val keypadContainerModifier = when {
+                fitProportionally -> Modifier.fillMaxSize()
+                constraints.hasBoundedHeight -> Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                else -> Modifier.fillMaxWidth()
+            }
+
+            Column(
+                modifier = keypadContainerModifier,
+                verticalArrangement = Arrangement.spacedBy(spacing)
+            ) {
+                bitwiseRows.forEach { row ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .let { if (fitProportionally) it.weight(0.78f) else it.height(38.dp) },
+                        horizontalArrangement = Arrangement.spacedBy(spacing)
+                    ) {
+                        row.forEach { op ->
+                            val isActiveOp = state.pendingOperator == op
+                            Surface(
+                                onClick = { onBitwise(op) },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight()
+                                    .testTag("prog_op_$op"),
+                                shape = RoundedCornerShape(10.dp),
+                                color = if (isActiveOp) extColors.technicalContainer else extColors.scientificKey,
+                                border = BorderStroke(
+                                    1.dp,
+                                    if (isActiveOp) extColors.technicalAccent else MaterialTheme.colorScheme.outlineVariant
+                                )
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text(
+                                        text = op,
+                                        style = MaterialTheme.typography.labelLarge.copy(fontFamily = JetBrainsMonoFontFamily),
+                                        color = if (isActiveOp) extColors.onTechnicalContainer else MaterialTheme.colorScheme.onSurface
                                     )
-                                ) {
-                                    Box(contentAlignment = Alignment.Center) {
-                                        Text(
-                                            text = op,
-                                            style = MaterialTheme.typography.labelLarge.copy(fontFamily = JetBrainsMonoFontFamily),
-                                            color = if (isActiveOp) extColors.onTechnicalContainer else MaterialTheme.colorScheme.onSurface
-                                        )
-                                    }
                                 }
                             }
                         }
                     }
-
-                    ProgrammerKeypad(
-                        activeBase = state.activeBase,
-                        fillHeight = fitProportionally,
-                        spacing = spacing,
-                        onKeyPress = onKeyPress,
-                        onBackspace = onBackspace,
-                        onClear = onClear,
-                        onEquals = { onBitwise("=") },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .let { if (fitProportionally) it.weight(5f) else it }
-                    )
                 }
+
+                ProgrammerKeypad(
+                    activeBase = state.activeBase,
+                    fillHeight = fitProportionally,
+                    spacing = spacing,
+                    onKeyPress = onKeyPress,
+                    onBackspace = onBackspace,
+                    onClear = onClear,
+                    onEquals = { onBitwise("=") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .let { if (fitProportionally) it.weight(5f) else it }
+                )
             }
         }
     }

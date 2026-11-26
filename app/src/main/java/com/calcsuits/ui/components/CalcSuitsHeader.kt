@@ -24,6 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -38,6 +39,9 @@ fun CalcSuitsHeader(
     title: String,
     onMenuClick: () -> Unit,
     subtitle: String = stringResource(R.string.header_default_subtitle),
+    navigationIcon: ImageVector = Icons.Default.Menu,
+    navigationContentDescription: String = stringResource(R.string.cd_open_modules_menu),
+    navigationTestTag: String = "open_drawer_button",
     actions: @Composable RowScope.() -> Unit = {}
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -73,11 +77,11 @@ fun CalcSuitsHeader(
             navigationIcon = {
                 IconButton(
                     onClick = onMenuClick,
-                    modifier = Modifier.testTag("open_drawer_button")
+                    modifier = Modifier.testTag(navigationTestTag)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Menu,
-                        contentDescription = stringResource(R.string.cd_open_modules_menu)
+                        imageVector = navigationIcon,
+                        contentDescription = navigationContentDescription
                     )
                 }
             },
