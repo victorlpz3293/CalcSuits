@@ -1,15 +1,18 @@
 package com.calcsuits.features.finance.ui.viewmodel
 
 import androidx.annotation.StringRes
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ReceiptLong
+import androidx.compose.material.icons.automirrored.rounded.TrendingUp
+import androidx.compose.material.icons.rounded.AccountBalance
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.lifecycle.ViewModel
 import com.calcsuits.R
 import com.calcsuits.domain.model.finance.AmortizationSystem
 import com.calcsuits.domain.model.finance.FinanceCurrencies
 import com.calcsuits.domain.model.finance.FinanceCurrency
-import com.calcsuits.domain.model.finance.LoanComparisonResult
 import com.calcsuits.domain.model.finance.LoanRequest
 import com.calcsuits.domain.model.finance.LoanResult
-import com.calcsuits.domain.model.finance.LoanSimulationMode
 import com.calcsuits.domain.model.finance.LoanTermUnit
 import com.calcsuits.domain.model.finance.PaymentFrequency
 import com.calcsuits.domain.model.finance.RateCompoundingFrequency
@@ -25,27 +28,42 @@ import java.math.RoundingMode
 import javax.inject.Inject
 import kotlin.math.pow
 
-enum class FinanceTab(@StringRes val labelRes: Int) {
-    LOAN(R.string.finance_tab_loan),
-    INTEREST(R.string.finance_tab_interest),
-    TAX(R.string.finance_tab_tax)
+enum class FinanceTab(
+    val key: String,
+    @param:StringRes val labelRes: Int,
+    @param:StringRes val summaryRes: Int,
+    @param:StringRes val descriptionRes: Int,
+    val icon: ImageVector
+) {
+    LOAN(
+        key = "loan",
+        labelRes = R.string.finance_tab_loan,
+        summaryRes = R.string.finance_card_loan_summary,
+        descriptionRes = R.string.finance_card_loan_desc,
+        icon = Icons.Rounded.AccountBalance
+    ),
+    INTEREST(
+        key = "interest",
+        labelRes = R.string.finance_tab_interest,
+        summaryRes = R.string.finance_card_interest_summary,
+        descriptionRes = R.string.finance_card_interest_desc,
+        icon = Icons.AutoMirrored.Rounded.TrendingUp
+    ),
+    TAX(
+        key = "tax",
+        labelRes = R.string.finance_tab_tax,
+        summaryRes = R.string.finance_card_tax_summary,
+        descriptionRes = R.string.finance_card_tax_desc,
+        icon = Icons.AutoMirrored.Rounded.ReceiptLong
+    )
 }
 
-enum class CompoundingFrequency(@StringRes val labelRes: Int, val periodsPerYear: Int) {
+enum class CompoundingFrequency(@param:StringRes val labelRes: Int, val periodsPerYear: Int) {
     ANNUAL(R.string.finance_freq_annual, 1),
     SEMIANNUAL(R.string.finance_freq_semiannual, 2),
     QUARTERLY(R.string.finance_freq_quarterly, 4),
     MONTHLY(R.string.finance_freq_monthly, 12),
     DAILY(R.string.finance_freq_daily, 365)
-}
-
-enum class TaxType(@StringRes val labelRes: Int) {
-    VAT(R.string.finance_tax_type_vat),
-    SALES(R.string.finance_tax_type_sales),
-    EXCISE(R.string.finance_tax_type_excise),
-    WITHHOLDING(R.string.finance_tax_type_withholding),
-    SERVICE(R.string.finance_tax_type_service),
-    CUSTOM(R.string.finance_tax_type_custom)
 }
 
 data class InterestComparisonResult(
@@ -63,9 +81,8 @@ data class TaxResult(
 )
 
 data class FinanceState(
-    val selectedTab: FinanceTab = FinanceTab.LOAN,
+    val selectedTab: FinanceTab? = null,
     val selectedCurrency: FinanceCurrency = FinanceCurrencies.USD,
-    val loanSimulationMode: LoanSimulationMode = LoanSimulationMode.INDIVIDUAL,
     val amortizationSystem: AmortizationSystem = AmortizationSystem.FRENCH,
     val paymentFrequency: PaymentFrequency = PaymentFrequency.MONTHLY,
     val compoundingFrequency: RateCompoundingFrequency = RateCompoundingFrequency.MONTHLY,
@@ -78,14 +95,11 @@ data class FinanceState(
     val interestRate: String = "12",
     val years: String = "3",
     val loanResult: LoanResult? = null,
-    val loanComparison: LoanComparisonResult? = null,
     val principal: String = "5000",
     val annualRate: String = "8",
     val termYears: String = "5",
     val frequency: CompoundingFrequency = CompoundingFrequency.MONTHLY,
     val interestResult: InterestComparisonResult? = null,
-    val taxType: TaxType = TaxType.VAT,
-    val customTaxLabel: String = "",
     val taxBaseInput: String = "1000",
     val taxRatePercent: String = "0",
     val taxIncluded: Boolean = false,
@@ -110,30 +124,21 @@ class FinanceViewModel @Inject constructor(
         _state.update { it.copy(selectedTab = tab) }
     }
 
+    fun onBackToHub() {
+        _state.update { it.copy(selectedTab = null) }
+    }
+
     fun onCurrencySelected(currency: FinanceCurrency) {
         _state.update { it.copy(selectedCurrency = currency) }
         calculateLoan()
         calculateTax()
     }
 
-    fun onLoanSimulationModeSelected(mode: LoanSimulationMode) {
-        _state.update { it.copy(loanSimulationMode = mode) }
-    }
-
     fun onAmortizationSystemSelected(system: AmortizationSystem) {
         if (system !in AmortizationSystem.simulatorSystems) return
-        val existingComparison = _state.value.loanComparison
-        if (existingComparison != null) {
-            val active = if (system == AmortizationSystem.GERMAN) {
-                existingComparison.german
-            } else {
-                existingComparison.french
-            }
-            _state.update { it.copy(amortizationSystem = system, loanResult = active) }
-        } else {
-            _state.update { it.copy(amortizationSystem = system) }
-            calculateLoan()
-        }
+        if (_state.value.amortizationSystem == system && _state.value.loanResult?.system == system) return
+        _state.update { it.copy(amortizationSystem = system) }
+        calculateLoan()
     }
 
     fun onPaymentFrequencySelected(frequency: PaymentFrequency) {
@@ -221,8 +226,7 @@ class FinanceViewModel @Inject constructor(
             _state.update {
                 it.copy(
                     downPaymentError = true,
-                    loanResult = null,
-                    loanComparison = null
+                    loanResult = null
                 )
             }
             return
@@ -250,24 +254,19 @@ class FinanceViewModel @Inject constructor(
                 issuedAtMillis = CalculateLoanUseCase.todayCivilDateUtcMillis(),
                 compoundingFrequency = s.compoundingFrequency
             )
-            val comparison = runCatching { calculateLoanUseCase.compare(request) }.getOrNull()
-            val activeResult = comparison?.let {
-                if (activeSystem == AmortizationSystem.GERMAN) it.german else it.french
-            }
+            val activeResult = runCatching { calculateLoanUseCase(request) }.getOrNull()
             _state.update {
                 it.copy(
                     amortizationSystem = activeSystem,
                     downPaymentError = false,
-                    loanResult = activeResult,
-                    loanComparison = comparison
+                    loanResult = activeResult
                 )
             }
         } else {
             _state.update {
                 it.copy(
                     downPaymentError = false,
-                    loanResult = null,
-                    loanComparison = null
+                    loanResult = null
                 )
             }
         }
@@ -321,15 +320,6 @@ class FinanceViewModel @Inject constructor(
             }
         }
         _state.update { it.copy(interestResult = null) }
-    }
-
-    fun onTaxTypeSelected(type: TaxType) {
-        _state.update { it.copy(taxType = type) }
-    }
-
-    fun onCustomTaxLabelChange(value: String) {
-        val cleaned = value.replace("\n", " ").replace("\r", "").take(MAX_CUSTOM_TAX_LABEL_LENGTH)
-        _state.update { it.copy(customTaxLabel = cleaned) }
     }
 
     fun onTaxBaseChange(value: String) {
@@ -405,6 +395,5 @@ class FinanceViewModel @Inject constructor(
         const val MAX_LOAN_YEARS = 50
         const val MAX_LOAN_PERIODS = 1_200
         const val MAX_ANNUAL_RATE_PERCENT = 1_000.0
-        const val MAX_CUSTOM_TAX_LABEL_LENGTH = 32
     }
 }

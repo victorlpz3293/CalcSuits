@@ -31,6 +31,8 @@
     <!-- Common Content Descriptions & Feedback -->
     <string name="cd_open_modules_menu">Abrir menú de módulos</string>
     <string name="cd_back_to_engineering">Volver a especialidades de Ingeniería</string>
+    <string name="cd_back_to_finance">Volver a herramientas de Finanzas</string>
+    <string name="cd_back_to_converter">Volver a categorías de conversión</string>
     <string name="cd_copy_result">Copiar resultado</string>
     <string name="cd_delete_last_digit">Borrar último dígito</string>
     <string name="cd_clear">Limpiar</string>
@@ -130,6 +132,12 @@
     <string name="solver_error_unsupported_equation">Ecuación no soportada</string>
 
     <!-- Converters -->
+    <string name="converter_hub_subtitle">CATEGORÍAS DE CONVERSIÓN</string>
+    <string name="converter_hub_intro">Selecciona una categoría para convertir unidades o divisas.</string>
+    <plurals name="converter_units_count">
+        <item quantity="one">%d unidad</item>
+        <item quantity="other">%d unidades</item>
+    </plurals>
     <string name="converter_from">DESDE</string>
     <string name="converter_result">RESULTADO</string>
     <string name="converter_equivalences">EQUIVALENCIAS DIRECTAS</string>
@@ -213,9 +221,17 @@
     <string name="unit_gbp">Libra esterlina</string>
 
     <!-- Finance -->
+    <string name="finance_hub_subtitle">HERRAMIENTAS FINANCIERAS</string>
+    <string name="finance_hub_intro">Selecciona una herramienta financiera para realizar tus cálculos.</string>
     <string name="finance_tab_loan">Préstamos</string>
     <string name="finance_tab_interest">Intereses</string>
     <string name="finance_tab_tax">Impuestos</string>
+    <string name="finance_card_loan_summary">Francés · Alemán · TNA/TEA</string>
+    <string name="finance_card_loan_desc">Cuota fija o decreciente, prima opcional, tasas TNA/TEA, plan de pagos y gráficas.</string>
+    <string name="finance_card_interest_summary">Simple · Compuesto</string>
+    <string name="finance_card_interest_desc">Compara el crecimiento lineal frente a la capitalización compuesta periódica.</string>
+    <string name="finance_card_tax_summary">Añadir · Extraer</string>
+    <string name="finance_card_tax_desc">Base imponible directa, tasa porcentual configurable y monto total.</string>
 
     <string name="finance_currency_label">Moneda</string>
     <string name="cd_finance_select_currency">Seleccionar moneda</string>
@@ -226,18 +242,14 @@
     <string name="finance_freq_monthly">Mensual</string>
     <string name="finance_freq_daily">Diaria</string>
 
-    <string name="finance_loan_simulator_title">Simulador de Préstamos</string>
-    <string name="finance_simulation_mode_label">Modo de simulación</string>
-    <string name="finance_mode_individual">Simulación individual</string>
-    <string name="finance_mode_comparison">Comparar sistemas</string>
+    <string name="finance_loan_tab_french">Francés</string>
+    <string name="finance_loan_tab_german">Alemán</string>
 
     <string name="finance_system_label">Sistema de amortización</string>
     <string name="finance_system_french_title">Sistema de Cuota Fija</string>
     <string name="finance_system_french_academic">Sistema Francés</string>
-    <string name="finance_system_french_short">Cuota Fija</string>
     <string name="finance_system_german_title">Sistema de Cuota Decreciente</string>
     <string name="finance_system_german_academic">Sistema Alemán</string>
-    <string name="finance_system_german_short">Cuota Decreciente</string>
     <string name="finance_system_french_desc">Cuota fija periódica, intereses decrecientes y amortización de capital creciente.</string>
     <string name="finance_system_german_desc">Amortización de capital constante, intereses decrecientes y cuotas decrecientes.</string>
 
@@ -303,7 +315,6 @@
 
     <string name="finance_plan_summary_section">Resumen del plan de pagos</string>
     <string name="finance_plan_issue_date">Fecha de emisión</string>
-    <string name="finance_issue_date_inline">Emitido: %1$s</string>
     <string name="finance_plan_term_label">Plazo</string>
     <string name="finance_loan_initial_installment_fmt">%1$s inicial</string>
     <string name="finance_loan_final_installment_fmt">%1$s final</string>
@@ -316,19 +327,9 @@
     <string name="finance_total_installments_paid">Total pagado en cuotas</string>
     <string name="finance_total_outflow_with_down_payment">Desembolso total (con prima)</string>
 
-    <string name="finance_comparison_title">Comparación: Francés vs. Alemán</string>
-    <string name="finance_comparison_context">Capital %1$s · %2$s · %3$s · %4$s</string>
-    <string name="finance_comparison_down_payment_note">Solicitado %1$s menos prima de %2$s</string>
-    <string name="finance_comparison_differences_title">Diferencias (Francés − Alemán)</string>
-    <string name="finance_comparison_interest_diff">Diferencia en intereses</string>
-    <string name="finance_comparison_total_diff">Diferencia en total pagado</string>
-    <string name="finance_comparison_neutral_note">El sistema francés ofrece cuotas fijas previsibles; el sistema alemán reduce el total de intereses a cambio de cuotas iniciales más altas.</string>
-    <string name="finance_comparison_schedule_selector">Plan de pagos a inspeccionar</string>
-
     <string name="finance_charts_title">Evolución financiera</string>
     <string name="finance_chart_tab_balance">Saldo pendiente</string>
     <string name="finance_chart_tab_components">Intereses vs. Amort.</string>
-    <string name="finance_chart_tab_comparison">Francés vs. Alemán</string>
     <string name="finance_chart_legend_balance">Saldo pendiente</string>
     <string name="finance_chart_scale_peak">Máx.: %1$s</string>
 
@@ -368,22 +369,13 @@
     <string name="finance_compound_advantage">Ventaja del interés compuesto</string>
 
     <string name="finance_tax_title">Calculadora de impuestos</string>
-    <string name="finance_tax_type_label">Tipo de impuesto</string>
-    <string name="finance_tax_type_vat">IVA</string>
-    <string name="finance_tax_type_sales">Ventas</string>
-    <string name="finance_tax_type_excise">Consumo / ISC</string>
-    <string name="finance_tax_type_withholding">Retención</string>
-    <string name="finance_tax_type_service">Servicio</string>
-    <string name="finance_tax_type_custom">Personalizado</string>
-    <string name="finance_tax_custom_name_label">Nombre del impuesto</string>
-    <string name="finance_tax_custom_name_placeholder">Ej. IGV, ITBMS, Municipal</string>
+    <string name="finance_tax_breakdown_title">Desglose de impuesto</string>
     <string name="finance_tax_add">Añadir impuesto</string>
     <string name="finance_tax_extract">Desglosar impuesto incluido</string>
     <string name="finance_tax_total_input">Monto total (impuesto incluido)</string>
     <string name="finance_tax_net_input">Base imponible (sin impuesto)</string>
     <string name="finance_tax_rate_label">Tasa de impuesto</string>
     <string name="finance_tax_rate_hint">La tasa es configurable; verifica el porcentaje vigente en tu jurisdicción.</string>
-    <string name="finance_tax_selected_type">Tipo de impuesto</string>
     <string name="finance_tax_subtotal">Base imponible</string>
     <string name="finance_tax_applied_rate">Tasa aplicada</string>
     <string name="finance_tax_amount_plain">Importe del impuesto</string>

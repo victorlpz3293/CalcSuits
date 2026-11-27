@@ -2,7 +2,6 @@ package com.calcsuits.features.finance.ui.viewmodel
 
 import com.calcsuits.domain.model.finance.AmortizationSystem
 import com.calcsuits.domain.model.finance.FinanceCurrencies
-import com.calcsuits.domain.model.finance.LoanSimulationMode
 import com.calcsuits.domain.model.finance.LoanTermUnit
 import com.calcsuits.domain.model.finance.PaymentFrequency
 import com.calcsuits.domain.model.finance.RateCompoundingFrequency
@@ -13,7 +12,6 @@ import com.calcsuits.features.finance.ui.screens.ScheduleLayoutMode
 import com.calcsuits.features.finance.ui.screens.resolveScheduleLayoutMode
 import com.calcsuits.features.finance.ui.screens.resolveVisibleScheduleRows
 import com.calcsuits.features.finance.ui.screens.shouldUseNonLazyLoanLayout
-import com.calcsuits.features.finance.ui.screens.shouldUseStackedComparisonLayout
 import com.calcsuits.ui.components.shouldUseCompactPinnedLayout
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -33,12 +31,48 @@ class FinanceViewModelTest {
     }
 
     @Test
-    fun initialLoanStateCalculatesDefault10000At12PercentFor3YearsWithComparisonReady() {
+    fun financeStartsOnThreeCardHubAndNavigatesToEachToolAndBackPreservingInputs() {
+        assertEquals(
+            listOf(FinanceTab.LOAN, FinanceTab.INTEREST, FinanceTab.TAX),
+            FinanceTab.entries
+        )
+        assertNull(viewModel.state.value.selectedTab)
+
+        viewModel.onTabSelected(FinanceTab.LOAN)
+        assertEquals(FinanceTab.LOAN, viewModel.state.value.selectedTab)
+        viewModel.onAmountChange("45000")
+        viewModel.onAmortizationSystemSelected(AmortizationSystem.GERMAN)
+        viewModel.onBackToHub()
+        assertNull(viewModel.state.value.selectedTab)
+
+        viewModel.onTabSelected(FinanceTab.INTEREST)
+        assertEquals(FinanceTab.INTEREST, viewModel.state.value.selectedTab)
+        viewModel.onPrincipalChange("12000")
+        viewModel.onBackToHub()
+        assertNull(viewModel.state.value.selectedTab)
+
+        viewModel.onTabSelected(FinanceTab.TAX)
+        assertEquals(FinanceTab.TAX, viewModel.state.value.selectedTab)
+        viewModel.onTaxBaseChange("850")
+        viewModel.onTaxRateChange("15")
+        viewModel.onBackToHub()
+        assertNull(viewModel.state.value.selectedTab)
+
+        // Returning preserves all entered values across all 3 tools
+        val state = viewModel.state.value
+        assertEquals("45000", state.amount)
+        assertEquals(AmortizationSystem.GERMAN, state.amortizationSystem)
+        assertEquals("12000", state.principal)
+        assertEquals("850", state.taxBaseInput)
+        assertEquals("15", state.taxRatePercent)
+    }
+
+    @Test
+    fun initialLoanStateCalculatesDefault10000At12PercentFor3YearsInFrenchSystem() {
         val state = viewModel.state.value
         val loan = state.loanResult
         assertNotNull(loan)
-        assertNotNull(state.loanComparison)
-        assertEquals(LoanSimulationMode.INDIVIDUAL, state.loanSimulationMode)
+        assertEquals(AmortizationSystem.FRENCH, state.amortizationSystem)
         assertEquals(AmortizationSystem.FRENCH, loan!!.system)
         assertEquals(332.14, loan.monthlyPayment, 0.01)
         assertEquals(1_957.15, loan.totalInterest, 0.05)
@@ -66,7 +100,8 @@ class FinanceViewModelTest {
     }
 
     @Test
-    fun switchingLoanSystemFrequencyTermUnitRateConventionCurrencyAndComparisonModeUpdatesState() {
+    fun switchingFrenchAndGermanTabsRecalculatesIndependentlyWithoutMixingResults() {
+        viewModel.onTabSelected(FinanceTab.LOAN)
         viewModel.onCurrencySelected(FinanceCurrencies.NIO)
         viewModel.onAmountChange("600000")
         viewModel.onInterestRateChange("36")
@@ -74,32 +109,34 @@ class FinanceViewModelTest {
         viewModel.onLoanTermUnitSelected(LoanTermUnit.YEARS)
         viewModel.onYearsChange("2")
 
-        // Verify French in Individual mode (INATEC case)
+        // Verify French tab (INATEC case)
         viewModel.onAmortizationSystemSelected(AmortizationSystem.FRENCH)
         val french = viewModel.state.value.loanResult!!
         assertEquals(FinanceCurrencies.NIO, french.currency)
         assertEquals(AmortizationSystem.FRENCH, french.system)
         assertEquals(108_404.63, french.monthlyPayment, 1e-6)
         assertEquals(8, french.schedule.size)
+        assertNull(french.constantPrincipalPerPeriod)
 
-        // Switch to German (INATEC case)
+        // Switch to German tab (INATEC case) — inputs preserved, independent German result computed
         viewModel.onAmortizationSystemSelected(AmortizationSystem.GERMAN)
         val german = viewModel.state.value.loanResult!!
         assertEquals(AmortizationSystem.GERMAN, german.system)
         assertEquals(75_000.0, german.constantPrincipalPerPeriod!!, 1e-6)
         assertEquals(243_000.0, german.totalInterest, 1e-6)
         assertEquals(843_000.0, german.totalPayment, 1e-6)
+        assertTrue(german.totalInterest < french.totalInterest)
 
-        // Switch to Comparison mode
-        viewModel.onLoanSimulationModeSelected(LoanSimulationMode.COMPARISON)
-        val comparison = viewModel.state.value.loanComparison!!
-        assertEquals(LoanSimulationMode.COMPARISON, viewModel.state.value.loanSimulationMode)
-        assertEquals(french.totalInterest, comparison.french.totalInterest, 1e-6)
-        assertEquals(german.totalInterest, comparison.german.totalInterest, 1e-6)
-        assertTrue(comparison.interestDifference > 0.0)
-        assertEquals(comparison.interestDifference, comparison.totalPaymentDifference, 1e-6)
+        // Switch back to French tab — exact French figures restored without leaking German fields
+        viewModel.onAmortizationSystemSelected(AmortizationSystem.FRENCH)
+        val frenchAgain = viewModel.state.value.loanResult!!
+        assertEquals(AmortizationSystem.FRENCH, frenchAgain.system)
+        assertEquals(french.monthlyPayment, frenchAgain.monthlyPayment, 1e-6)
+        assertEquals(french.totalInterest, frenchAgain.totalInterest, 1e-6)
+        assertNull(frenchAgain.constantPrincipalPerPeriod)
 
         // Switching to Effective Annual Rate lowers periodic rate vs Nominal TNA/4
+        viewModel.onAmortizationSystemSelected(AmortizationSystem.GERMAN)
         viewModel.onRateConventionSelected(RateConvention.EFFECTIVE_ANNUAL)
         val earGerman = viewModel.state.value.loanResult!!
         assertTrue(earGerman.totalInterest < german.totalInterest)
@@ -107,7 +144,7 @@ class FinanceViewModelTest {
         // Switching currency to EUR updates result currency without altering system or term
         viewModel.onCurrencySelected(FinanceCurrencies.EUR)
         assertEquals(FinanceCurrencies.EUR, viewModel.state.value.loanResult!!.currency)
-        assertEquals(FinanceCurrencies.EUR, viewModel.state.value.loanComparison!!.french.currency)
+        assertEquals(AmortizationSystem.GERMAN, viewModel.state.value.amortizationSystem)
     }
 
     @Test
@@ -121,15 +158,17 @@ class FinanceViewModelTest {
         assertEquals(100_000.0, validState.loanResult!!.requestedAmount, 1e-6)
         assertEquals(25_000.0, validState.loanResult!!.downPayment, 1e-6)
         assertEquals(75_000.0, validState.loanResult!!.principalAmount, 1e-6)
-        assertEquals(75_000.0, validState.loanComparison!!.german.principalAmount, 1e-6)
 
-        // Down payment equal to loan amount -> error and null results
+        // Switching to German keeps identical financed principal
+        viewModel.onAmortizationSystemSelected(AmortizationSystem.GERMAN)
+        assertEquals(75_000.0, viewModel.state.value.loanResult!!.principalAmount, 1e-6)
+
+        // Down payment equal to loan amount -> error and null result
         viewModel.onDownPaymentChange("100000")
         assertTrue(viewModel.state.value.downPaymentError)
         assertNull(viewModel.state.value.loanResult)
-        assertNull(viewModel.state.value.loanComparison)
 
-        // Down payment greater than loan amount -> error and null results
+        // Down payment greater than loan amount -> error and null result
         viewModel.onDownPaymentChange("120000")
         assertTrue(viewModel.state.value.downPaymentError)
         assertNull(viewModel.state.value.loanResult)
@@ -155,13 +194,9 @@ class FinanceViewModelTest {
 
     @Test
     fun loanLayoutResolverUsesNonLazyOnlyWhenHeightIsUnboundedOrNonPositive() {
-        // Unbounded height (inside CalcPinnedScaffold outer verticalScroll) MUST use non-lazy Column
         assertTrue(shouldUseNonLazyLoanLayout(hasBoundedHeight = false, maxHeightDp = Float.POSITIVE_INFINITY))
         assertTrue(shouldUseNonLazyLoanLayout(hasBoundedHeight = false, maxHeightDp = 800f))
-        // Non-positive height falls back safely
         assertTrue(shouldUseNonLazyLoanLayout(hasBoundedHeight = true, maxHeightDp = 0f))
-        // Bounded positive heights (including 120–199dp under soft keyboard IME) stay on LazyColumn
-        // so the loan screen remains scrollable without an unscrollable dead-zone
         assertFalse(shouldUseNonLazyLoanLayout(hasBoundedHeight = true, maxHeightDp = 148f))
         assertFalse(shouldUseNonLazyLoanLayout(hasBoundedHeight = true, maxHeightDp = 199.9f))
         assertFalse(shouldUseNonLazyLoanLayout(hasBoundedHeight = true, maxHeightDp = 200f))
@@ -182,7 +217,6 @@ class FinanceViewModelTest {
         )
         assertEquals(1_200, longLoan.schedule.size)
 
-        // LazyColumn mode keeps full 1,200-row virtualized schedule
         assertEquals(
             1_200,
             resolveVisibleScheduleRows(
@@ -192,7 +226,6 @@ class FinanceViewModelTest {
                 useNonLazyLayout = false
             ).size
         )
-        // Non-lazy unbounded fallback caps eager composition to MAX_NON_LAZY_SCHEDULE_ROWS (24)
         val capped = resolveVisibleScheduleRows(
             schedule = longLoan.schedule,
             showSchedule = true,
@@ -203,7 +236,6 @@ class FinanceViewModelTest {
         assertEquals(1, capped.first().period)
         assertEquals(MAX_NON_LAZY_SCHEDULE_ROWS, capped.last().period)
 
-        // Default preview stays at 12 rows in both modes; hidden schedule returns empty
         assertEquals(
             12,
             resolveVisibleScheduleRows(
@@ -221,18 +253,6 @@ class FinanceViewModelTest {
                 useNonLazyLayout = false
             ).isEmpty()
         )
-    }
-
-    @Test
-    fun comparisonCardUsesStackedLayoutOnNarrowPhonesAndHorizontalColumnsOnWideScreens() {
-        // Screen widths minus 32dp scaffold padding and 40dp CalcResultCard padding = screenWidth - 72dp
-        assertTrue(shouldUseStackedComparisonLayout(360f - 72f)) // 288dp
-        assertTrue(shouldUseStackedComparisonLayout(375f - 72f)) // 303dp
-        assertTrue(shouldUseStackedComparisonLayout(412f - 72f)) // 340dp
-        assertTrue(shouldUseStackedComparisonLayout(399.9f))
-        assertFalse(shouldUseStackedComparisonLayout(400f))
-        assertFalse(shouldUseStackedComparisonLayout(600f - 72f)) // 528dp
-        assertFalse(shouldUseStackedComparisonLayout(840f - 72f)) // 768dp
     }
 
     @Test
@@ -317,7 +337,10 @@ class FinanceViewModelTest {
     }
 
     @Test
-    fun taxCalculationAddsTaxWhenTaxNotIncluded() {
+    fun taxCalculationAddsTaxDirectlyWithoutImposedDefaultRate() {
+        // Default rate is 0% (no jurisdiction-specific legal default imposed)
+        assertEquals("0", viewModel.state.value.taxRatePercent)
+
         viewModel.onTaxIncludedChange(false)
         viewModel.onTaxBaseChange("1000")
         viewModel.onTaxRateChange("15")
@@ -368,19 +391,6 @@ class FinanceViewModelTest {
     }
 
     @Test
-    fun selectingTaxTypeDoesNotImposeOrOverwriteUserConfiguredRate() {
-        viewModel.onTaxRateChange("8.25")
-        viewModel.onTaxTypeSelected(TaxType.SALES)
-        assertEquals("8.25", viewModel.state.value.taxRatePercent)
-        assertEquals(TaxType.SALES, viewModel.state.value.taxType)
-
-        viewModel.onTaxTypeSelected(TaxType.CUSTOM)
-        viewModel.onCustomTaxLabelChange("Impuesto\nMunicipal")
-        assertEquals("Impuesto Municipal", viewModel.state.value.customTaxLabel)
-        assertEquals("8.25", viewModel.state.value.taxRatePercent)
-    }
-
-    @Test
     fun zeroPercentTaxLeavesAmountUnchangedInBothModes() {
         viewModel.onTaxBaseChange("500")
         viewModel.onTaxRateChange("0")
@@ -411,51 +421,43 @@ class FinanceViewModelTest {
 
     @Test
     fun compoundingFrequencyCanBeConfiguredIndependentlyFromPaymentPeriodicityAndPreservesUserChoice() {
-        // Default: compounding follows payment periodicity
         assertEquals(PaymentFrequency.MONTHLY, viewModel.state.value.paymentFrequency)
         assertEquals(RateCompoundingFrequency.MONTHLY, viewModel.state.value.compoundingFrequency)
         assertTrue(viewModel.state.value.compoundingFollowsPayment)
 
-        // Changing payment frequency while coupled keeps compounding synced (standard TNA/m convention)
         viewModel.onInterestRateChange("24")
         viewModel.onPaymentFrequencySelected(PaymentFrequency.QUARTERLY)
         assertEquals(RateCompoundingFrequency.QUARTERLY, viewModel.state.value.compoundingFrequency)
         assertEquals(0.06, viewModel.state.value.loanResult!!.periodicRate, 1e-12)
 
-        // Explicitly choosing monthly compounding with quarterly payments decouples the two periodicities
         viewModel.onCompoundingFrequencySelected(RateCompoundingFrequency.MONTHLY)
         val splitState = viewModel.state.value
         assertFalse(splitState.compoundingFollowsPayment)
         assertEquals(PaymentFrequency.QUARTERLY, splitState.paymentFrequency)
         assertEquals(RateCompoundingFrequency.MONTHLY, splitState.compoundingFrequency)
-        // 24% TNA compounded monthly -> i_q = (1.02)^3 - 1 = 0.061208, TEA = (1.02)^12 - 1 ≈ 0.26824179
         assertEquals(0.061208, splitState.loanResult!!.periodicRate, 1e-12)
         assertEquals(0.268241794562545, splitState.loanResult!!.effectiveAnnualRate, 1e-12)
 
-        // Subsequent payment frequency change preserves user's explicit monthly compounding choice
         viewModel.onPaymentFrequencySelected(PaymentFrequency.SEMIANNUAL)
         val updatedState = viewModel.state.value
         assertEquals(PaymentFrequency.SEMIANNUAL, updatedState.paymentFrequency)
         assertEquals(RateCompoundingFrequency.MONTHLY, updatedState.compoundingFrequency)
-        // i_s = (1.02)^6 - 1 = 0.126162419264
         assertEquals(0.126162419264, updatedState.loanResult!!.periodicRate, 1e-12)
     }
 
     @Test
     fun pinnedScaffoldCompactLayoutDecisionDependsOnlyOnViewportHeightNotImeInsets() {
-        // Portrait phones (~680–840dp viewport before IME) and Finance/Engineering threshold (200dp)
         assertFalse(shouldUseCompactPinnedLayout(viewportHeightDp = 760f, compactHeightThresholdDp = 200f))
         assertFalse(shouldUseCompactPinnedLayout(viewportHeightDp = 300f, compactHeightThresholdDp = 200f))
         assertFalse(shouldUseCompactPinnedLayout(viewportHeightDp = 200f, compactHeightThresholdDp = 200f))
-        // Multi-window / split-screen genuinely below threshold uses compact scroll layout
         assertTrue(shouldUseCompactPinnedLayout(viewportHeightDp = 199.9f, compactHeightThresholdDp = 200f))
-        // Converter threshold (420dp) matches existing behavior
         assertTrue(shouldUseCompactPinnedLayout(viewportHeightDp = 360f, compactHeightThresholdDp = 420f))
         assertFalse(shouldUseCompactPinnedLayout(viewportHeightDp = 760f, compactHeightThresholdDp = 420f))
     }
 
     @Test
-    fun loanFieldStatePersistsAcrossTabModeSystemAndCurrencyChanges() {
+    fun loanFieldStatePersistsAcrossHubNavigationSystemAndCurrencyChanges() {
+        viewModel.onTabSelected(FinanceTab.LOAN)
         viewModel.onAmountChange("250000")
         viewModel.onDownPaymentChange("50000")
         viewModel.onInterestRateChange("18.5")
@@ -464,15 +466,17 @@ class FinanceViewModelTest {
         viewModel.onCompoundingFrequencySelected(RateCompoundingFrequency.MONTHLY)
         viewModel.onRateConventionSelected(RateConvention.NOMINAL_PER_PAYMENT_PERIOD)
 
+        viewModel.onBackToHub()
         viewModel.onTabSelected(FinanceTab.INTEREST)
+        viewModel.onBackToHub()
         viewModel.onTabSelected(FinanceTab.TAX)
+        viewModel.onBackToHub()
         viewModel.onTabSelected(FinanceTab.LOAN)
-        viewModel.onLoanSimulationModeSelected(LoanSimulationMode.COMPARISON)
         viewModel.onAmortizationSystemSelected(AmortizationSystem.GERMAN)
         viewModel.onCurrencySelected(FinanceCurrencies.NIO)
-        viewModel.onLoanSimulationModeSelected(LoanSimulationMode.INDIVIDUAL)
 
         val restored = viewModel.state.value
+        assertEquals(FinanceTab.LOAN, restored.selectedTab)
         assertEquals("250000", restored.amount)
         assertEquals("50000", restored.downPayment)
         assertEquals("18.5", restored.interestRate)

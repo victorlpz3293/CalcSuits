@@ -27,7 +27,6 @@ import com.calcsuits.R
 import com.calcsuits.domain.model.finance.FinanceCurrency
 import com.calcsuits.features.finance.ui.viewmodel.CompoundingFrequency
 import com.calcsuits.features.finance.ui.viewmodel.FinanceState
-import com.calcsuits.features.finance.ui.viewmodel.TaxType
 import com.calcsuits.ui.components.CalcCard
 import com.calcsuits.ui.components.CalcFilterChip
 import com.calcsuits.ui.components.CalcResultCard
@@ -216,19 +215,12 @@ internal fun TaxSection(
     state: FinanceState,
     locale: Locale,
     onCurrencySelected: (FinanceCurrency) -> Unit,
-    onTaxTypeSelected: (TaxType) -> Unit,
-    onCustomTaxLabelChange: (String) -> Unit,
     onTaxBaseChange: (String) -> Unit,
     onTaxRateChange: (String) -> Unit,
     onTaxIncludedChange: (Boolean) -> Unit
 ) {
     val currency = state.selectedCurrency
     val currencyPrefix = "${currency.symbol} "
-    val resolvedTaxLabel = if (state.taxType == TaxType.CUSTOM && state.customTaxLabel.isNotBlank()) {
-        state.customTaxLabel.trim()
-    } else {
-        stringResource(state.taxType.labelRes)
-    }
 
     CalcCard {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -247,46 +239,6 @@ internal fun TaxSection(
                     selected = currency,
                     onSelected = onCurrencySelected
                 )
-            }
-
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(
-                    text = stringResource(R.string.finance_tax_type_label),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                FlowRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    TaxType.entries.forEach { type ->
-                        CalcFilterChip(
-                            selected = state.taxType == type,
-                            onClick = { onTaxTypeSelected(type) },
-                            label = {
-                                Text(
-                                    text = stringResource(type.labelRes),
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            },
-                            modifier = Modifier.testTag("tax_type_${type.name.lowercase(Locale.ROOT)}")
-                        )
-                    }
-                }
-                if (state.taxType == TaxType.CUSTOM) {
-                    OutlinedTextField(
-                        value = state.customTaxLabel,
-                        onValueChange = onCustomTaxLabelChange,
-                        label = { Text(stringResource(R.string.finance_tax_custom_name_label)) },
-                        placeholder = { Text(stringResource(R.string.finance_tax_custom_name_placeholder)) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag("tax_custom_name_input"),
-                        singleLine = true
-                    )
-                }
             }
 
             FlowRow(
@@ -356,10 +308,10 @@ internal fun TaxSection(
         CalcResultCard {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
-                    text = "${stringResource(R.string.finance_tax_selected_type).uppercase(locale)} · $resolvedTaxLabel",
+                    text = stringResource(R.string.finance_tax_breakdown_title).uppercase(locale),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.testTag("tax_result_type")
+                    modifier = Modifier.testTag("tax_result_header")
                 )
                 FinanceMetricRow(
                     label = stringResource(R.string.finance_tax_subtotal),

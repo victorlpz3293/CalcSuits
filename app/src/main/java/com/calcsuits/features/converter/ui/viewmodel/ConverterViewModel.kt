@@ -25,6 +25,7 @@ data class UnitConversionPreview(
 )
 
 data class ConverterState(
+    val activeCategory: ConversionCategory? = null,
     val selectedCategory: ConversionCategory = ConversionCategory.Length,
     val availableUnits: List<ConversionUnit> = ConversionCategory.Length.units,
     val fromUnit: ConversionUnit = ConversionCategory.Length.units[0],
@@ -68,6 +69,7 @@ class ConverterViewModel @Inject constructor(
         val units = unitsFor(category)
         _state.update {
             it.copy(
+                activeCategory = category,
                 selectedCategory = category,
                 availableUnits = units,
                 fromUnit = units[0],
@@ -88,6 +90,10 @@ class ConverterViewModel @Inject constructor(
         if (category == ConversionCategory.Currency) {
             loadCurrencyRates(forceRefresh = false)
         }
+    }
+
+    fun onBackToCategories() {
+        _state.update { it.copy(activeCategory = null) }
     }
 
     fun refreshCurrencyRates() {

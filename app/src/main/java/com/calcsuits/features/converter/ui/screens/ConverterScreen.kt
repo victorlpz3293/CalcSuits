@@ -1,27 +1,33 @@
 package com.calcsuits.features.converter.ui.screens
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.ContentCopy
@@ -29,6 +35,8 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.SwapVert
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -39,6 +47,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
@@ -57,6 +66,7 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.AnnotatedString
@@ -73,10 +83,10 @@ import com.calcsuits.domain.model.converter.ConversionCategory
 import com.calcsuits.domain.model.converter.ConversionUnit
 import com.calcsuits.features.converter.ui.viewmodel.ConverterState
 import com.calcsuits.ui.components.CalcCard
-import com.calcsuits.ui.components.CalcFilterChip
 import com.calcsuits.ui.components.CalcPinnedScaffold
 import com.calcsuits.ui.components.CalcResultCard
 import com.calcsuits.ui.components.CalcSuitsHeader
+import com.calcsuits.ui.theme.CalcSuitsTheme
 import com.calcsuits.ui.theme.JetBrainsMonoFontFamily
 import com.calcsuits.ui.util.asString
 import com.calcsuits.ui.util.rememberCurrentLocale
@@ -85,17 +95,193 @@ import kotlinx.coroutines.launch
 private const val EXCHANGE_RATE_API_NAME = "ExchangeRate-API"
 private const val EXCHANGE_RATE_API_URL = "https://www.exchangerate-api.com"
 
+/**
+ * Resolves the responsive grid column count for the 9-category converter hub:
+ * 2 columns on mobile phones (`< 600dp`) and 3 columns on tablets / wide screens (`>= 600dp`).
+ */
+internal fun resolveConverterGridColumns(availableWidthDp: Float): Int =
+    if (availableWidthDp >= 600f) 3 else 2
+
 @Composable
 fun ConverterScreen(
     state: ConverterState,
     onMenuClick: () -> Unit,
     onCategorySelected: (ConversionCategory) -> Unit,
+    onBackToCategories: () -> Unit = {},
     onValueChanged: (String) -> Unit,
     onUnitChange: (Boolean, ConversionUnit) -> Unit = { _, _ -> },
     onSwap: () -> Unit = {},
     onRefreshCurrency: () -> Unit = {}
 ) {
+    BackHandler(enabled = state.activeCategory != null) {
+        onBackToCategories()
+    }
+
+    val activeCategory = state.activeCategory
+    if (activeCategory == null) {
+        ConverterCategoriesHub(
+            onMenuClick = onMenuClick,
+            onCategorySelected = onCategorySelected
+        )
+    } else {
+        ConverterWorkspaceView(
+            state = state,
+            activeCategory = activeCategory,
+            onBackToCategories = onBackToCategories,
+            onValueChanged = onValueChanged,
+            onUnitChange = onUnitChange,
+            onSwap = onSwap,
+            onRefreshCurrency = onRefreshCurrency
+        )
+    }
+}
+
+@Composable
+private fun ConverterCategoriesHub(
+    onMenuClick: () -> Unit,
+    onCategorySelected: (ConversionCategory) -> Unit
+) {
     val categories = ConversionCategory.all
+    val extColors = CalcSuitsTheme.colors
+
+    Scaffold(
+        topBar = {
+            CalcSuitsHeader(
+                title = stringResource(R.string.converter),
+                subtitle = stringResource(R.string.converter_hub_subtitle),
+                onMenuClick = onMenuClick
+            )
+        },
+        containerColor = MaterialTheme.colorScheme.background
+    ) { padding ->
+        BoxWithConstraints(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .navigationBarsPadding()
+        ) {
+            val columns = resolveConverterGridColumns(maxWidth.value)
+            val rows = remember(categories, columns) { categories.chunked(columns) }
+
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    text = stringResource(R.string.converter_hub_intro),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 2.dp, vertical = 2.dp)
+                )
+
+                rows.forEach { rowCategories ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        rowCategories.forEach { category ->
+                            val previewSymbols = remember(category) {
+                                category.units.take(3).joinToString(" · ") { it.symbol }
+                            }
+                            Card(
+                                onClick = { onCategorySelected(category) },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .heightIn(min = 132.dp)
+                                    .testTag("converter_cat_${category.key}"),
+                                shape = MaterialTheme.shapes.large,
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(14.dp),
+                                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(44.dp)
+                                                .clip(RoundedCornerShape(12.dp))
+                                                .background(MaterialTheme.colorScheme.primaryContainer),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                imageVector = category.icon,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.size(22.dp)
+                                            )
+                                        }
+                                        Icon(
+                                            imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+
+                                    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                        Text(
+                                            text = stringResource(category.titleRes),
+                                            style = MaterialTheme.typography.titleSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                            maxLines = 2,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        Text(
+                                            text = previewSymbols,
+                                            style = MaterialTheme.typography.labelSmall.copy(
+                                                fontFamily = JetBrainsMonoFontFamily,
+                                                fontWeight = FontWeight.SemiBold
+                                            ),
+                                            color = extColors.technicalAccent,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        Text(
+                                            text = pluralStringResource(
+                                                R.plurals.converter_units_count,
+                                                category.units.size,
+                                                category.units.size
+                                            ),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            maxLines = 1
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        repeat(columns - rowCategories.size) {
+                            Spacer(modifier = Modifier.weight(1f))
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ConverterWorkspaceView(
+    state: ConverterState,
+    activeCategory: ConversionCategory,
+    onBackToCategories: () -> Unit,
+    onValueChanged: (String) -> Unit,
+    onUnitChange: (Boolean, ConversionUnit) -> Unit,
+    onSwap: () -> Unit,
+    onRefreshCurrency: () -> Unit
+) {
     val clipboard = LocalClipboardManager.current
     val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
@@ -104,16 +290,18 @@ fun ConverterScreen(
     val scope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
 
-    LaunchedEffect(state.selectedCategory) {
+    LaunchedEffect(activeCategory) {
         scrollState.scrollTo(0)
     }
 
     CalcPinnedScaffold(
         topBar = {
             CalcSuitsHeader(
-                title = stringResource(R.string.converter),
-                subtitle = stringResource(state.selectedCategory.titleRes).uppercase(locale),
-                onMenuClick = onMenuClick
+                title = stringResource(activeCategory.titleRes),
+                subtitle = stringResource(R.string.converter).uppercase(locale),
+                onMenuClick = onBackToCategories,
+                navigationIcon = Icons.AutoMirrored.Rounded.ArrowBack,
+                navigationContentDescription = stringResource(R.string.cd_back_to_converter)
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -124,34 +312,6 @@ fun ConverterScreen(
         scrollState = scrollState,
         compactHeightThreshold = 420.dp,
         pinnedContent = {
-            LazyRow(
-                contentPadding = PaddingValues(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                items(categories, key = { it.key }) { category ->
-                    CalcFilterChip(
-                        selected = state.selectedCategory == category,
-                        onClick = { onCategorySelected(category) },
-                        label = {
-                            Text(
-                                text = stringResource(category.titleRes),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = category.icon,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        },
-                        modifier = Modifier.testTag("converter_cat_${category.key}")
-                    )
-                }
-            }
-
             Box(
                 modifier = Modifier
                     .fillMaxWidth()

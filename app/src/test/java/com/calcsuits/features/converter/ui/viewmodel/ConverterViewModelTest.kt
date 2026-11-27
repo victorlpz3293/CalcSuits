@@ -8,6 +8,7 @@ import com.calcsuits.domain.repository.CurrencyRatesSnapshot
 import com.calcsuits.domain.repository.CurrencyRatesSource
 import com.calcsuits.domain.repository.CurrencyRepository
 import com.calcsuits.domain.usecase.ConvertUnitsUseCase
+import com.calcsuits.features.converter.ui.screens.resolveConverterGridColumns
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -18,6 +19,7 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -37,6 +39,44 @@ class ConverterViewModelTest {
     @After
     fun tearDown() {
         Dispatchers.resetMain()
+    }
+
+    @Test
+    fun converterStartsOnNineCategoryHubAndNavigatesToEachCategoryAndBack() = runTest {
+        val repo = FakeCurrencyRepository(
+            cached = null,
+            refreshHandler = { _, _ -> Result.failure(IOException("Offline")) }
+        )
+        val vm = ConverterViewModel(ConvertUnitsUseCase(), repo)
+
+        assertNull(vm.state.value.activeCategory)
+        assertEquals(9, ConversionCategory.all.size)
+        assertEquals(
+            listOf("length", "mass", "area", "volume", "temperature", "speed", "time", "data", "currency"),
+            ConversionCategory.all.map { it.key }
+        )
+
+        vm.onValueChange("42")
+        ConversionCategory.all.forEach { category ->
+            vm.onCategorySelected(category)
+            assertEquals(category, vm.state.value.activeCategory)
+            assertEquals(category, vm.state.value.selectedCategory)
+            assertEquals("42", vm.state.value.fromValue)
+
+            vm.onBackToCategories()
+            assertNull(vm.state.value.activeCategory)
+            assertEquals("42", vm.state.value.fromValue)
+        }
+    }
+
+    @Test
+    fun converterGridUsesTwoColumnsOnPhonesAndThreeColumnsOnWideScreens() {
+        assertEquals(2, resolveConverterGridColumns(360f))
+        assertEquals(2, resolveConverterGridColumns(412f))
+        assertEquals(2, resolveConverterGridColumns(599.9f))
+        assertEquals(3, resolveConverterGridColumns(600f))
+        assertEquals(3, resolveConverterGridColumns(840f))
+        assertEquals(3, resolveConverterGridColumns(1024f))
     }
 
     @Test

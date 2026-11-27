@@ -3,7 +3,6 @@ package com.calcsuits.features.finance.ui.screens
 import androidx.annotation.StringRes
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -28,9 +27,6 @@ import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -52,7 +48,6 @@ import com.calcsuits.R
 import com.calcsuits.domain.model.finance.AmortizationRow
 import com.calcsuits.domain.model.finance.AmortizationSystem
 import com.calcsuits.domain.model.finance.FinanceCurrency
-import com.calcsuits.domain.model.finance.LoanSimulationMode
 import com.calcsuits.domain.model.finance.LoanTermUnit
 import com.calcsuits.domain.model.finance.PaymentFrequency
 import com.calcsuits.domain.model.finance.RateCompoundingFrequency
@@ -60,7 +55,6 @@ import com.calcsuits.domain.model.finance.RateConvention
 import com.calcsuits.features.finance.ui.viewmodel.FinanceState
 import com.calcsuits.ui.components.CalcCard
 import com.calcsuits.ui.components.CalcFilterChip
-import com.calcsuits.ui.components.calcSegmentedButtonColors
 import com.calcsuits.ui.theme.JetBrainsMonoFontFamily
 import com.calcsuits.ui.util.formatMoney
 import com.calcsuits.ui.util.formatRatePercent
@@ -127,8 +121,6 @@ internal fun LoanSection(
     state: FinanceState,
     locale: Locale,
     onCurrencySelected: (FinanceCurrency) -> Unit,
-    onLoanSimulationModeSelected: (LoanSimulationMode) -> Unit,
-    onAmortizationSystemSelected: (AmortizationSystem) -> Unit,
     onPaymentFrequencySelected: (PaymentFrequency) -> Unit,
     onCompoundingFrequencySelected: (RateCompoundingFrequency) -> Unit,
     onLoanTermUnitSelected: (LoanTermUnit) -> Unit,
@@ -148,8 +140,6 @@ internal fun LoanSection(
     ) { mutableStateOf(emptySet<Int>()) }
 
     val activeResult = state.loanResult
-    val comparison = state.loanComparison
-    val isComparisonMode = state.loanSimulationMode == LoanSimulationMode.COMPARISON
 
     val toggleExpandedPeriod: (Int) -> Unit = { period ->
         expandedPeriods = if (period in expandedPeriods) {
@@ -194,8 +184,6 @@ internal fun LoanSection(
                     state = state,
                     locale = locale,
                     onCurrencySelected = onCurrencySelected,
-                    onLoanSimulationModeSelected = onLoanSimulationModeSelected,
-                    onAmortizationSystemSelected = onAmortizationSystemSelected,
                     onPaymentFrequencySelected = onPaymentFrequencySelected,
                     onCompoundingFrequencySelected = onCompoundingFrequencySelected,
                     onLoanTermUnitSelected = onLoanTermUnitSelected,
@@ -206,23 +194,11 @@ internal fun LoanSection(
                     onYearsChange = onYearsChange
                 )
                 if (activeResult != null) {
-                    if (isComparisonMode && comparison != null) {
-                        LoanComparisonCard(comparison = comparison, locale = locale)
-                    } else {
-                        LoanSummaryCard(result = activeResult, locale = locale)
-                    }
+                    LoanSummaryCard(result = activeResult, locale = locale)
                     LoanChartsCard(
                         result = activeResult,
-                        comparison = comparison,
-                        locale = locale,
-                        preferComparisonTab = isComparisonMode
+                        locale = locale
                     )
-                    if (isComparisonMode) {
-                        ComparisonScheduleSystemSelector(
-                            selectedSystem = state.amortizationSystem,
-                            onSelected = onAmortizationSystemSelected
-                        )
-                    }
                     ScheduleToggleButton(
                         scheduleSize = activeResult.schedule.size,
                         showSchedule = showSchedule,
@@ -310,8 +286,6 @@ internal fun LoanSection(
                             state = state,
                             locale = locale,
                             onCurrencySelected = onCurrencySelected,
-                            onLoanSimulationModeSelected = onLoanSimulationModeSelected,
-                            onAmortizationSystemSelected = onAmortizationSystemSelected,
                             onPaymentFrequencySelected = onPaymentFrequencySelected,
                             onCompoundingFrequencySelected = onCompoundingFrequencySelected,
                             onLoanTermUnitSelected = onLoanTermUnitSelected,
@@ -324,17 +298,9 @@ internal fun LoanSection(
                     }
                 }
                 if (activeResult != null) {
-                    if (isComparisonMode && comparison != null) {
-                        item(key = "loan_comparison") {
-                            Column(modifier = Modifier.padding(bottom = 12.dp)) {
-                                LoanComparisonCard(comparison = comparison, locale = locale)
-                            }
-                        }
-                    } else {
-                        item(key = "loan_summary") {
-                            Column(modifier = Modifier.padding(bottom = 12.dp)) {
-                                LoanSummaryCard(result = activeResult, locale = locale)
-                            }
+                    item(key = "loan_summary") {
+                        Column(modifier = Modifier.padding(bottom = 12.dp)) {
+                            LoanSummaryCard(result = activeResult, locale = locale)
                         }
                     }
 
@@ -342,21 +308,8 @@ internal fun LoanSection(
                         Column(modifier = Modifier.padding(bottom = 12.dp)) {
                             LoanChartsCard(
                                 result = activeResult,
-                                comparison = comparison,
-                                locale = locale,
-                                preferComparisonTab = isComparisonMode
+                                locale = locale
                             )
-                        }
-                    }
-
-                    if (isComparisonMode) {
-                        item(key = "loan_comparison_schedule_selector") {
-                            Column(modifier = Modifier.padding(bottom = 12.dp)) {
-                                ComparisonScheduleSystemSelector(
-                                    selectedSystem = state.amortizationSystem,
-                                    onSelected = onAmortizationSystemSelected
-                                )
-                            }
                         }
                     }
 
@@ -466,48 +419,12 @@ internal fun LoanSection(
     }
 }
 
-@Composable
-private fun ComparisonScheduleSystemSelector(
-    selectedSystem: AmortizationSystem,
-    onSelected: (AmortizationSystem) -> Unit
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(
-            text = stringResource(R.string.finance_comparison_schedule_selector),
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-            AmortizationSystem.simulatorSystems.forEachIndexed { index, system ->
-                SegmentedButton(
-                    selected = selectedSystem == system,
-                    onClick = { onSelected(system) },
-                    shape = SegmentedButtonDefaults.itemShape(
-                        index = index,
-                        count = AmortizationSystem.simulatorSystems.size
-                    ),
-                    colors = calcSegmentedButtonColors(),
-                    modifier = Modifier.testTag("loan_comparison_schedule_${system.name.lowercase(Locale.ROOT)}")
-                ) {
-                    Text(
-                        text = stringResource(system.academicSubtitleRes()),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
-        }
-    }
-}
-
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun LoanParametersCard(
     state: FinanceState,
     locale: Locale,
     onCurrencySelected: (FinanceCurrency) -> Unit,
-    onLoanSimulationModeSelected: (LoanSimulationMode) -> Unit,
-    onAmortizationSystemSelected: (AmortizationSystem) -> Unit,
     onPaymentFrequencySelected: (PaymentFrequency) -> Unit,
     onCompoundingFrequencySelected: (RateCompoundingFrequency) -> Unit,
     onLoanTermUnitSelected: (LoanTermUnit) -> Unit,
@@ -526,12 +443,23 @@ private fun LoanParametersCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = stringResource(R.string.finance_loan_simulator_title),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.weight(1f)
-                )
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    Text(
+                        text = stringResource(state.amortizationSystem.descriptiveTitleRes()),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = stringResource(state.amortizationSystem.academicSubtitleRes()),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
                 Spacer(Modifier.width(8.dp))
                 CurrencySelectorPill(
                     selected = state.selectedCurrency,
@@ -539,113 +467,11 @@ private fun LoanParametersCard(
                 )
             }
 
-            // Simulation mode: Individual vs Comparison
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(
-                    text = stringResource(R.string.finance_simulation_mode_label),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                    LoanSimulationMode.entries.forEachIndexed { index, mode ->
-                        SegmentedButton(
-                            selected = state.loanSimulationMode == mode,
-                            onClick = { onLoanSimulationModeSelected(mode) },
-                            shape = SegmentedButtonDefaults.itemShape(
-                                index = index,
-                                count = LoanSimulationMode.entries.size
-                            ),
-                            colors = calcSegmentedButtonColors(),
-                            modifier = Modifier.testTag("loan_mode_${mode.name.lowercase(Locale.ROOT)}")
-                        ) {
-                            Text(
-                                text = stringResource(
-                                    if (mode == LoanSimulationMode.INDIVIDUAL) {
-                                        R.string.finance_mode_individual
-                                    } else {
-                                        R.string.finance_mode_comparison
-                                    }
-                                ),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                    }
-                }
-            }
-
-            // Amortization system selector (only French & German; visible in Individual mode)
-            if (state.loanSimulationMode == LoanSimulationMode.INDIVIDUAL) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        text = stringResource(R.string.finance_system_label),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        AmortizationSystem.simulatorSystems.forEach { system ->
-                            val selected = state.amortizationSystem == system
-                            Surface(
-                                shape = RoundedCornerShape(12.dp),
-                                color = if (selected) {
-                                    MaterialTheme.colorScheme.primaryContainer
-                                } else {
-                                    MaterialTheme.colorScheme.surfaceContainer
-                                },
-                                border = BorderStroke(
-                                    width = if (selected) 1.5.dp else 1.dp,
-                                    color = if (selected) {
-                                        MaterialTheme.colorScheme.primary
-                                    } else {
-                                        MaterialTheme.colorScheme.outlineVariant
-                                    }
-                                ),
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .testTag("loan_system_${system.name.lowercase(Locale.ROOT)}")
-                                    .clickable { onAmortizationSystemSelected(system) }
-                            ) {
-                                Column(
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-                                    verticalArrangement = Arrangement.spacedBy(2.dp)
-                                ) {
-                                    Text(
-                                        text = stringResource(system.descriptiveTitleRes()),
-                                        style = MaterialTheme.typography.labelLarge,
-                                        fontWeight = FontWeight.Bold,
-                                        color = if (selected) {
-                                            MaterialTheme.colorScheme.onPrimaryContainer
-                                        } else {
-                                            MaterialTheme.colorScheme.onSurface
-                                        },
-                                        maxLines = 2,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                    Text(
-                                        text = stringResource(system.academicSubtitleRes()),
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = if (selected) {
-                                            MaterialTheme.colorScheme.primary
-                                        } else {
-                                            MaterialTheme.colorScheme.onSurfaceVariant
-                                        },
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    Text(
-                        text = stringResource(state.amortizationSystem.descriptionRes()),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
+            Text(
+                text = stringResource(state.amortizationSystem.descriptionRes()),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
 
             OutlinedTextField(
                 value = state.amount,
@@ -902,6 +728,12 @@ private fun LoanParametersCard(
             }
         }
     }
+}
+
+@StringRes
+internal fun AmortizationSystem.tabLabelRes(): Int = when (this) {
+    AmortizationSystem.GERMAN -> R.string.finance_loan_tab_german
+    else -> R.string.finance_loan_tab_french
 }
 
 @StringRes

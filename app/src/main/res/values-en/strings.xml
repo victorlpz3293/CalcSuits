@@ -31,6 +31,8 @@
     <!-- Common Content Descriptions & Feedback -->
     <string name="cd_open_modules_menu">Open modules menu</string>
     <string name="cd_back_to_engineering">Back to Engineering specialties</string>
+    <string name="cd_back_to_finance">Back to Finance tools</string>
+    <string name="cd_back_to_converter">Back to conversion categories</string>
     <string name="cd_copy_result">Copy result</string>
     <string name="cd_delete_last_digit">Delete last digit</string>
     <string name="cd_clear">Clear</string>
@@ -130,6 +132,12 @@
     <string name="solver_error_unsupported_equation">Unsupported equation</string>
 
     <!-- Converters -->
+    <string name="converter_hub_subtitle">CONVERSION CATEGORIES</string>
+    <string name="converter_hub_intro">Select a category to convert units or exchange rates.</string>
+    <plurals name="converter_units_count">
+        <item quantity="one">%d unit</item>
+        <item quantity="other">%d units</item>
+    </plurals>
     <string name="converter_from">FROM</string>
     <string name="converter_result">RESULT</string>
     <string name="converter_equivalences">DIRECT EQUIVALENCES</string>
@@ -213,9 +221,17 @@
     <string name="unit_gbp">British Pound</string>
 
     <!-- Finance -->
+    <string name="finance_hub_subtitle">FINANCIAL TOOLS</string>
+    <string name="finance_hub_intro">Select a financial tool to run your calculations.</string>
     <string name="finance_tab_loan">Loan</string>
     <string name="finance_tab_interest">Interest</string>
     <string name="finance_tab_tax">Taxes</string>
+    <string name="finance_card_loan_summary">French · German · TNA/EAR</string>
+    <string name="finance_card_loan_desc">Fixed or declining installment schedules, down payment, TNA/EAR &amp; charts.</string>
+    <string name="finance_card_interest_summary">Simple · Compound</string>
+    <string name="finance_card_interest_desc">Compare simple growth against periodic compound capitalization.</string>
+    <string name="finance_card_tax_summary">Add · Extract</string>
+    <string name="finance_card_tax_desc">Direct taxable base, configurable percentage rate &amp; final total.</string>
 
     <string name="finance_currency_label">Currency</string>
     <string name="cd_finance_select_currency">Select currency</string>
@@ -226,18 +242,14 @@
     <string name="finance_freq_monthly">Monthly</string>
     <string name="finance_freq_daily">Daily</string>
 
-    <string name="finance_loan_simulator_title">Loan Simulator</string>
-    <string name="finance_simulation_mode_label">Simulation mode</string>
-    <string name="finance_mode_individual">Single system</string>
-    <string name="finance_mode_comparison">Compare systems</string>
+    <string name="finance_loan_tab_french">French</string>
+    <string name="finance_loan_tab_german">German</string>
 
     <string name="finance_system_label">Amortization system</string>
     <string name="finance_system_french_title">Fixed Installment</string>
     <string name="finance_system_french_academic">French Amortization</string>
-    <string name="finance_system_french_short">Fixed Installment</string>
     <string name="finance_system_german_title">Declining Installment</string>
     <string name="finance_system_german_academic">German Amortization</string>
-    <string name="finance_system_german_short">Declining Installment</string>
     <string name="finance_system_french_desc">Fixed periodic installment, decreasing interest, and increasing principal repayment.</string>
     <string name="finance_system_german_desc">Constant principal repayment per period, decreasing interest, and declining installments.</string>
 
@@ -303,7 +315,6 @@
 
     <string name="finance_plan_summary_section">Payment plan summary</string>
     <string name="finance_plan_issue_date">Simulation date</string>
-    <string name="finance_issue_date_inline">Issued: %1$s</string>
     <string name="finance_plan_term_label">Term</string>
     <string name="finance_loan_initial_installment_fmt">Initial %1$s</string>
     <string name="finance_loan_final_installment_fmt">Final %1$s</string>
@@ -316,19 +327,9 @@
     <string name="finance_total_installments_paid">Total paid in installments</string>
     <string name="finance_total_outflow_with_down_payment">Total outflow (incl. down payment)</string>
 
-    <string name="finance_comparison_title">French vs. German Comparison</string>
-    <string name="finance_comparison_context">Principal %1$s · %2$s · %3$s · %4$s</string>
-    <string name="finance_comparison_down_payment_note">Requested %1$s minus %2$s down payment</string>
-    <string name="finance_comparison_differences_title">Differences (French − German)</string>
-    <string name="finance_comparison_interest_diff">Interest difference</string>
-    <string name="finance_comparison_total_diff">Total paid difference</string>
-    <string name="finance_comparison_neutral_note">French provides predictable fixed installments; German reduces total interest in exchange for higher initial installments.</string>
-    <string name="finance_comparison_schedule_selector">Schedule to inspect</string>
-
     <string name="finance_charts_title">Financial evolution</string>
     <string name="finance_chart_tab_balance">Balance</string>
     <string name="finance_chart_tab_components">Interest vs. Principal</string>
-    <string name="finance_chart_tab_comparison">French vs. German</string>
     <string name="finance_chart_legend_balance">Outstanding balance</string>
     <string name="finance_chart_scale_peak">Peak: %1$s</string>
 
@@ -368,22 +369,13 @@
     <string name="finance_compound_advantage">Compound interest advantage</string>
 
     <string name="finance_tax_title">Tax calculator</string>
-    <string name="finance_tax_type_label">Tax type</string>
-    <string name="finance_tax_type_vat">VAT</string>
-    <string name="finance_tax_type_sales">Sales tax</string>
-    <string name="finance_tax_type_excise">Excise / ISC</string>
-    <string name="finance_tax_type_withholding">Withholding</string>
-    <string name="finance_tax_type_service">Service tax</string>
-    <string name="finance_tax_type_custom">Custom</string>
-    <string name="finance_tax_custom_name_label">Tax name</string>
-    <string name="finance_tax_custom_name_placeholder">e.g. Municipal tax, GST</string>
+    <string name="finance_tax_breakdown_title">Tax breakdown</string>
     <string name="finance_tax_add">Add tax</string>
     <string name="finance_tax_extract">Extract included tax</string>
     <string name="finance_tax_total_input">Total amount (tax included)</string>
     <string name="finance_tax_net_input">Taxable base (excl. tax)</string>
     <string name="finance_tax_rate_label">Tax rate</string>
     <string name="finance_tax_rate_hint">Rate is configurable; verify the applicable percentage for your jurisdiction.</string>
-    <string name="finance_tax_selected_type">Tax type</string>
     <string name="finance_tax_subtotal">Taxable base</string>
     <string name="finance_tax_applied_rate">Applied rate</string>
     <string name="finance_tax_amount_plain">Tax amount</string>
