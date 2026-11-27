@@ -28,6 +28,12 @@ const OUT_FILE = process.argv[4] || `poc/ocr/results/texteller_${VARIANT}_base.j
 const MAX_ITEMS = process.argv[5] ? Number(process.argv[5]) : 999;
 
 const MODEL_ID = "onnx-community/TexTeller-ONNX";
+const MODEL_REVISION = "9727784d91d7f8437dc7140941c4335284ce075e";
+const EXPECTED_Q4F16_SHA256 = {
+  "encoder_model_q4f16.onnx": "c42190515ffcd4a728a1abee4dc8d4636b62f782fd823294d2861434a7f7d0eb",
+  "decoder_model_q4f16.onnx": "edebc4c90596d13313382eecfeef89f0041efe7bfa4e89391d5b5dbabab25100",
+  "tokenizer.json": "ec4ca954798a092faf6fefcfa47fb5f85d76cdf6ab170b624ae1a683d53dae14",
+};
 const MODEL_DIR = "/tmp/poc_ocr_env/texteller_onnx";
 const HF_CACHE = "/tmp/poc_ocr_env/hf_cache";
 fs.mkdirSync(MODEL_DIR, { recursive: true });
@@ -57,7 +63,7 @@ async function ensureOnnxFiles(variant) {
   for (const fname of files) {
     const dst = path.join(MODEL_DIR, fname);
     if (!fs.existsSync(dst)) {
-      const url = `https://huggingface.co/${MODEL_ID}/resolve/main/onnx/${fname}`;
+      const url = `https://huggingface.co/${MODEL_ID}/resolve/${MODEL_REVISION}/onnx/${fname}`;
       const resp = await fetch(url, { redirect: "follow" });
       if (!resp.ok) throw new Error(`Failed downloading ${fname}: HTTP ${resp.status}`);
       const buf = Buffer.from(await resp.arrayBuffer());
@@ -200,7 +206,7 @@ async function runGreedyDecode(encoderSess, decoderSess, pixelTensor, startToken
 async function main() {
   const { encoderPath, decoderPath, sizes } = await ensureOnnxFiles(VARIANT);
   const tLoad0 = performance.now();
-  const tokenizer = await AutoTokenizer.from_pretrained(MODEL_ID);
+  const tokenizer = await AutoTokenizer.from_pretrained(MODEL_ID, { revision: MODEL_REVISION });
   const encoderSess = await ort.InferenceSession.create(encoderPath, { executionProviders: ["cpu"] });
   const decoderSess = await ort.InferenceSession.create(decoderPath, { executionProviders: ["cpu"] });
   const loadMs = Math.round(performance.now() - tLoad0);

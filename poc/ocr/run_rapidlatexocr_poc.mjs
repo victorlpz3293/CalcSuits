@@ -23,8 +23,15 @@ const { PNG } = require("pngjs");
 const MANIFEST_PATH = process.argv[2] || "/tmp/poc_ocr_dataset/manifest.json";
 const OUT_FILE = process.argv[3] || "poc/ocr/results/rapidlatexocr_results.json";
 const MODEL_DIR = "/tmp/poc_ocr_env/rapidlatexocr_models";
-const BASE_URL = "https://github.com/RapidAI/RapidLaTeXOCR/releases/download/v0.0.0";
+const RELEASE_TAG = "v0.0.0"; // GitHub Release ID 112346722 (2023-07-15), exported from lukas-blecher/LaTeX-OCR@1781514fb8c92ea9f94057295fdae0e683f4648e
+const BASE_URL = `https://github.com/RapidAI/RapidLaTeXOCR/releases/download/${RELEASE_TAG}`;
 const MODEL_FILES = ["image_resizer.onnx", "encoder.onnx", "decoder.onnx", "tokenizer.json"];
+const EXPECTED_SHA256 = {
+  "image_resizer.onnx": "e0b075c39700f64d50400f39c8fc186bbb3b5d84d31864008313f376603aca9d",
+  "encoder.onnx": "01bf5dc25539ca0cd5b1bd29296ea495977a6ba5f629dc4178277809d26e5e7d",
+  "decoder.onnx": "bd695497bf1b22279b7626f5916c79226e1e244c84355f8da7edfd2d921d0072",
+  "tokenizer.json": "1dc27b18d6a518d0d5ff3f4bb7bd98521fe80ad39e5b2a246d4109f1bb9d5019",
+};
 
 const MAX_W = 672;
 const MAX_H = 192;

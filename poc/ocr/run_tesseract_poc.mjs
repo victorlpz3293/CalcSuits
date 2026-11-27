@@ -23,9 +23,13 @@ fs.mkdirSync(CACHE_DIR, { recursive: true });
 
 const manifest = JSON.parse(fs.readFileSync(MANIFEST_PATH, "utf-8"));
 
+const TESSDATA_LANG_PATH = "https://tessdata.projectnaptha.com/4.0.0_fast";
+const EXPECTED_ENG_SHA256 = "5dc5d8d640a212c9d6184921ba103b186f50e0fed9ee716c53e6b312b400d747";
+
 async function main() {
   const tInit0 = performance.now();
   const worker = await createWorker("eng", 1, {
+    langPath: TESSDATA_LANG_PATH,
     cachePath: CACHE_DIR,
     logger: () => {},
   });

@@ -20,6 +20,15 @@ const DTYPE = process.argv[3] || "q8";
 const MANIFEST_PATH = process.argv[4] || "/tmp/poc_ocr_dataset/manifest.json";
 const OUT_FILE = process.argv[5] || "poc/ocr/results/texify_q8_base.json";
 const MAX_ITEMS = process.argv[6] ? Number(process.argv[6]) : 999;
+const PINNED_REVISIONS = {
+  "Xenova/texify": "98b3e3d88921ae91525d116d8d79a8402e5b5e4e",
+};
+const MODEL_REVISION = process.env.HF_MODEL_REVISION || PINNED_REVISIONS[MODEL_ID] || "main";
+const EXPECTED_TEXIFY_Q8_SHA256 = {
+  "onnx/encoder_model_quantized.onnx": "302452c132a82b1c70389f0f646952586afa20c3f9a16b517e40600c49eb8f23",
+  "onnx/decoder_model_merged_quantized.onnx": "ed067534a996c818708d0d377b94ace32b9738f0d7a0c4ef635e4fa3d28653ce",
+  "tokenizer.json": "02c318d9cfa95bf323371762b8f838a82709530274d36dba6eca880f0add6cc4",
+};
 
 const HF_CACHE = "/tmp/poc_ocr_env/hf_cache";
 fs.mkdirSync(HF_CACHE, { recursive: true });
@@ -44,6 +53,7 @@ async function main() {
   const tLoad0 = performance.now();
   const pipe = await pipeline("image-to-text", MODEL_ID, {
     dtype: DTYPE,
+    revision: MODEL_REVISION,
   });
   const loadMs = Math.round(performance.now() - tLoad0);
 

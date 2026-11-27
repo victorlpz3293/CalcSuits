@@ -9,6 +9,7 @@ robustness under irregular glyphs. They do NOT substitute real human camera
 handwriting evaluation on physical Android hardware.
 """
 
+import hashlib
 import json
 import math
 import os
@@ -17,8 +18,14 @@ import subprocess
 import sys
 from pathlib import Path
 
+DATASET_SEED = 20261127
 OUT_DIR = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("/tmp/poc_ocr_dataset")
 OUT_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def deterministic_seed(*parts) -> int:
+    key = ":".join([str(DATASET_SEED), *(str(p) for p in parts)])
+    return int(hashlib.sha256(key.encode("utf-8")).hexdigest()[:8], 16)
 
 JETBRAINS_FONT = Path("app/src/main/res/font/jetbrains_mono.ttf").resolve()
 SPACE_GROTESK_FONT = Path("app/src/main/res/font/space_grotesk.ttf").resolve()
@@ -91,7 +98,16 @@ EXPRESSIONS = [
 
 
 def run_convert(args):
-    cmd = ["convert"] + args[:-1] + ["-alpha", "remove", "-alpha", "off", "-type", "TrueColor", args[-1]]
+    cmd = [
+        "convert",
+        *args[:-1],
+        "-alpha", "remove",
+        "-alpha", "off",
+        "-type", "TrueColor",
+        "-strip",
+        "-define", "png:exclude-chunk=date,time",
+        args[-1],
+    ]
     subprocess.run(cmd, check=True)
 
 
@@ -149,7 +165,9 @@ def render_printed(expr, variant, out_path):
             str(out_path),
         ])
     elif variant == "printed_blur_noise":
+        noise_seed = deterministic_seed(expr["id"], variant)
         run_convert([
+            "-seed", str(noise_seed),
             "-size", "640x160", "xc:#F7F7F7",
             "-font", "DejaVu-Sans", "-pointsize", "50",
             "-fill", "#1E1E1E", "-gravity", "center",
@@ -257,7 +275,8 @@ GLYPH_STROKES = {
 
 def render_synthetic_handwritten(expr, difficult, out_path):
     """Generates perturbed pen-stroke handwriting-style PNG via native ImageMagick draw."""
-    rng = random.Random(hash((expr["id"], difficult)) & 0xFFFFFFFF)
+    seed_val = deterministic_seed(expr["id"], "handwritten", int(difficult))
+    rng = random.Random(seed_val)
     text = expr["display"]
     jitter = 2.6 if difficult else 1.1
     slant = -11.0 if difficult else -5.0
@@ -325,7 +344,7 @@ def render_synthetic_handwritten(expr, difficult, out_path):
         "-draw", "stroke-linecap round stroke-linejoin round " + " ".join(op for op in draw_ops if op),
     ]
     if difficult:
-        cmd += [
+        cmd = ["-seed", str(seed_val)] + cmd + [
             "-background", bg, "-rotate", "3.5",
             "-blur", "0x0.9", "-attenuate", "0.25", "+noise", "Gaussian",
         ]
