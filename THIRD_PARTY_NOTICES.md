@@ -21,12 +21,21 @@ A continuación se listan todas las bibliotecas de terceros, fuentes tipográfic
 | **OkHttp & Okio** _(transitiva de Retrofit)_ | `com.squareup.okhttp3:okhttp`, `com.squareup.okio:okio` | Apache License 2.0 | Compatible (FSF) |
 | **Gson** | `com.google.code.gson:gson` | Apache License 2.0 | Compatible (FSF) |
 | **Kotlin Standard Library & Coroutines** | `org.jetbrains.kotlin`, `org.jetbrains.kotlinx:kotlinx-coroutines-*` | Apache License 2.0 | Compatible (FSF) |
+| **ONNX Runtime for Android** | `com.microsoft.onnxruntime:onnxruntime-android` | MIT License | Compatible (FSF) |
 
-> **Nota sobre Apache License 2.0 y GPL-3.0:** De acuerdo con la Free Software Foundation (FSF), la licencia Apache 2.0 es una licencia de software libre compatible con la GNU GPL versión 3.0. El código combinado se distribuye bajo GPL-3.0 respetando los avisos de copyright originales de cada componente Apache 2.0.
+> **Nota sobre Apache License 2.0, MIT y GPL-3.0:** De acuerdo con la Free Software Foundation (FSF), tanto Apache License 2.0 como MIT (Expat) son licencias de software libre compatibles con GNU GPL versión 3.0. El código combinado se distribuye bajo GPL-3.0 respetando los avisos de copyright originales de cada componente.
 
 ---
 
-## 2. Fuentes tipográficas empaquetadas (`app/src/main/res/font/`)
+## 2. Modelo OCR descargable bajo demanda (no empaquetado en el APK)
+
+| Modelo | Origen fijado por commit y SHA-256 | Licencia | Compatibilidad con GPL-3.0 |
+| --- | --- | --- | --- |
+| **TexTeller3-ONNX (`q4f16` con KV-cache)** | `onnx-community/TexTeller3-ONNX` (`ed90c6164810242882ca90863bb85697a76f4841`, basado en `OleehyO/TexTeller`) | Apache License 2.0 | Compatible (FSF) |
+
+---
+
+## 3. Fuentes tipográficas empaquetadas (`app/src/main/res/font/`)
 
 | Fuente | Archivo | Titular de copyright | Licencia | Compatibilidad con distribución GPL-3.0 |
 | --- | --- | --- | --- | --- |
@@ -38,24 +47,29 @@ A continuación se listan todas las bibliotecas de terceros, fuentes tipográfic
 
 ---
 
-## 3. Dependencias exclusivas de pruebas (no distribuidas en el APK)
+## 4. Dependencias exclusivas de pruebas (no distribuidas en el APK)
 
 | Componente | Artefacto | Licencia | Alcance |
 | --- | --- | --- | --- |
 | **JUnit 4** | `junit:junit` | Eclipse Public License 1.0 (EPL-1.0) | `testImplementation` únicamente (no se empaqueta en el binario distribuido) |
 | **Kotlinx Coroutines Test** | `org.jetbrains.kotlinx:kotlinx-coroutines-test` | Apache License 2.0 | `testImplementation` únicamente |
+| **Robolectric** | `org.robolectric:robolectric` | MIT License | `testImplementation` únicamente |
+| **AndroidX Test Core** | `androidx.test:core` | Apache License 2.0 | `testImplementation` únicamente |
+| **JSON-Java** | `org.json:json` | Public Domain / JSON | `testImplementation` únicamente (parser JSON en JVM local) |
 | **AndroidX Test / Espresso** | `androidx.test.ext:junit`, `androidx.test.espresso:espresso-core`, `androidx.compose.ui:ui-test-junit4` | Apache License 2.0 | `androidTestImplementation` únicamente |
 
 ---
 
-## 4. Servicios externos de datos
+## 5. Servicios externos de datos
 
 - **ExchangeRate-API (Open Access — `open.er-api.com`):** Utilizado únicamente para obtener tasas de cambio públicas sin clave API. Se muestra atribución visible con enlace a <https://www.exchangerate-api.com> en la sección Moneda de la aplicación, conforme a sus términos de uso.
+- **Hugging Face Hub (`huggingface.co/onnx-community/TexTeller3-ONNX`):** Utilizado únicamente cuando el usuario solicita descargar el modelo OCR offline `TexTeller3-ONNX` (`q4f16`) con verificación estricta SHA-256.
 
 ---
 
 ## Resumen de verificación de compatibilidad con GPL-3.0
 
-- **Todas las bibliotecas empaquetadas en el APK** están licenciadas bajo **Apache License 2.0**, plenamente compatible con **GPL-3.0**.
+- **Todas las bibliotecas empaquetadas en el APK** están licenciadas bajo **Apache License 2.0** o **MIT License**, ambas plenamente compatibles con **GPL-3.0**.
+- **El modelo OCR opcional (`TexTeller3-ONNX`)** está licenciado bajo **Apache License 2.0**, compatible con **GPL-3.0**.
 - **Ambas tipografías empaquetadas** están licenciadas bajo **SIL OFL 1.1**, cuya redistribución conjunta con aplicaciones GPL-3.0 está permitida siempre que las fuentes permanezcan bajo OFL-1.1 y se incluya su aviso y texto íntegro ([licenses/OFL-1.1.txt](licenses/OFL-1.1.txt)).
-- **JUnit 4 (EPL-1.0)** solo se usa en el entorno de pruebas unitarias y no forma parte del APK distribuido.
+- **Las dependencias de pruebas** no forman parte del APK distribuido.

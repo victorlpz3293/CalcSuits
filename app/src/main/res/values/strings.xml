@@ -130,6 +130,48 @@
     <string name="solver_step_quad_complex">Δ &lt; 0 → Complex conjugate roots</string>
     <string name="solver_error_solve_headline">Could not solve</string>
     <string name="solver_error_unsupported_equation">Unsupported equation</string>
+    <string name="solver_step_eval_rad">Expression evaluated in radians (RAD)</string>
+    <string name="solver_step_function_graphable">Graphable function in x: f(x) = %1$s</string>
+    <string name="solver_badge_ocr">OCR</string>
+    <string name="solver_open_2d_graph">View 2D graph</string>
+    <string name="solver_graph_sheet_title">Contextual 2D Graph</string>
+    <string name="solver_graph_equation_note">Roots appear where the curve crosses y = 0</string>
+    <string name="cd_solver_close_graph">Close 2D graph</string>
+    <string name="cd_solver_toggle_angle">Switch angle unit between degrees and radians</string>
+
+    <!-- Local OCR (TexTeller3-ONNX inside Solver) -->
+    <string name="cd_ocr_scan_camera">Scan formula with camera</string>
+    <string name="cd_ocr_pick_gallery">Select formula image from gallery</string>
+    <string name="ocr_download_title">Download local OCR model</string>
+    <string name="ocr_download_body">Formula scanning runs 100% offline on your device using TexTeller3-ONNX (Apache-2.0). A one-time HTTPS download (~195 MB) verified with SHA-256 is required. No images or expressions are ever uploaded.</string>
+    <string name="ocr_download_action">Download (~195 MB)</string>
+    <string name="ocr_downloading_title">Downloading offline OCR model…</string>
+    <string name="ocr_downloading_preparing">Connecting securely over HTTPS…</string>
+    <string name="ocr_downloading_progress_format">%1$s (%2$d/%3$d) · %4$s / %5$s MB (%6$d%%)</string>
+    <string name="ocr_processing_title">Recognizing formula locally…</string>
+    <string name="ocr_processing_subtitle">Processing offline on device with ONNX Runtime</string>
+    <string name="ocr_confirm_title">Review recognized expression</string>
+    <string name="ocr_confirm_subtitle">Verify or edit the formula before solving. CalcSuits never evaluates OCR output without your confirmation.</string>
+    <string name="ocr_confirm_field_label">Normalized CalcSuits expression</string>
+    <string name="ocr_confirm_raw_latex">Detected LaTeX: %1$s</string>
+    <string name="ocr_confirm_ast_valid">Valid CalcSuits syntax (AST verified)</string>
+    <string name="ocr_confirm_ast_warning">Review syntax before solving: %1$s</string>
+    <string name="ocr_confirm_telemetry_format">Offline · %1$d ms · %2$d tokens</string>
+    <string name="ocr_confirm_action">Confirm &amp; solve</string>
+    <string name="ocr_cancel_action">Cancel</string>
+    <string name="ocr_dismiss_action">Close</string>
+    <string name="ocr_retry_download_action">Retry download</string>
+    <string name="ocr_camera_permission_title">Camera permission needed</string>
+    <string name="ocr_camera_permission_rationale">Camera access is only used when you choose to photograph a formula. Images stay strictly on your device and temporary captures are deleted automatically. You can also pick an existing image from your gallery.</string>
+    <string name="ocr_camera_permission_denied_permanent">Camera permission is disabled in Android settings. Enable it in App Settings to scan with the camera, or select an image from your gallery.</string>
+    <string name="ocr_camera_permission_allow">Allow camera</string>
+    <string name="ocr_camera_permission_settings">Open Settings</string>
+    <string name="ocr_camera_permission_use_gallery">Use gallery</string>
+    <string name="ocr_error_integrity">Model integrity verification (SHA-256) failed. Corrupted files were rejected; please download again.</string>
+    <string name="ocr_error_download_failed">Could not download the offline OCR model. Check your internet connection and available storage (~220 MB).</string>
+    <string name="ocr_error_no_formula_detected">No readable mathematical formula was detected. Try cropping closer or improving lighting.</string>
+    <string name="ocr_error_invalid_image">Could not decode the selected image. Choose a valid JPG or PNG formula image.</string>
+    <string name="ocr_error_recognition_failed">Local OCR recognition failed. Try another photo or enter the expression manually.</string>
 
     <!-- Converters -->
     <string name="converter_hub_subtitle">CONVERSION CATEGORIES</string>

@@ -130,6 +130,48 @@
     <string name="solver_step_quad_complex">Δ &lt; 0 → Raíces complejas conjugadas</string>
     <string name="solver_error_solve_headline">No se pudo resolver</string>
     <string name="solver_error_unsupported_equation">Ecuación no soportada</string>
+    <string name="solver_step_eval_rad">Expresión evaluada en radianes (RAD)</string>
+    <string name="solver_step_function_graphable">Función graficable en x: f(x) = %1$s</string>
+    <string name="solver_badge_ocr">OCR</string>
+    <string name="solver_open_2d_graph">Ver gráfico 2D</string>
+    <string name="solver_graph_sheet_title">Gráfico 2D contextual</string>
+    <string name="solver_graph_equation_note">Las raíces aparecen donde la curva cruza y = 0</string>
+    <string name="cd_solver_close_graph">Cerrar gráfico 2D</string>
+    <string name="cd_solver_toggle_angle">Cambiar unidad angular entre grados y radianes</string>
+
+    <!-- OCR Local (TexTeller3-ONNX dentro del Solucionador) -->
+    <string name="cd_ocr_scan_camera">Escanear fórmula con cámara</string>
+    <string name="cd_ocr_pick_gallery">Seleccionar imagen de fórmula desde galería</string>
+    <string name="ocr_download_title">Descargar modelo OCR local</string>
+    <string name="ocr_download_body">El escaneo de fórmulas funciona 100% sin conexión en tu dispositivo mediante TexTeller3-ONNX (Apache-2.0). Requiere una descarga única por HTTPS (~195 MB) verificada con SHA-256. Ninguna imagen ni expresión se envía a servidores.</string>
+    <string name="ocr_download_action">Descargar (~195 MB)</string>
+    <string name="ocr_downloading_title">Descargando modelo OCR local…</string>
+    <string name="ocr_downloading_preparing">Conectando de forma segura por HTTPS…</string>
+    <string name="ocr_downloading_progress_format">%1$s (%2$d/%3$d) · %4$s / %5$s MB (%6$d%%)</string>
+    <string name="ocr_processing_title">Reconociendo fórmula localmente…</string>
+    <string name="ocr_processing_subtitle">Procesamiento offline en el dispositivo con ONNX Runtime</string>
+    <string name="ocr_confirm_title">Revisar expresión reconocida</string>
+    <string name="ocr_confirm_subtitle">Verifica o edita la fórmula antes de resolver. CalcSuits nunca evalúa un resultado OCR sin tu confirmación.</string>
+    <string name="ocr_confirm_field_label">Expresión normalizada CalcSuits</string>
+    <string name="ocr_confirm_raw_latex">LaTeX detectado: %1$s</string>
+    <string name="ocr_confirm_ast_valid">Sintaxis CalcSuits válida (AST verificado)</string>
+    <string name="ocr_confirm_ast_warning">Revisa la sintaxis antes de resolver: %1$s</string>
+    <string name="ocr_confirm_telemetry_format">Offline · %1$d ms · %2$d tokens</string>
+    <string name="ocr_confirm_action">Confirmar y resolver</string>
+    <string name="ocr_cancel_action">Cancelar</string>
+    <string name="ocr_dismiss_action">Cerrar</string>
+    <string name="ocr_retry_download_action">Reintentar descarga</string>
+    <string name="ocr_camera_permission_title">Se requiere permiso de cámara</string>
+    <string name="ocr_camera_permission_rationale">El acceso a la cámara solo se usa cuando decides fotografiar una fórmula. Las imágenes permanecen en tu dispositivo y las capturas temporales se eliminan automáticamente. También puedes elegir una imagen desde tu galería.</string>
+    <string name="ocr_camera_permission_denied_permanent">El permiso de cámara está desactivado en los ajustes de Android. Actívalo en los ajustes de la app para escanear con cámara, o selecciona una imagen desde tu galería.</string>
+    <string name="ocr_camera_permission_allow">Permitir cámara</string>
+    <string name="ocr_camera_permission_settings">Abrir ajustes</string>
+    <string name="ocr_camera_permission_use_gallery">Usar galería</string>
+    <string name="ocr_error_integrity">Falló la verificación de integridad (SHA-256) del modelo. Los archivos dañados fueron rechazados; vuelve a descargarlo.</string>
+    <string name="ocr_error_download_failed">No se pudo descargar el modelo OCR local. Comprueba tu conexión a internet y espacio disponible (~220 MB).</string>
+    <string name="ocr_error_no_formula_detected">No se detectó una fórmula matemática legible. Intenta recortar más cerca o mejorar la iluminación.</string>
+    <string name="ocr_error_invalid_image">No se pudo decodificar la imagen seleccionada. Elige una imagen JPG o PNG válida.</string>
+    <string name="ocr_error_recognition_failed">Error al reconocer la fórmula localmente. Intenta con otra foto o ingrésala manualmente.</string>
 
     <!-- Converters -->
     <string name="converter_hub_subtitle">CATEGORÍAS DE CONVERSIÓN</string>

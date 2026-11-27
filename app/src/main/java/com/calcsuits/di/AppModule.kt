@@ -11,6 +11,8 @@ import com.calcsuits.data.remote.repository.CurrencyRepositoryImpl
 import com.calcsuits.data.repository.CalculatorRepositoryImpl
 import com.calcsuits.domain.repository.CalculatorRepository
 import com.calcsuits.domain.repository.CurrencyRepository
+import com.calcsuits.features.ai.ocr.LocalOcrRepository
+import com.calcsuits.features.ai.ocr.OcrRepository
 import com.google.gson.Gson
 import dagger.Binds
 import dagger.Module
@@ -45,6 +47,12 @@ abstract class AppModule {
     abstract fun bindCurrencyRatesCache(
         currencyRatesDataStore: CurrencyRatesDataStore
     ): CurrencyRatesCache
+
+    @Binds
+    @Singleton
+    abstract fun bindOcrRepository(
+        localOcrRepository: LocalOcrRepository
+    ): OcrRepository
 
     companion object {
         private const val NETWORK_TIMEOUT_SECONDS = 10L
