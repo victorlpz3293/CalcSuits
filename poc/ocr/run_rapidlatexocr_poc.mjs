@@ -9,10 +9,12 @@
  * Strictly isolated from Android production code; downloads models to /tmp/poc_ocr_env/.
  */
 
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { createRequire } from "node:module";
 import { performance } from "node:perf_hooks";
+import { pathToFileURL } from "node:url";
 import { normalizeWithAst, isSemanticallyEquivalent, evaluateGranularMetrics } from "./math_ir_ast.mjs";
 import { buildDetailedSummary, classifyFailureOrigin } from "./poc_metrics.mjs";
 
@@ -41,10 +43,39 @@ const BOS_TOKEN = 1;
 const EOS_TOKEN = 2;
 const MAX_SEQ_LEN = 128;
 
+export function verifyFileSha256(filePath, expectedSha256, label = filePath) {
+  if (!expectedSha256) {
+    throw new Error(`Missing expected SHA-256 for ${label}; refusing unverified artifact.`);
+  }
+  if (!fs.existsSync(filePath)) {
+    throw new Error(`Expected artifact not found for SHA-256 verification: ${filePath}`);
+  }
+  const actual = crypto.createHash("sha256").update(fs.readFileSync(filePath)).digest("hex");
+  if (actual !== expectedSha256) {
+    throw new Error(
+      `SHA-256 mismatch for ${label} (${filePath}): expected ${expectedSha256}, got ${actual}`
+    );
+  }
+  return actual;
+}
+
+export function verifyRapidLatexOcrCache(modelDir = MODEL_DIR, expectedHashes = EXPECTED_SHA256) {
+  const verified = {};
+  for (const name of MODEL_FILES) {
+    const dst = path.join(modelDir, name);
+    verified[name] = verifyFileSha256(dst, expectedHashes[name], name);
+  }
+  return verified;
+}
+
 async function ensureModels() {
   fs.mkdirSync(MODEL_DIR, { recursive: true });
   const sizes = {};
   for (const name of MODEL_FILES) {
+    const expected = EXPECTED_SHA256[name];
+    if (!expected) {
+      throw new Error(`No pinned SHA-256 declared for ${name}; aborting.`);
+    }
     const dst = path.join(MODEL_DIR, name);
     if (!fs.existsSync(dst)) {
       const resp = await fetch(`${BASE_URL}/${name}`, { redirect: "follow" });
@@ -52,6 +83,8 @@ async function ensureModels() {
       const buf = Buffer.from(await resp.arrayBuffer());
       fs.writeFileSync(dst, buf);
     }
+    // Always verify SHA-256 for both freshly downloaded and cached files
+    verifyFileSha256(dst, expected, name);
     sizes[name] = fs.statSync(dst).size;
   }
   return sizes;
@@ -331,7 +364,9 @@ async function main() {
   console.log(JSON.stringify(summary, null, 2));
 }
 
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
+  main().catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
+}

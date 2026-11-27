@@ -10,10 +10,12 @@
  * encoder/decoder greedy decoding + `AutoTokenizer` decoding.
  */
 
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { createRequire } from "node:module";
 import { performance } from "node:perf_hooks";
+import { pathToFileURL } from "node:url";
 import { normalizeWithAst, isSemanticallyEquivalent, evaluateGranularMetrics } from "./math_ir_ast.mjs";
 import { buildDetailedSummary, classifyFailureOrigin } from "./poc_metrics.mjs";
 
@@ -22,7 +24,7 @@ const ort = require("onnxruntime-node");
 const { PNG } = require("pngjs");
 const { AutoTokenizer, env } = require("@huggingface/transformers");
 
-const VARIANT = process.argv[2] || "q4"; // q4 | q4f16 | int8
+const VARIANT = process.argv[2] || "q4f16";
 const MANIFEST_PATH = process.argv[3] || "/tmp/poc_ocr_dataset/manifest.json";
 const OUT_FILE = process.argv[4] || `poc/ocr/results/texteller_${VARIANT}_base.json`;
 const MAX_ITEMS = process.argv[5] ? Number(process.argv[5]) : 999;
@@ -34,13 +36,11 @@ const EXPECTED_Q4F16_SHA256 = {
   "decoder_model_q4f16.onnx": "edebc4c90596d13313382eecfeef89f0041efe7bfa4e89391d5b5dbabab25100",
   "tokenizer.json": "ec4ca954798a092faf6fefcfa47fb5f85d76cdf6ab170b624ae1a683d53dae14",
 };
+const PINNED_VARIANT_SHA256 = {
+  q4f16: EXPECTED_Q4F16_SHA256,
+};
 const MODEL_DIR = "/tmp/poc_ocr_env/texteller_onnx";
 const HF_CACHE = "/tmp/poc_ocr_env/hf_cache";
-fs.mkdirSync(MODEL_DIR, { recursive: true });
-fs.mkdirSync(HF_CACHE, { recursive: true });
-env.cacheDir = HF_CACHE;
-env.allowLocalModels = true;
-env.allowRemoteModels = true;
 
 const IMAGE_MEAN = 0.9545467;
 const IMAGE_STD = 0.15394445;
@@ -56,9 +56,50 @@ const VARIANT_FILES = {
   int8: ["encoder_model_int8.onnx", "decoder_model_int8.onnx"],
 };
 
+export function verifyFileSha256(filePath, expectedSha256, label = filePath) {
+  if (!expectedSha256) {
+    throw new Error(`Missing expected SHA-256 for ${label}; refusing unverified artifact.`);
+  }
+  if (!fs.existsSync(filePath)) {
+    throw new Error(`Expected artifact not found for SHA-256 verification: ${filePath}`);
+  }
+  const actual = crypto.createHash("sha256").update(fs.readFileSync(filePath)).digest("hex");
+  if (actual !== expectedSha256) {
+    throw new Error(
+      `SHA-256 mismatch for ${label} (${filePath}): expected ${expectedSha256}, got ${actual}`
+    );
+  }
+  return actual;
+}
+
+export function verifyTexTellerCache(
+  variant = "q4f16",
+  modelDir = MODEL_DIR,
+  hfCacheDir = HF_CACHE,
+  expectedHashes = PINNED_VARIANT_SHA256[variant]
+) {
+  const files = VARIANT_FILES[variant];
+  if (!files) throw new Error(`Unsupported TexTeller variant: ${variant}`);
+  if (!expectedHashes) {
+    throw new Error(`No pinned SHA-256 manifest declared for TexTeller variant "${variant}"; refusing unverified execution.`);
+  }
+  const verified = {};
+  for (const fname of files) {
+    verified[fname] = verifyFileSha256(path.join(modelDir, fname), expectedHashes[fname], fname);
+  }
+  const tokPath = path.join(hfCacheDir, MODEL_ID, "tokenizer.json");
+  verified["tokenizer.json"] = verifyFileSha256(tokPath, expectedHashes["tokenizer.json"], "tokenizer.json");
+  return verified;
+}
+
 async function ensureOnnxFiles(variant) {
   const files = VARIANT_FILES[variant];
   if (!files) throw new Error(`Unsupported TexTeller variant: ${variant}`);
+  const expectedHashes = PINNED_VARIANT_SHA256[variant];
+  if (!expectedHashes) {
+    throw new Error(`No pinned SHA-256 manifest declared for TexTeller variant "${variant}"; refusing unverified execution.`);
+  }
+  fs.mkdirSync(MODEL_DIR, { recursive: true });
   const sizes = {};
   for (const fname of files) {
     const dst = path.join(MODEL_DIR, fname);
@@ -69,9 +110,11 @@ async function ensureOnnxFiles(variant) {
       const buf = Buffer.from(await resp.arrayBuffer());
       fs.writeFileSync(dst, buf);
     }
+    // Always verify SHA-256 for both freshly downloaded and cached ONNX files
+    verifyFileSha256(dst, expectedHashes[fname], fname);
     sizes[fname] = fs.statSync(dst).size;
   }
-  return { encoderPath: path.join(MODEL_DIR, files[0]), decoderPath: path.join(MODEL_DIR, files[1]), sizes };
+  return { encoderPath: path.join(MODEL_DIR, files[0]), decoderPath: path.join(MODEL_DIR, files[1]), sizes, expectedHashes };
 }
 
 function loadAndTrimGray(filePath) {
@@ -204,9 +247,21 @@ async function runGreedyDecode(encoderSess, decoderSess, pixelTensor, startToken
 }
 
 async function main() {
-  const { encoderPath, decoderPath, sizes } = await ensureOnnxFiles(VARIANT);
+  fs.mkdirSync(MODEL_DIR, { recursive: true });
+  fs.mkdirSync(HF_CACHE, { recursive: true });
+  env.cacheDir = HF_CACHE;
+  env.allowLocalModels = true;
+  env.allowRemoteModels = true;
+
+  const { encoderPath, decoderPath, sizes, expectedHashes } = await ensureOnnxFiles(VARIANT);
+  const cachedTokenizerPath = path.join(HF_CACHE, MODEL_ID, "tokenizer.json");
+  if (fs.existsSync(cachedTokenizerPath)) {
+    verifyFileSha256(cachedTokenizerPath, expectedHashes["tokenizer.json"], "tokenizer.json");
+  }
+
   const tLoad0 = performance.now();
   const tokenizer = await AutoTokenizer.from_pretrained(MODEL_ID, { revision: MODEL_REVISION });
+  verifyFileSha256(cachedTokenizerPath, expectedHashes["tokenizer.json"], "tokenizer.json");
   const encoderSess = await ort.InferenceSession.create(encoderPath, { executionProviders: ["cpu"] });
   const decoderSess = await ort.InferenceSession.create(decoderPath, { executionProviders: ["cpu"] });
   const loadMs = Math.round(performance.now() - tLoad0);
@@ -269,7 +324,9 @@ async function main() {
   console.log(JSON.stringify(summary, null, 2));
 }
 
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
+  main().catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
+}

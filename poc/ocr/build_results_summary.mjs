@@ -9,7 +9,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 const RESULTS_DIR = "poc/ocr/results";
-const OUT_FILE = "poc/ocr/poc_results_summary.json";
+const OUT_FILE = process.argv[2] || "poc/ocr/poc_results_summary.json";
 
 const ENGINE_PAIRS = [
   {
@@ -126,9 +126,21 @@ const engines = ENGINE_PAIRS.map((entry) => {
   };
 });
 
+const sourceManifestDigest = crypto
+  .createHash("sha256")
+  .update(
+    engines
+      .flatMap((e) => [
+        `${e.artifacts.base.file}:${e.artifacts.base.sha256}`,
+        `${e.artifacts.preprocessed.file}:${e.artifacts.preprocessed.sha256}`,
+      ])
+      .join("\n")
+  )
+  .digest("hex");
+
 const consolidated = {
   schema_version: "4.1.2",
-  generated_at: new Date().toISOString(),
+  source_artifacts_sha256: sourceManifestDigest,
   execution_environment: {
     platform: "Linux x86_64 container (4 vCPU, gVisor kernel 4.19.0)",
     warning: "CPU container measurements only. NOT Android ARM64 on-device benchmarks.",

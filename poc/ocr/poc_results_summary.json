@@ -1,6 +1,6 @@
 {
   "schema_version": "4.1.2",
-  "generated_at": "2026-11-27T15:06:54.388Z",
+  "source_artifacts_sha256": "19e9f08f8c90462c47dbc2ca65393ea5b8c71b168993aa80f338bbe6d7b31bba",
   "execution_environment": {
     "platform": "Linux x86_64 container (4 vCPU, gVisor kernel 4.19.0)",
     "warning": "CPU container measurements only. NOT Android ARM64 on-device benchmarks.",
