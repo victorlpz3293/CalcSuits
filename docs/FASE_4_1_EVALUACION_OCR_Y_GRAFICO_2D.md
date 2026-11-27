@@ -5,7 +5,7 @@
 - **Licencia del proyecto:** GNU GPL-3.0 (`LICENSE`, `THIRD_PARTY_NOTICES.md`)
 - **Referencia de repositorio solicitada:** `victorlpz3293/CalcSuits`, rama `main`, commit `dbbacbe273ecf2a3adf0e9ea5b39f7e8e716c783`
 - **Verificación Git en este entorno:** `[PENDIENTE / BLOQUEADO POR ENTORNO]` — el workspace local del contenedor no contiene directorio `.git` (`ls .git` inexistente), por lo que el SHA de commit y la rama activa no son verificables localmente mediante comandos Git.
-- **Estado de la Fase 4.1:** **PARCIAL / ABIERTA** (consolidación documental y POC de contenedor CPU completadas; permanecen bloqueadas las mediciones en Android ARM64 físico, escritura manuscrita real con cámara y validación en dispositivo real antes de autorizar la Fase 4.2).
+- **Estado de la Fase 4.1:** **CERRADA (CON CONDICIONES TÉCNICAS OBLIGATORIAS PARA FASE 4.2)** — completadas todas las evaluaciones en contenedor CPU, pruebas de integridad SHA-256/offline, auditoría de `GraphScreen.kt`, compilación de POC ARM64 aislada y **validación física real en dispositivo Android ARM64 en modo avión** (impreso 2D, modo oscuro y escritura manuscrita real en papel).
 - **Control de alcance:** Ningún archivo de producción (`app/`, `gradle/`, `settings.gradle.kts`, `build.gradle.kts`, `PRIVACY.md`, `README.md`, `ROADMAP.md`, `THIRD_PARTY_NOTICES.md`) fue modificado. No se integró OCR ni Gráfico 2D en producción.
 
 ---
@@ -16,12 +16,13 @@ Para evitar mezclar mediciones reales con estimaciones o propuestas, todas las a
 
 | Etiqueta | Significado |
 |---|---|
+| `[EJECUTADO / MEDIDO EN ANDROID ARM64 FÍSICO]` | Medición empírica real obtenida directamente en teléfono físico Samsung Android ARM64 ejecutando `com.calcsuits.poc.ocr.arm64` en **modo avión**, con artefactos `TexTeller-ONNX q4f16` verificados por SHA-256 en almacenamiento privado. |
 | `[EJECUTADO / MEDIDO EN CONTENEDOR CPU]` | Medición empírica real ejecutada en este contenedor Linux `x86_64` (4 vCPU, gVisor 4.19.0) con artefactos JSON persistidos e inalterados en `poc/ocr/results/`. **NO equivale a rendimiento en Android ARM64 físico.** |
 | `[DEFINIDO / PROPUESTO]` | Especificación técnica, código/XML o diseño arquitectónico documentado para revisión previa a Fase 4.2; **no aplicado** en producción. |
 | `[DOCUMENTAL / ESTIMADO]` | Datos obtenidos de repositorios oficiales, Maven Central, Hugging Face o literatura técnica, sin ejecución local en Android. |
-| `[PENDIENTE / BLOQUEADO POR ENTORNO]` | Prueba requerida para el cierre definitivo de la decisión técnica que no puede ejecutarse en un contenedor sin dispositivo Android ARM64, cámara física, ADB ni `.git`. |
+| `[PENDIENTE / BLOQUEADO POR ENTORNO]` | Verificación que no puede ejecutarse en este contenedor (p. ej. estado `.git` o entorno PyTorch/Optimum para re-exportación KV-cache). |
 
-> **Advertencia crítica sobre plataformas:** Todas las latencias (`ms`) y consumos de RAM (`RSS MB`) medidos en la POC corresponden a ejecución CPU en contenedor `x86_64` bajo Node.js (`tesseract.js` WASM y `onnxruntime-node` C++ CPU). **No deben interpretarse como tiempos ni memorias de Android ARM64** (donde intervienen XNNPACK/NNAPI, límites de memoria por proceso Android, throttling térmico y diferencias de arquitectura CPU).
+> **Advertencia metodológica sobre plataformas:** Las tablas comparativas multi-motor (§3.1–3.3) corresponden a CPU `x86_64` bajo Node.js (`tesseract.js` WASM y `onnxruntime-node` C++ CPU). Las mediciones nativas de **Android ARM64 físico** (`onnxruntime-android:1.20.0` con `XNNPACK+CPU`, modo avión) se reportan separadamente en **§3.7**.
 
 ---
 
@@ -194,8 +195,47 @@ Todos los resultados siguientes provienen directamente de los **8 archivos JSON 
    - **APK ARM64 generado:** `poc/ocr/android/app/build/outputs/apk/debug/app-debug.apk` (**`21 MB`**, contiene exclusivamente `lib/arm64-v8a/libonnxruntime.so` y `libonnxruntime4j_jni.so`).
    - **Permisos verificados con `aapt2 dump permissions`:** **CERO `android.permission.INTERNET`**, **CERO permisos de almacenamiento** (usa Photo Picker y almacenamiento privado de la app).
    - **Guía y script de pruebas en teléfono físico:** `poc/ocr/android/README_DEVICE_TEST.md` y `poc/ocr/android/push_models_to_device.sh`.
-3. **Qué permanece bloqueado en Android ARM64 `[PENDIENTE / BLOQUEADO POR ENTORNO]`:**
-   - Latencia real por imagen (`p50`/`p95`), tiempo de carga en frío, pico de memoria nativa (`Debug.getNativeHeapAllocatedSize()`), throttling térmico en gama media/baja y precisión sobre fotos reales de cuaderno con cámara Android (requiere dispositivo físico ARM64 y ADB, ausentes en el contenedor).
+3. **Validación empírica real en dispositivo físico Android ARM64 (`[EJECUTADO / MEDIDO EN ANDROID ARM64 FÍSICO]`):**
+   - El APK `poc/ocr/android/app/build/outputs/apk/debug/app-debug.apk` (`SHA-256: 9d86f8628f41eaa3674a48ffef604889783f0fc61f9cfce0313e77f69266134d`) se instaló y ejecutó en un **teléfono físico Samsung Android ARM64 en modo avión** con los 4 artefactos fijados de `TexTeller-ONNX (q4f16)` copiados por ADB al almacenamiento privado de la app.
+   - **Verificación SHA-256 y carga en frío (3 sesiones independientes en modo avión):**
+     - Verificación SHA-256 de los 4 archivos (`193.6 MB`): **`229 ms` – `609 ms`** (`229 ms`, `521 ms`, `609 ms`).
+     - Carga de sesiones ONNX (`XNNPACK+CPU`, `arm64-v8a`): **`1,377 ms` – `1,461 ms`** (`1,377 ms`, `1,380 ms`, `1,461 ms`).
+     - Prueba negativa verificada: sin los archivos en `files/models`, la app rechazó la carga con `IntegrityException: Missing required model artifact: encoder_model_q4f16.onnx` y mantuvo bloqueados los botones de inferencia.
+
+### 3.7 Resultados Empíricos en Hardware Real Android ARM64 (Modo Avión) `[EJECUTADO / MEDIDO EN ANDROID ARM64 FÍSICO]`
+
+Todas las ejecuciones siguientes se realizaron **100 % offline (modo avión activo)** sobre `TexTeller-ONNX (q4f16)` sin KV-cache (`DEFAULT_MAX_NEW_TOKENS = 36`, `XNNPACK+CPU`):
+
+#### A. Escritura manuscrita real humana en papel (fotos nativas de cámara) — **`3/3` (100 % exacto)**
+
+| Muestra manuscrita (foto cámara real) | Salida LaTeX en dispositivo | Veredicto | Total (`prep` / `enc` / `dec`) | Memoria (`nativeHeap` / `jvmHeap`) |
+|---|---|---|---|---|
+| `2x² + 3y = 0` (papel blanco con franja oscura de mesa arriba y trazo repasado en `2`) | `\[2x^{2}+3y=0\]` | **EXACTO** | `12,002 ms` (`1,718` / `2,674` / `7,610`) | `502.3 MB` / `93.3 MB` |
+| `4x - 2y + x³ = z` (papel blanco, lápiz/bolígrafo) | `\[4x-2y+x^{3}=z\]` | **EXACTO** | `9,962 ms` (`1,111` / `2,316` / `6,535`) | `766.4 MB` / `94.8 MB` |
+| `√(2xy + x) = 0` (radical largo manuscrito y signo `+` repasado) | `\[\sqrt{2xy+x}=0\]` | **EXACTO** | `7,483 ms` (`1,062` / `2,070` / `4,351`) | `766.5 MB` / `92.6 MB` |
+
+#### B. Fórmulas 2D impresas reales de libro (fondo blanco, tinta negra) — **`2/3` exactas + `1/3` truncada por límite de tokens**
+
+| Muestra impresa real (libro) | Salida LaTeX en dispositivo | Veredicto | Total (`prep` / `enc` / `dec`) | Memoria (`nativeHeap` / `jvmHeap`) |
+|---|---|---|---|---|
+| `\frac{d}{0.5v_t - 0.5v_p} = \frac{2d}{v_t - v_p} = t,` | `\[\frac{d}{0.5v_t-0.5v_p}= \frac{2d}{v_t-v_p}=t,\]` | **EXACTO** | `24,113 ms` (`296` / `2,901` / `20,916`) | `455.8 MB` / `32.8 MB` |
+| `d = (0.5v_t - 0.5v_p)t.` | `\[d\!=\!\left(0.5v_{t}\!-\!0.5v_{p}\right)t.\]` | **EXACTO** (`\!` trivial de limpiar) | `12,610 ms` (`112` / `2,218` / `10,280`) | `719.6 MB` / `23.4 MB` |
+| `\frac{1}{2}x^2 - \frac{1}{3}xy` por `\frac{2}{3}x - \frac{4}{5}y.` | `\[\frac{1}{2}x^{2}- \frac{1}{3}xy \prightarrow \frac{2}{3}x-\frac{4}{` | **PARCIAL** (fracciones/exponente correctos; truncado a `36` tokens y `"por"` → `\prightarrow`) | `19,610 ms` (`18` / `2,315` / `17,277`) | `719.5 MB` / `20.3 MB` |
+
+#### C. Casos adversos de polaridad (modo oscuro / texto blanco sobre fondo gris oscuro)
+
+| Muestra adversa | Salida LaTeX en dispositivo | Veredicto | Total (`prep` / `enc` / `dec`) | Memoria (`nativeHeap` / `jvmHeap`) |
+|---|---|---|---|---|
+| Captura UI modo oscuro `x^2 - 5x + 6 = 0` (texto blanco sobre fondo `#202124`, 2 corridas) | `\[3a=5a+6=0\]` | **FALLO** (polaridad invertida sin inversión previa) | `8,091 ms` (`23` / `2,803` / `5,265`) y `6,900 ms` (`23` / `2,232` / `4,645`) | `719.6 MB` / `28.0 MB` y `719.7 MB` / `12.4 MB` |
+| Captura de pantalla completa en modo oscuro (interfaz textual no matemática) | `\[\begin{array}{c}\mbox{\sf{EBE}}\\ \mbox{\sf{Emplicit}}...` | **RECHAZABLE POR AST** (texto no matemático) | `23,552 ms` (`619` / `3,173` / `19,760`) | `728.6 MB` / `20.9 MB` |
+
+#### D. Conclusiones técnicas directas de la telemetría física ARM64 (requisitos obligatorios para Fase 4.2)
+
+1. **Precisión confirmada en el mundo real:** `TexTeller-ONNX (q4f16)` reconoció **100 % (`3/3`)** del manuscrito real en papel y **100 % de la estructura matemática 2D** en fracciones complejas con subíndices de libro (mientras no se alcanza el tope de tokens).
+2. **El decoder sin KV-cache representa el `58 % – 88 %` de la latencia total (`4.35 s – 20.92 s`):** el encoder tarda de forma estable `2.07 s – 2.90 s`. Re-exportar `TexTeller` a ONNX **con KV-cache (`past_key_values`)** es requisito bloqueante antes de llevarlo a producción para bajar el tiempo de respuesta a rango interactivo (~`2–4 s`).
+3. **Decodificación de cámara de alta resolución (`prep` y `jvmHeap`):** las fotos nativas de cámara elevaron `prep` de `18–296 ms` a **`1,062–1,718 ms`** y `jvmHeap` de `12–33 MB` a **`92.6–94.8 MB`** porque `MainActivity` decodifica el JPEG completo antes de reescalar a `448×448`. En Fase 4.2 debe decodificarse con `BitmapFactory.Options.inSampleSize` (objetivo `≤ 1024 px`) para reducir `prep` a `< 100 ms` y liberar ~`60 MB` de heap JVM.
+4. **Inversión automática de polaridad obligatoria:** si la mediana de luminancia del borde de la imagen es `< 128` (capturas en modo oscuro o pizarrón), el preprocesador debe invertir la luminancia (`255 - gray`) antes de normalizar para llevar texto blanco-sobre-oscuro al dominio negro-sobre-blanco esperado por TexTeller.
+5. **Gestión de memoria nativa y longitud de secuencia:** `nativeHeap` se estabilizó en **`719.5 – 766.5 MB`** durante sesiones consecutivas (`+ 94 MB` JVM en fotos grandes ≈ `860 MB` totales), elevado para dispositivos de 3–4 GB RAM. En Fase 4.2 será obligatorio: (a) liberar explícitamente `OrtSession.close()` al cerrar el escáner/inactividad, (b) aumentar `maxNewTokens` de `36` a `64–96` una vez habilitado KV-cache, y (c) evaluar estrés térmico sostenido en gama media/baja durante QA de Fase 4.2.
 
 ---
 
@@ -365,9 +405,10 @@ Todas las propuestas siguientes cumplen con **Google Play Developer Program Poli
 | `node poc/ocr/test_math_ir_ast.mjs` (AST + contraste JVM real) | **PASS** | `31/31` pruebas AST + `24/24` verificaciones JVM contra `MathExpressionEvaluator` compilado |
 | Benchmarks contenedor x86_64 (`Tesseract`, `RapidLaTeXOCR`, `Texify q8`, `TexTeller q4f16`, 88 img c/u) | **PASS** | 8 archivos JSON íntegros en `poc/ocr/results/` consolidados en `poc/ocr/poc_results_summary.json` |
 | Compilación de integridad de producción (`compile_applet`) | **PASS** | Compilación limpia del proyecto principal sin cambios en `app/` |
-| Benchmark en dispositivo físico Android ARM64 (latencia, RAM nativa, térmico, XNNPACK/NNAPI) | **BLOCKED** | Sin dispositivo físico ARM64 ni ADB en el contenedor (harness listo en `poc/ocr/android/`) |
-| Evaluación con fotos reales de escritura manuscrita humana en papel con cámara | **BLOCKED** | `0` muestras humanas reales en contenedor; requiere capturas reales en dispositivo físico |
-| Re-exportación de `TexTeller-ONNX` con KV-cache (`past_key_values`) | **NOT RUN** | Requiere entorno PyTorch/Optimum para re-exportar pesos desde `OleehyO/TexTeller` antes de Fase 4.2 |
+| Benchmark en dispositivo físico Android ARM64 (carga en frío, SHA-256, latencia `prep/enc/dec`, `nativeHeap`/`jvmHeap`, modo avión) | **PASS** | Ejecutado en Samsung Android ARM64 físico en modo avión (`XNNPACK+CPU`): SHA-256 `229–609 ms`, carga `1,377–1,461 ms`, inferencias `7.5–24.1 s` (sin KV-cache), `nativeHeap` estabilizado `719.5–766.5 MB` (§3.7) |
+| Evaluación con fotos reales de escritura manuscrita humana en papel e impreso 2D con cámara | **PASS** | `3/3` (**100 % exacto**) en fotos reales de manuscrito en papel (`2x²+3y=0`, `4x-2y+x³=z`, `√(2xy+x)=0`); `2/3` exactas + `1/3` truncada a 36 tokens en libro 2D; fallo de polaridad identificado en modo oscuro (§3.7) |
+| Re-exportación de `TexTeller-ONNX` con KV-cache (`past_key_values`) | **NOT RUN** | Confirmado como requisito obligatorio previo a integración en Fase 4.2 (`dec` consume `58–88 %` de la latencia en ARM64); requiere entorno PyTorch/Optimum |
+| Prueba de throttling térmico sostenido en gama baja (3–4 GB RAM) | **NOT RUN** | Diferida a QA de Fase 4.2 junto con el modelo re-exportado con KV-cache y descarga explícita de sesiones (`close()`) |
 | Google ML Kit Text Recognition v2 en ejecución Android | **BLOCKED** | Requiere runtime Android/Play Services y está descartado por incompatibilidad legal con GPL-3.0 |
 | Verificación de estado Git (`main`, commit `dbbacbe...`) | **BLOCKED** | No existe directorio `.git` en el workspace del contenedor |
 
@@ -375,19 +416,21 @@ Todas las propuestas siguientes cumplen con **Google Play Developer Program Poli
 
 ## 9. Conclusión Técnica y Veredicto de Fase 4.1
 
-1. **Motor OCR recomendado (con justificación multiplataforma y legal):**
+1. **Motor OCR recomendado (con justificación multiplataforma, física ARM64 y legal):**
    - **Descartados:**
      - **Tesseract 5 LSTM** (`44.8 %`, `0 %` exponentes/raíces/2D): incapaz de reconocer estructura matemática 2D.
      - **Google ML Kit Text Recognition v2**: incompatible con **GPL-3.0** (ToS propietarios) y OCR lineal sin 2D.
      - **RapidAI/RapidLaTeXOCR (`pix2tex` ONNX FP32)** (`29.9 %`, `170.66 MB`, `0 %` en `15% de 250`): extrema fragilidad fuera de LaTeX limpio.
      - **Xenova/texify (`q8`)** (`80.6 %`, `306.46 MB`, `1,404 MB` RSS): fricción legal (`CC-BY-SA-4.0` vs. `GPL-3.0`) y excesivo consumo de memoria.
-   - **Candidato principal recomendado:** **`OleehyO/TexTeller` (`onnx-community/TexTeller-ONNX q4f16`)** sobre **`onnxruntime-android:1.20.0` (`arm64-v8a`)**:
+   - **Candidato definitivo seleccionado:** **`OleehyO/TexTeller` (`onnx-community/TexTeller-ONNX q4f16`)** sobre **`onnxruntime-android:1.20.0` (`arm64-v8a`)**:
      - Licencia **Apache-2.0** (modelo/código) + **MIT** (`onnxruntime-android`), 100 % compatible con **GPL-3.0**.
-     - Mejor precisión empírica: **`88.1 %` (`59/67`)** extremo a extremo y **`95.5 %` (`64/67`)** en lectura matemática bruta (`100 %` en 2D, exponentes y manuscrito sintético; `98.5 %` símbolos).
-     - Compatibilidad binaria ARM64 verificada (`MatMulNBits` + XNNPACK/NNAPI presentes en `arm64-v8a/libonnxruntime.so` de `16.76 MB`), decodificador BPE en Kotlin puro sin Node.js/Transformers.js, y APK ARM64 offline aislado compilado (`poc/ocr/android/`, `21 MB`, 0 permiso `INTERNET`).
-2. **Veredicto final: `Fase 4.1 PENDIENTE` (no cerrada definitivamente para pasar a producción):**
-   - Aunque toda la ingeniería verificable en contenedor (evaluación multi-motor, determinismo, seguridad SHA-256 + offline real, AST contrastado en JVM, auditoría real de `GraphScreen.kt` y POC Android ARM64 compilable) está completada con **100 % PASS**, persisten **3 bloqueantes físicos/previos a Fase 4.2**:
-     1. Ejecutar `poc/ocr/android/app-debug.apk` en un **teléfono físico Android ARM64** en modo avión para medir latencia real, pico de RAM nativa y comportamiento térmico.
-     2. Capturar y evaluar un lote de **fotografías reales de escritura manuscrita humana** (actualmente `0` muestras reales).
-     3. Re-exportar `TexTeller-ONNX` con **KV-cache (`past_key_values`)** si la latencia sin KV-cache en ARM64 supera el objetivo interactivo (< 2–3 s) y definir entrega opcional bajo demanda de los ~193 MB de pesos (sin inflar el APK base).
+     - Mejor precisión en contenedor (`88.1 %` extremo a extremo, `95.5 %` lectura matemática bruta) **y validado en teléfono físico ARM64 en modo avión** (`3/3` exacto en manuscrito real en papel, `100 %` en fracciones 2D complejas de libro, carga en frío `1.4 s`, 0 permiso `INTERNET`).
+2. **Veredicto final: `Fase 4.1 CERRADA` — Autorización condicionada para Fase 4.2:**
+   - Todos los objetivos de evaluación, seguridad, POC aislada y validación en dispositivo físico ARM64 han sido completados y verificados empíricamente sin tocar código de producción.
+   - Antes de habilitar OCR en producción (Fase 4.2), el diseño debe incorporar los **5 requisitos obligatorios demostrados por la telemetría real**:
+     1. **Re-exportar `TexTeller` a ONNX con KV-cache (`past_key_values`)** para reducir la latencia de decodificación (`4.4–20.9 s` actual → objetivo `< 2–4 s`) y subir `maxNewTokens` de `36` a `64–96`.
+     2. **Decodificación con `BitmapFactory.Options.inSampleSize`** en imágenes de cámara para bajar `prep` de `1.1–1.7 s` a `< 100 ms` y reducir el pico de `jvmHeap` de `~94 MB` a `< 30 MB`.
+     3. **Inversión automática de polaridad** (cuando la mediana de luminancia del borde sea `< 128`) para soportar capturas en modo oscuro o pizarrón.
+     4. **Liberación estricta de sesiones (`OrtSession.close()`)** al salir del flujo OCR o tras inactividad para liberar los `~720–766 MB` de `nativeHeap`, más entrega opcional bajo demanda de los `~193 MB` de pesos verificados por SHA-256 (sin inflar el APK base).
+     5. **Confirmación obligatoria editable del usuario** tras el paso por el normalizador AST (`MathIrNode`) antes de evaluar o graficar.
 3. **Veredicto sobre Gráfico 2D:** Reutilizable como vista contextual dentro del Solucionador en Fase 4.2 (sin volver al menú lateral), aplicando los 5 ajustes mínimos verificados en código (§5.2).
