@@ -1,0 +1,240 @@
+{
+  "generated_at": "2026-11-27T01:05:53.530Z",
+  "dataset": {
+    "total_images": 60,
+    "printed_linear": 42,
+    "printed_2d_typeset": 4,
+    "handwritten_synthetic": 14,
+    "handwritten_real_camera": 0,
+    "note": "Handwritten images are synthetic perturbed pen-stroke renders; real human camera handwriting was NOT measured due to absence of physical Android device/camera."
+  },
+  "engines_executed": [
+    {
+      "engine": "Tesseract 5 LSTM (eng, tessdata_fast via tesseract.js WASM)",
+      "total_images": 60,
+      "total_passed": 24,
+      "overall_accuracy_pct": 40,
+      "avg_latency_ms": 40,
+      "init_ms": 392,
+      "traineddata_bytes": 5199098,
+      "peak_rss_mb": 217,
+      "by_category": {
+        "printed": {
+          "total": 42,
+          "passed": 20,
+          "total_ms": 1580,
+          "avg_ms": 38,
+          "accuracy_pct": 47.6
+        },
+        "handwritten_synthetic": {
+          "total": 14,
+          "passed": 4,
+          "total_ms": 683,
+          "avg_ms": 49,
+          "accuracy_pct": 28.6
+        },
+        "printed_2d": {
+          "total": 4,
+          "passed": 0,
+          "total_ms": 122,
+          "avg_ms": 31,
+          "accuracy_pct": 0
+        }
+      },
+      "by_expression": {
+        "expr_01_arith_mul": {
+          "total": 8,
+          "passed": 4,
+          "printed_pass": 4,
+          "printed_total": 6,
+          "hw_pass": 0,
+          "hw_total": 2,
+          "d2_pass": 0,
+          "d2_total": 0
+        },
+        "expr_02_div_dec": {
+          "total": 9,
+          "passed": 3,
+          "printed_pass": 3,
+          "printed_total": 6,
+          "hw_pass": 0,
+          "hw_total": 2,
+          "d2_pass": 0,
+          "d2_total": 1
+        },
+        "expr_03_poly_sq": {
+          "total": 9,
+          "passed": 0,
+          "printed_pass": 0,
+          "printed_total": 6,
+          "hw_pass": 0,
+          "hw_total": 2,
+          "d2_pass": 0,
+          "d2_total": 1
+        },
+        "expr_04_sqrt": {
+          "total": 9,
+          "passed": 0,
+          "printed_pass": 0,
+          "printed_total": 6,
+          "hw_pass": 0,
+          "hw_total": 2,
+          "d2_pass": 0,
+          "d2_total": 1
+        },
+        "expr_05_grouped_frac": {
+          "total": 9,
+          "passed": 5,
+          "printed_pass": 4,
+          "printed_total": 6,
+          "hw_pass": 1,
+          "hw_total": 2,
+          "d2_pass": 0,
+          "d2_total": 1
+        },
+        "expr_06_linear_eq": {
+          "total": 8,
+          "passed": 5,
+          "printed_pass": 4,
+          "printed_total": 6,
+          "hw_pass": 1,
+          "hw_total": 2,
+          "d2_pass": 0,
+          "d2_total": 0
+        },
+        "expr_07_percent_es": {
+          "total": 8,
+          "passed": 7,
+          "printed_pass": 5,
+          "printed_total": 6,
+          "hw_pass": 2,
+          "hw_total": 2,
+          "d2_pass": 0,
+          "d2_total": 0
+        }
+      }
+    },
+    {
+      "engine": "Xenova/texify (q8, ONNX Runtime CPU)",
+      "total_images": 60,
+      "total_passed": 39,
+      "overall_accuracy_pct": 65,
+      "avg_latency_ms": 1128,
+      "load_ms": 6513,
+      "model_disk_mb": 306.5,
+      "peak_rss_mb": 1374,
+      "by_category": {
+        "printed": {
+          "total": 42,
+          "passed": 25,
+          "total_ms": 50615,
+          "avg_ms": 1205,
+          "accuracy_pct": 59.5
+        },
+        "handwritten_synthetic": {
+          "total": 14,
+          "passed": 10,
+          "total_ms": 13093,
+          "avg_ms": 935,
+          "accuracy_pct": 71.4
+        },
+        "printed_2d": {
+          "total": 4,
+          "passed": 4,
+          "total_ms": 4001,
+          "avg_ms": 1000,
+          "accuracy_pct": 100
+        }
+      },
+      "by_expression": {
+        "expr_01_arith_mul": {
+          "total": 8,
+          "passed": 7,
+          "printed_pass": 5,
+          "printed_total": 6,
+          "hw_pass": 2,
+          "hw_total": 2,
+          "d2_pass": 0,
+          "d2_total": 0
+        },
+        "expr_02_div_dec": {
+          "total": 9,
+          "passed": 7,
+          "printed_pass": 4,
+          "printed_total": 6,
+          "hw_pass": 2,
+          "hw_total": 2,
+          "d2_pass": 1,
+          "d2_total": 1
+        },
+        "expr_03_poly_sq": {
+          "total": 9,
+          "passed": 4,
+          "printed_pass": 1,
+          "printed_total": 6,
+          "hw_pass": 2,
+          "hw_total": 2,
+          "d2_pass": 1,
+          "d2_total": 1
+        },
+        "expr_04_sqrt": {
+          "total": 9,
+          "passed": 3,
+          "printed_pass": 1,
+          "printed_total": 6,
+          "hw_pass": 1,
+          "hw_total": 2,
+          "d2_pass": 1,
+          "d2_total": 1
+        },
+        "expr_05_grouped_frac": {
+          "total": 9,
+          "passed": 6,
+          "printed_pass": 4,
+          "printed_total": 6,
+          "hw_pass": 1,
+          "hw_total": 2,
+          "d2_pass": 1,
+          "d2_total": 1
+        },
+        "expr_06_linear_eq": {
+          "total": 8,
+          "passed": 7,
+          "printed_pass": 5,
+          "printed_total": 6,
+          "hw_pass": 2,
+          "hw_total": 2,
+          "d2_pass": 0,
+          "d2_total": 0
+        },
+        "expr_07_percent_es": {
+          "total": 8,
+          "passed": 5,
+          "printed_pass": 5,
+          "printed_total": 6,
+          "hw_pass": 0,
+          "hw_total": 2,
+          "d2_pass": 0,
+          "d2_total": 0
+        }
+      }
+    }
+  ],
+  "engines_blocked_or_not_executed": [
+    {
+      "engine": "Google ML Kit Text Recognition",
+      "status": "NOT_MEASURED_BLOCKED",
+      "reason": "Requires Android device/emulator runtime; also proprietary ToS incompatible with CalcSuits GPL-3.0 license."
+    },
+    {
+      "engine": "RapidLaTeXOCR / Pix2Tex INT8 (ONNX Mobile ARM64)",
+      "status": "NOT_MEASURED_ON_ANDROID",
+      "reason": "Requires INT8 ONNX export + Android ARM64 hardware benchmark (no Android device/emulator in container)."
+    },
+    {
+      "engine": "Tesseract 5 eng+equ",
+      "status": "FAILED_INCOMPATIBLE_LSTM",
+      "reason": "equ.traineddata only exists for legacy Tesseract 3 OEM 0, not Tesseract 4/5 LSTM tessdata_fast."
+    }
+  ]
+}

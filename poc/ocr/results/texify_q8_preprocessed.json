@@ -1,0 +1,680 @@
+{
+  "summary": {
+    "engine": "Xenova/texify (q8, ONNX Runtime CPU via Transformers.js)",
+    "total_images": 21,
+    "total_passed": 9,
+    "overall_accuracy_pct": 42.9,
+    "latency": {
+      "count": 21,
+      "min_ms": 898,
+      "p50_ms": 1145,
+      "p95_ms": 2876,
+      "max_ms": 2937,
+      "avg_ms": 1577
+    },
+    "license_model": "CC-BY-SA-4.0 (weights) / GPL-3.0 (upstream VikParuchuri/texify code)",
+    "load_ms": 7085,
+    "model_disk_mb": 306.46,
+    "peak_rss_mb": 1361,
+    "error_origins": {
+      "PASS": 9,
+      "ENGINE_ERROR_HALLUCINATION": 1,
+      "ENGINE_ERROR_CORRUPTED_TEXT": 5,
+      "ENGINE_OR_PARSE_ERROR": 4,
+      "ENGINE_ERROR_SEMANTIC_MISMATCH": 2
+    },
+    "granular_metrics": {
+      "symbols": {
+        "total": 21,
+        "passed": 12,
+        "accuracy_pct": 57.1
+      },
+      "exponents": {
+        "total": 3,
+        "passed": 1,
+        "accuracy_pct": 33.3
+      },
+      "fractions": {
+        "total": 6,
+        "passed": 4,
+        "accuracy_pct": 66.7
+      },
+      "roots": {
+        "total": 3,
+        "passed": 0,
+        "accuracy_pct": 0
+      },
+      "grouping": {
+        "total": 3,
+        "passed": 2,
+        "accuracy_pct": 66.7
+      }
+    },
+    "by_category": {
+      "printed": {
+        "total": 14,
+        "passed": 9,
+        "accuracy_pct": 64.3,
+        "latency": {
+          "count": 14,
+          "min_ms": 898,
+          "p50_ms": 1027,
+          "p95_ms": 1397,
+          "max_ms": 1397,
+          "avg_ms": 1078
+        }
+      },
+      "handwritten_synthetic": {
+        "total": 7,
+        "passed": 0,
+        "accuracy_pct": 0,
+        "latency": {
+          "count": 7,
+          "min_ms": 1140,
+          "p50_ms": 2795,
+          "p95_ms": 2937,
+          "max_ms": 2937,
+          "avg_ms": 2576
+        }
+      }
+    },
+    "by_variant": {
+      "printed_low_light": {
+        "total": 7,
+        "passed": 5,
+        "accuracy_pct": 71.4,
+        "latency": {
+          "count": 7,
+          "min_ms": 910,
+          "p50_ms": 1027,
+          "p95_ms": 1157,
+          "max_ms": 1157,
+          "avg_ms": 1044
+        }
+      },
+      "printed_blur_noise": {
+        "total": 7,
+        "passed": 4,
+        "accuracy_pct": 57.1,
+        "latency": {
+          "count": 7,
+          "min_ms": 898,
+          "p50_ms": 1138,
+          "p95_ms": 1397,
+          "max_ms": 1397,
+          "avg_ms": 1111
+        }
+      },
+      "handwritten_synth_difficult": {
+        "total": 7,
+        "passed": 0,
+        "accuracy_pct": 0,
+        "latency": {
+          "count": 7,
+          "min_ms": 1140,
+          "p50_ms": 2795,
+          "p95_ms": 2937,
+          "max_ms": 2937,
+          "avg_ms": 2576
+        }
+      }
+    },
+    "by_expression": {
+      "expr_01_arith_mul": {
+        "total": 3,
+        "passed": 2,
+        "printed_pass": 2,
+        "printed_total": 2,
+        "d2_pass": 0,
+        "d2_total": 0,
+        "hw_pass": 0,
+        "hw_total": 1
+      },
+      "expr_02_div_dec": {
+        "total": 3,
+        "passed": 2,
+        "printed_pass": 2,
+        "printed_total": 2,
+        "d2_pass": 0,
+        "d2_total": 0,
+        "hw_pass": 0,
+        "hw_total": 1
+      },
+      "expr_03_poly_sq": {
+        "total": 3,
+        "passed": 1,
+        "printed_pass": 1,
+        "printed_total": 2,
+        "d2_pass": 0,
+        "d2_total": 0,
+        "hw_pass": 0,
+        "hw_total": 1
+      },
+      "expr_04_sqrt": {
+        "total": 3,
+        "passed": 0,
+        "printed_pass": 0,
+        "printed_total": 2,
+        "d2_pass": 0,
+        "d2_total": 0,
+        "hw_pass": 0,
+        "hw_total": 1
+      },
+      "expr_05_grouped_frac": {
+        "total": 3,
+        "passed": 2,
+        "printed_pass": 2,
+        "printed_total": 2,
+        "d2_pass": 0,
+        "d2_total": 0,
+        "hw_pass": 0,
+        "hw_total": 1
+      },
+      "expr_06_linear_eq": {
+        "total": 3,
+        "passed": 2,
+        "printed_pass": 2,
+        "printed_total": 2,
+        "d2_pass": 0,
+        "d2_total": 0,
+        "hw_pass": 0,
+        "hw_total": 1
+      },
+      "expr_07_percent_es": {
+        "total": 3,
+        "passed": 0,
+        "printed_pass": 0,
+        "printed_total": 2,
+        "d2_pass": 0,
+        "d2_total": 0,
+        "hw_pass": 0,
+        "hw_total": 1
+      }
+    }
+  },
+  "results": [
+    {
+      "filename": "expr_01_arith_mul__printed_low_light.png",
+      "expr_id": "expr_01_arith_mul",
+      "category": "printed",
+      "variant": "printed_low_light",
+      "preprocessed": true,
+      "ground_truth": "125 + 35 × 2",
+      "expected_canonical": "125 + 35 * 2",
+      "raw_ocr": "$$125+35\\times2$$",
+      "ast_ok": true,
+      "ast_error": null,
+      "normalized": "125 + 35 * 2",
+      "semantic_exact": true,
+      "error_origin": "PASS",
+      "granular": {
+        "symbols_ok": true,
+        "exponent_ok": null,
+        "fraction_ok": null,
+        "root_ok": null,
+        "grouping_ok": null
+      },
+      "elapsed_ms": 1145
+    },
+    {
+      "filename": "expr_01_arith_mul__printed_blur_noise.png",
+      "expr_id": "expr_01_arith_mul",
+      "category": "printed",
+      "variant": "printed_blur_noise",
+      "preprocessed": true,
+      "ground_truth": "125 + 35 × 2",
+      "expected_canonical": "125 + 35 * 2",
+      "raw_ocr": "$$125+35\\times2$$",
+      "ast_ok": true,
+      "ast_error": null,
+      "normalized": "125 + 35 * 2",
+      "semantic_exact": true,
+      "error_origin": "PASS",
+      "granular": {
+        "symbols_ok": true,
+        "exponent_ok": null,
+        "fraction_ok": null,
+        "root_ok": null,
+        "grouping_ok": null
+      },
+      "elapsed_ms": 997
+    },
+    {
+      "filename": "expr_01_arith_mul__handwritten_synth_difficult.png",
+      "expr_id": "expr_01_arith_mul",
+      "category": "handwritten_synthetic",
+      "variant": "handwritten_synth_difficult",
+      "preprocessed": true,
+      "ground_truth": "125 + 35 × 2",
+      "expected_canonical": "125 + 35 * 2",
+      "raw_ocr": "**The $\\pi$-norm in $\\pi$-norm in $\\pi$-norm is known to be the $\\pi$-norm with $\\pi$-norm.**\n\n**The $\\pi$-norm is a",
+      "ast_ok": false,
+      "ast_error": "Unsupported or invalid token: OP(*)",
+      "normalized": "**The pi -norm in pi -norm in pi -norm is known to be the pi -norm with pi -norm.** **The pi -norm is a",
+      "semantic_exact": false,
+      "error_origin": "ENGINE_ERROR_HALLUCINATION",
+      "granular": {
+        "symbols_ok": false,
+        "exponent_ok": null,
+        "fraction_ok": null,
+        "root_ok": null,
+        "grouping_ok": null
+      },
+      "elapsed_ms": 2750
+    },
+    {
+      "filename": "expr_02_div_dec__printed_low_light.png",
+      "expr_id": "expr_02_div_dec",
+      "category": "printed",
+      "variant": "printed_low_light",
+      "preprocessed": true,
+      "ground_truth": "12.75 / 0.5",
+      "expected_canonical": "12.75 / 0.5",
+      "raw_ocr": "$$12.75/0.5$$",
+      "ast_ok": true,
+      "ast_error": null,
+      "normalized": "12.75 / 0.5",
+      "semantic_exact": true,
+      "error_origin": "PASS",
+      "granular": {
+        "symbols_ok": true,
+        "exponent_ok": null,
+        "fraction_ok": true,
+        "root_ok": null,
+        "grouping_ok": null
+      },
+      "elapsed_ms": 1027
+    },
+    {
+      "filename": "expr_02_div_dec__printed_blur_noise.png",
+      "expr_id": "expr_02_div_dec",
+      "category": "printed",
+      "variant": "printed_blur_noise",
+      "preprocessed": true,
+      "ground_truth": "12.75 / 0.5",
+      "expected_canonical": "12.75 / 0.5",
+      "raw_ocr": "$$12.75/0.5$$",
+      "ast_ok": true,
+      "ast_error": null,
+      "normalized": "12.75 / 0.5",
+      "semantic_exact": true,
+      "error_origin": "PASS",
+      "granular": {
+        "symbols_ok": true,
+        "exponent_ok": null,
+        "fraction_ok": true,
+        "root_ok": null,
+        "grouping_ok": null
+      },
+      "elapsed_ms": 1138
+    },
+    {
+      "filename": "expr_02_div_dec__handwritten_synth_difficult.png",
+      "expr_id": "expr_02_div_dec",
+      "category": "handwritten_synthetic",
+      "variant": "handwritten_synth_difficult",
+      "preprocessed": true,
+      "ground_truth": "12.75 / 0.5",
+      "expected_canonical": "12.75 / 0.5",
+      "raw_ocr": "**The $\\pi$-ray emission from the $\\pi$-ray emission from the $\\pi$-ray emission from the $\\pi$-ray emission from the $\\pi$-ray emission from the $\\pi$-ray emission from",
+      "ast_ok": false,
+      "ast_error": "Unsupported or invalid token: OP(*)",
+      "normalized": "**The pi -ray emission from the pi -ray emission from the pi -ray emission from the pi -ray emission from the pi -ray emission from the pi -ray emission from",
+      "semantic_exact": false,
+      "error_origin": "ENGINE_ERROR_CORRUPTED_TEXT",
+      "granular": {
+        "symbols_ok": false,
+        "exponent_ok": null,
+        "fraction_ok": false,
+        "root_ok": null,
+        "grouping_ok": null
+      },
+      "elapsed_ms": 2876
+    },
+    {
+      "filename": "expr_03_poly_sq__printed_low_light.png",
+      "expr_id": "expr_03_poly_sq",
+      "category": "printed",
+      "variant": "printed_low_light",
+      "preprocessed": true,
+      "ground_truth": "x² + 5x + 6",
+      "expected_canonical": "x^2 + 5x + 6",
+      "raw_ocr": "$$x^{2}+5x+6$$",
+      "ast_ok": true,
+      "ast_error": null,
+      "normalized": "x^2 + 5 * x + 6",
+      "semantic_exact": true,
+      "error_origin": "PASS",
+      "granular": {
+        "symbols_ok": true,
+        "exponent_ok": true,
+        "fraction_ok": null,
+        "root_ok": null,
+        "grouping_ok": null
+      },
+      "elapsed_ms": 1092
+    },
+    {
+      "filename": "expr_03_poly_sq__printed_blur_noise.png",
+      "expr_id": "expr_03_poly_sq",
+      "category": "printed",
+      "variant": "printed_blur_noise",
+      "preprocessed": true,
+      "ground_truth": "x² + 5x + 6",
+      "expected_canonical": "x^2 + 5x + 6",
+      "raw_ocr": "$\\chi^{2}+5\\chi+6$",
+      "ast_ok": false,
+      "ast_error": "Unsupported or invalid token: UNKNOWN_MACRO(\\chi)",
+      "normalized": "\\chi^{2}+5\\chi+6",
+      "semantic_exact": false,
+      "error_origin": "ENGINE_OR_PARSE_ERROR",
+      "granular": {
+        "symbols_ok": true,
+        "exponent_ok": false,
+        "fraction_ok": null,
+        "root_ok": null,
+        "grouping_ok": null
+      },
+      "elapsed_ms": 1189
+    },
+    {
+      "filename": "expr_03_poly_sq__handwritten_synth_difficult.png",
+      "expr_id": "expr_03_poly_sq",
+      "category": "handwritten_synthetic",
+      "variant": "handwritten_synth_difficult",
+      "preprocessed": true,
+      "ground_truth": "x² + 5x + 6",
+      "expected_canonical": "x^2 + 5x + 6",
+      "raw_ocr": "**Theorem 1**.: _The $\\mathbb{Z}$-norm of $\\mathbb{Z}$-norm of $\\mathbb{Z}$ is a $\\mathbb{Z}$-norm of $\\mathbb{Z}$",
+      "ast_ok": false,
+      "ast_error": "Unsupported or invalid token: OP(*)",
+      "normalized": "**Theorem 1**.: _The \\mathbb{Z}-norm of \\mathbb{Z}-norm of \\mathbb{Z} is a \\mathbb{Z}-norm of \\mathbb{Z}",
+      "semantic_exact": false,
+      "error_origin": "ENGINE_ERROR_CORRUPTED_TEXT",
+      "granular": {
+        "symbols_ok": false,
+        "exponent_ok": false,
+        "fraction_ok": null,
+        "root_ok": null,
+        "grouping_ok": null
+      },
+      "elapsed_ms": 2937
+    },
+    {
+      "filename": "expr_04_sqrt__printed_low_light.png",
+      "expr_id": "expr_04_sqrt",
+      "category": "printed",
+      "variant": "printed_low_light",
+      "preprocessed": true,
+      "ground_truth": "√144 + 5",
+      "expected_canonical": "sqrt(144) + 5",
+      "raw_ocr": "$$\\sqrt{1444+5}$$",
+      "ast_ok": true,
+      "ast_error": null,
+      "normalized": "sqrt(1444 + 5)",
+      "semantic_exact": false,
+      "error_origin": "ENGINE_ERROR_SEMANTIC_MISMATCH",
+      "granular": {
+        "symbols_ok": true,
+        "exponent_ok": null,
+        "fraction_ok": null,
+        "root_ok": false,
+        "grouping_ok": null
+      },
+      "elapsed_ms": 1019
+    },
+    {
+      "filename": "expr_04_sqrt__printed_blur_noise.png",
+      "expr_id": "expr_04_sqrt",
+      "category": "printed",
+      "variant": "printed_blur_noise",
+      "preprocessed": true,
+      "ground_truth": "√144 + 5",
+      "expected_canonical": "sqrt(144) + 5",
+      "raw_ocr": "$\\sqrt{144+5}$\n\n$\\sqrt{144+5}$",
+      "ast_ok": true,
+      "ast_error": null,
+      "normalized": "sqrt(144 + 5)",
+      "semantic_exact": false,
+      "error_origin": "ENGINE_ERROR_SEMANTIC_MISMATCH",
+      "granular": {
+        "symbols_ok": true,
+        "exponent_ok": null,
+        "fraction_ok": null,
+        "root_ok": false,
+        "grouping_ok": null
+      },
+      "elapsed_ms": 1397
+    },
+    {
+      "filename": "expr_04_sqrt__handwritten_synth_difficult.png",
+      "expr_id": "expr_04_sqrt",
+      "category": "handwritten_synthetic",
+      "variant": "handwritten_synth_difficult",
+      "preprocessed": true,
+      "ground_truth": "√144 + 5",
+      "expected_canonical": "sqrt(144) + 5",
+      "raw_ocr": "* [144] M. C. C.",
+      "ast_ok": false,
+      "ast_error": "Unsupported or invalid token: OP(*)",
+      "normalized": "* (144) M. C. C.",
+      "semantic_exact": false,
+      "error_origin": "ENGINE_OR_PARSE_ERROR",
+      "granular": {
+        "symbols_ok": false,
+        "exponent_ok": null,
+        "fraction_ok": null,
+        "root_ok": false,
+        "grouping_ok": null
+      },
+      "elapsed_ms": 1140
+    },
+    {
+      "filename": "expr_05_grouped_frac__printed_low_light.png",
+      "expr_id": "expr_05_grouped_frac",
+      "category": "printed",
+      "variant": "printed_low_light",
+      "preprocessed": true,
+      "ground_truth": "(3x + 2) / 5",
+      "expected_canonical": "(3x + 2) / 5",
+      "raw_ocr": "$$(3x+2)/5$$",
+      "ast_ok": true,
+      "ast_error": null,
+      "normalized": "(3 * x + 2) / 5",
+      "semantic_exact": true,
+      "error_origin": "PASS",
+      "granular": {
+        "symbols_ok": true,
+        "exponent_ok": null,
+        "fraction_ok": true,
+        "root_ok": null,
+        "grouping_ok": true
+      },
+      "elapsed_ms": 960
+    },
+    {
+      "filename": "expr_05_grouped_frac__printed_blur_noise.png",
+      "expr_id": "expr_05_grouped_frac",
+      "category": "printed",
+      "variant": "printed_blur_noise",
+      "preprocessed": true,
+      "ground_truth": "(3x + 2) / 5",
+      "expected_canonical": "(3x + 2) / 5",
+      "raw_ocr": "$$(3x+2)/5$$",
+      "ast_ok": true,
+      "ast_error": null,
+      "normalized": "(3 * x + 2) / 5",
+      "semantic_exact": true,
+      "error_origin": "PASS",
+      "granular": {
+        "symbols_ok": true,
+        "exponent_ok": null,
+        "fraction_ok": true,
+        "root_ok": null,
+        "grouping_ok": true
+      },
+      "elapsed_ms": 951
+    },
+    {
+      "filename": "expr_05_grouped_frac__handwritten_synth_difficult.png",
+      "expr_id": "expr_05_grouped_frac",
+      "category": "handwritten_synthetic",
+      "variant": "handwritten_synth_difficult",
+      "preprocessed": true,
+      "ground_truth": "(3x + 2) / 5",
+      "expected_canonical": "(3x + 2) / 5",
+      "raw_ocr": "**The two-dimensional $\\alpha$-vectorial $\\alpha$-vectorial $\\alpha$-vectorial $\\alpha$-vectorial $\\alpha$-vectorial $\\alpha$-vectorial $\\alpha$-vectorial",
+      "ast_ok": false,
+      "ast_error": "Unsupported or invalid token: OP(*)",
+      "normalized": "**The two-dimensional \\alpha-vectorial \\alpha-vectorial \\alpha-vectorial \\alpha-vectorial \\alpha-vectorial \\alpha-vectorial \\alpha-vectorial",
+      "semantic_exact": false,
+      "error_origin": "ENGINE_ERROR_CORRUPTED_TEXT",
+      "granular": {
+        "symbols_ok": false,
+        "exponent_ok": null,
+        "fraction_ok": false,
+        "root_ok": null,
+        "grouping_ok": false
+      },
+      "elapsed_ms": 2740
+    },
+    {
+      "filename": "expr_06_linear_eq__printed_low_light.png",
+      "expr_id": "expr_06_linear_eq",
+      "category": "printed",
+      "variant": "printed_low_light",
+      "preprocessed": true,
+      "ground_truth": "2x + 5 = 15",
+      "expected_canonical": "2x + 5 = 15",
+      "raw_ocr": "$$2x+5=15$$",
+      "ast_ok": true,
+      "ast_error": null,
+      "normalized": "2 * x + 5 = 15",
+      "semantic_exact": true,
+      "error_origin": "PASS",
+      "granular": {
+        "symbols_ok": true,
+        "exponent_ok": null,
+        "fraction_ok": null,
+        "root_ok": null,
+        "grouping_ok": null
+      },
+      "elapsed_ms": 910
+    },
+    {
+      "filename": "expr_06_linear_eq__printed_blur_noise.png",
+      "expr_id": "expr_06_linear_eq",
+      "category": "printed",
+      "variant": "printed_blur_noise",
+      "preprocessed": true,
+      "ground_truth": "2x + 5 = 15",
+      "expected_canonical": "2x + 5 = 15",
+      "raw_ocr": "$$2x+5=15$$",
+      "ast_ok": true,
+      "ast_error": null,
+      "normalized": "2 * x + 5 = 15",
+      "semantic_exact": true,
+      "error_origin": "PASS",
+      "granular": {
+        "symbols_ok": true,
+        "exponent_ok": null,
+        "fraction_ok": null,
+        "root_ok": null,
+        "grouping_ok": null
+      },
+      "elapsed_ms": 898
+    },
+    {
+      "filename": "expr_06_linear_eq__handwritten_synth_difficult.png",
+      "expr_id": "expr_06_linear_eq",
+      "category": "handwritten_synthetic",
+      "variant": "handwritten_synth_difficult",
+      "preprocessed": true,
+      "ground_truth": "2x + 5 = 15",
+      "expected_canonical": "2x + 5 = 15",
+      "raw_ocr": "**The $\\alpha$-function** $\\alpha$ **is a function of the form $\\alpha$ **is a function of the form $\\alpha$ **is a function of the form $\\alpha$ **is a function of the",
+      "ast_ok": false,
+      "ast_error": "Unsupported or invalid token: OP(*)",
+      "normalized": "**The \\alpha-function** \\alpha **is a function of the form \\alpha **is a function of the form \\alpha **is a function of the form \\alpha **is a function of the",
+      "semantic_exact": false,
+      "error_origin": "ENGINE_ERROR_CORRUPTED_TEXT",
+      "granular": {
+        "symbols_ok": false,
+        "exponent_ok": null,
+        "fraction_ok": null,
+        "root_ok": null,
+        "grouping_ok": null
+      },
+      "elapsed_ms": 2797
+    },
+    {
+      "filename": "expr_07_percent_es__printed_low_light.png",
+      "expr_id": "expr_07_percent_es",
+      "category": "printed",
+      "variant": "printed_low_light",
+      "preprocessed": true,
+      "ground_truth": "15% de 250",
+      "expected_canonical": "15% de 250",
+      "raw_ocr": "$$159/\\mathrm{~de~}250$$",
+      "ast_ok": false,
+      "ast_error": "Unsupported or invalid token: PCT_KW(de)",
+      "normalized": "159/ de 250",
+      "semantic_exact": false,
+      "error_origin": "ENGINE_OR_PARSE_ERROR",
+      "granular": {
+        "symbols_ok": false,
+        "exponent_ok": null,
+        "fraction_ok": null,
+        "root_ok": null,
+        "grouping_ok": null
+      },
+      "elapsed_ms": 1157
+    },
+    {
+      "filename": "expr_07_percent_es__printed_blur_noise.png",
+      "expr_id": "expr_07_percent_es",
+      "category": "printed",
+      "variant": "printed_blur_noise",
+      "preprocessed": true,
+      "ground_truth": "15% de 250",
+      "expected_canonical": "15% de 250",
+      "raw_ocr": "$$1590\\;\\mathrm{de}\\;250$$",
+      "ast_ok": false,
+      "ast_error": "Unexpected trailing token: de",
+      "normalized": "1590 de 250",
+      "semantic_exact": false,
+      "error_origin": "ENGINE_OR_PARSE_ERROR",
+      "granular": {
+        "symbols_ok": false,
+        "exponent_ok": null,
+        "fraction_ok": null,
+        "root_ok": null,
+        "grouping_ok": null
+      },
+      "elapsed_ms": 1210
+    },
+    {
+      "filename": "expr_07_percent_es__handwritten_synth_difficult.png",
+      "expr_id": "expr_07_percent_es",
+      "category": "handwritten_synthetic",
+      "variant": "handwritten_synth_difficult",
+      "preprocessed": true,
+      "ground_truth": "15% de 250",
+      "expected_canonical": "15% de 250",
+      "raw_ocr": "**The $\\pi$-$\\pi$-$\\pi$-$\\pi$-$\\pi$-$\\pi$-$\\pi$-$\\pi$-$\\pi$-$\\pi$-$\\pi$-$\\pi",
+      "ast_ok": false,
+      "ast_error": "Unsupported or invalid token: OP(*)",
+      "normalized": "**The pi - pi - pi - pi - pi - pi - pi - pi - pi - pi - pi - pi",
+      "semantic_exact": false,
+      "error_origin": "ENGINE_ERROR_CORRUPTED_TEXT",
+      "granular": {
+        "symbols_ok": false,
+        "exponent_ok": null,
+        "fraction_ok": null,
+        "root_ok": null,
+        "grouping_ok": null
+      },
+      "elapsed_ms": 2795
+    }
+  ]
+}
