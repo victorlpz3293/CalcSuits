@@ -43,23 +43,51 @@ const BOS_TOKEN = 1;
 const EOS_TOKEN = 2;
 const MAX_SEQ_LEN = 128;
 
+const SHA256_HEX_RE = /^[a-f0-9]{64}$/;
+
+export function isValidSha256Hex(value) {
+  return typeof value === "string" && SHA256_HEX_RE.test(value.toLowerCase());
+}
+
+export function computeFileSha256(filePath) {
+  const hash = crypto.createHash("sha256");
+  const fd = fs.openSync(filePath, "r");
+  const buf = Buffer.allocUnsafe(4 * 1024 * 1024);
+  try {
+    let bytesRead = 0;
+    while ((bytesRead = fs.readSync(fd, buf, 0, buf.length, null)) > 0) {
+      hash.update(buf.subarray(0, bytesRead));
+    }
+  } finally {
+    fs.closeSync(fd);
+  }
+  return hash.digest("hex");
+}
+
 export function verifyFileSha256(filePath, expectedSha256, label = filePath) {
-  if (!expectedSha256) {
-    throw new Error(`Missing expected SHA-256 for ${label}; refusing unverified artifact.`);
+  if (!isValidSha256Hex(expectedSha256)) {
+    throw new Error(`Missing or invalid expected SHA-256 for ${label}; refusing unverified artifact.`);
   }
   if (!fs.existsSync(filePath)) {
     throw new Error(`Expected artifact not found for SHA-256 verification: ${filePath}`);
   }
-  const actual = crypto.createHash("sha256").update(fs.readFileSync(filePath)).digest("hex");
-  if (actual !== expectedSha256) {
+  if (!fs.statSync(filePath).isFile()) {
+    throw new Error(`Expected regular file for SHA-256 verification: ${filePath}`);
+  }
+  const expectedLower = expectedSha256.toLowerCase();
+  const actual = computeFileSha256(filePath);
+  if (actual !== expectedLower) {
     throw new Error(
-      `SHA-256 mismatch for ${label} (${filePath}): expected ${expectedSha256}, got ${actual}`
+      `SHA-256 mismatch for ${label} (${filePath}): expected ${expectedLower}, got ${actual}`
     );
   }
   return actual;
 }
 
 export function verifyRapidLatexOcrCache(modelDir = MODEL_DIR, expectedHashes = EXPECTED_SHA256) {
+  if (!expectedHashes || Object.keys(expectedHashes).length === 0) {
+    throw new Error(`Empty or missing expectedHashes manifest for RapidLaTeXOCR.`);
+  }
   const verified = {};
   for (const name of MODEL_FILES) {
     const dst = path.join(modelDir, name);
@@ -68,26 +96,86 @@ export function verifyRapidLatexOcrCache(modelDir = MODEL_DIR, expectedHashes = 
   return verified;
 }
 
-async function ensureModels() {
-  fs.mkdirSync(MODEL_DIR, { recursive: true });
+export async function downloadAndVerifyArtifact(url, targetPath, expectedSha256, label, fetchImpl = fetch) {
+  if (!isValidSha256Hex(expectedSha256)) {
+    throw new Error(`Missing or invalid expected SHA-256 for ${label}; refusing download.`);
+  }
+  fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+  const tmpPath = `${targetPath}.tmp.${process.pid}.${Date.now()}`;
+  try {
+    const resp = await fetchImpl(url, { redirect: "follow" });
+    if (!resp.ok) throw new Error(`Failed downloading ${label}: HTTP ${resp.status}`);
+    const hash = crypto.createHash("sha256");
+    const outFd = fs.openSync(tmpPath, "w");
+    try {
+      if (resp.body && typeof resp.body.getReader === "function") {
+        const reader = resp.body.getReader();
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          const chunk = Buffer.from(value.buffer, value.byteOffset, value.byteLength);
+          hash.update(chunk);
+          fs.writeSync(outFd, chunk);
+        }
+      } else {
+        const buf = Buffer.from(await resp.arrayBuffer());
+        hash.update(buf);
+        fs.writeSync(outFd, buf);
+      }
+    } finally {
+      fs.closeSync(outFd);
+    }
+    const actual = hash.digest("hex");
+    const expectedLower = expectedSha256.toLowerCase();
+    if (actual !== expectedLower) {
+      throw new Error(
+        `SHA-256 mismatch for downloaded ${label} (${url}): expected ${expectedLower}, got ${actual}`
+      );
+    }
+    fs.renameSync(tmpPath, targetPath);
+    return actual;
+  } catch (err) {
+    fs.rmSync(tmpPath, { force: true });
+    throw err;
+  }
+}
+
+export async function ensureModels({ modelDir = MODEL_DIR, fetchImpl = fetch } = {}) {
+  fs.mkdirSync(modelDir, { recursive: true });
   const sizes = {};
+  const downloadedFiles = [];
   for (const name of MODEL_FILES) {
     const expected = EXPECTED_SHA256[name];
-    if (!expected) {
+    if (!isValidSha256Hex(expected)) {
       throw new Error(`No pinned SHA-256 declared for ${name}; aborting.`);
     }
-    const dst = path.join(MODEL_DIR, name);
-    if (!fs.existsSync(dst)) {
-      const resp = await fetch(`${BASE_URL}/${name}`, { redirect: "follow" });
-      if (!resp.ok) throw new Error(`Failed downloading ${name}: HTTP ${resp.status}`);
-      const buf = Buffer.from(await resp.arrayBuffer());
-      fs.writeFileSync(dst, buf);
+    const dst = path.join(modelDir, name);
+    if (fs.existsSync(dst)) {
+      verifyFileSha256(dst, expected, name);
+    } else {
+      await downloadAndVerifyArtifact(`${BASE_URL}/${name}`, dst, expected, name, fetchImpl);
+      downloadedFiles.push(name);
     }
-    // Always verify SHA-256 for both freshly downloaded and cached files
-    verifyFileSha256(dst, expected, name);
     sizes[name] = fs.statSync(dst).size;
   }
-  return sizes;
+  verifyRapidLatexOcrCache(modelDir, EXPECTED_SHA256);
+  return { sizes, downloadedFiles };
+}
+
+export async function loadVerifiedRapidLatexOcr({
+  modelDir = MODEL_DIR,
+  fetchImpl = fetch,
+  sessionFactory = (p, opts) => ort.InferenceSession.create(p, opts),
+} = {}) {
+  const { sizes, downloadedFiles } = await ensureModels({ modelDir, fetchImpl });
+  const idToToken = loadBpeVocab(path.join(modelDir, "tokenizer.json"));
+  const tLoad0 = performance.now();
+  const resizerSess = await sessionFactory(path.join(modelDir, "image_resizer.onnx"), { executionProviders: ["cpu"] });
+  const encoderSess = await sessionFactory(path.join(modelDir, "encoder.onnx"), { executionProviders: ["cpu"] });
+  const decoderSess = await sessionFactory(path.join(modelDir, "decoder.onnx"), { executionProviders: ["cpu"] });
+  const loadMs = Math.round(performance.now() - tLoad0);
+  verifyRapidLatexOcrCache(modelDir, EXPECTED_SHA256);
+  return { resizerSess, encoderSess, decoderSess, idToToken, modelSizes: sizes, downloadedFiles, loadMs };
 }
 
 function loadPngGray(filePath) {
@@ -246,19 +334,72 @@ function decodeTokens(tokenIds, idToToken) {
   return s.trim();
 }
 
-async function main() {
-  const modelSizes = await ensureModels();
-  const idToToken = loadBpeVocab(path.join(MODEL_DIR, "tokenizer.json"));
-
-  const tLoad0 = performance.now();
-  const resizerSess = await ort.InferenceSession.create(path.join(MODEL_DIR, "image_resizer.onnx"), { executionProviders: ["cpu"] });
-  const encoderSess = await ort.InferenceSession.create(path.join(MODEL_DIR, "encoder.onnx"), { executionProviders: ["cpu"] });
-  const decoderSess = await ort.InferenceSession.create(path.join(MODEL_DIR, "decoder.onnx"), { executionProviders: ["cpu"] });
-  const loadMs = Math.round(performance.now() - tLoad0);
-
+export async function recognizePngRapidLatexOcr(filePath, { resizerSess, encoderSess, decoderSess, idToToken }) {
   const resizerIn = resizerSess.inputNames[0];
   const encIn = encoderSess.inputNames[0];
   const decInNames = decoderSess.inputNames;
+
+  const rawGray = loadPngGray(filePath);
+  const baseImg = minmaxSize(padCropDiv32(rawGray));
+  let r = 1.0;
+  let w = baseImg.width;
+  let h = baseImg.height;
+  let finalTensor = null;
+
+  // Official RapidLaTeXOCR loop_image_resizer (mirrors rapid_latex_ocr/main.py exactly)
+  for (let iter = 0; iter < 10; iter++) {
+    h = Math.max(1, Math.floor(h * r));
+    const resized = resizeBilinearGray(baseImg, Math.max(1, Math.round(w)), h);
+    const padded = padCropDiv32(minmaxSize(resized));
+    finalTensor = toNormalizedTensor(padded);
+    const resOut = await resizerSess.run({ [resizerIn]: finalTensor });
+    const logits = resOut[resizerSess.outputNames[0]].data;
+    let bestIdx = 0;
+    for (let i = 1; i < logits.length; i++) {
+      if (logits[i] > logits[bestIdx]) bestIdx = i;
+    }
+    w = (bestIdx + 1) * 32;
+    if (w === padded.width) break;
+    r = w / padded.width;
+  }
+
+  // Encoder
+  const encOut = await encoderSess.run({ [encIn]: finalTensor });
+  const context = encOut[encoderSess.outputNames[0]];
+
+  // Autoregressive greedy decoder (matching temperature=0.00001 in LaTeXOCRInput)
+  const seq = [BOS_TOKEN];
+  for (let step = 0; step < MAX_SEQ_LEN; step++) {
+    const xData = BigInt64Array.from(seq.map((v) => BigInt(v)));
+    const maskData = new Uint8Array(seq.length).fill(1);
+    const feeds = {
+      [decInNames[0]]: new ort.Tensor("int64", xData, [1, seq.length]),
+      [decInNames[1]]: new ort.Tensor("bool", maskData, [1, seq.length]),
+      [decInNames[2]]: context,
+    };
+    const decOut = await decoderSess.run(feeds);
+    const outTensor = decOut[decoderSess.outputNames[0]];
+    const vocabSize = outTensor.dims[2];
+    const offset = (seq.length - 1) * vocabSize;
+    let bestId = 0;
+    let bestVal = -Infinity;
+    for (let v = 0; v < vocabSize; v++) {
+      const val = outTensor.data[offset + v];
+      if (val > bestVal) {
+        bestVal = val;
+        bestId = v;
+      }
+    }
+    seq.push(bestId);
+    if (bestId === EOS_TOKEN) break;
+  }
+
+  return decodeTokens(seq.slice(1), idToToken);
+}
+
+async function main() {
+  const loaded = await loadVerifiedRapidLatexOcr({ modelDir: MODEL_DIR });
+  const { modelSizes, loadMs } = loaded;
 
   const manifest = JSON.parse(fs.readFileSync(MANIFEST_PATH, "utf-8"));
   const results = [];
@@ -266,62 +407,7 @@ async function main() {
 
   for (const item of manifest) {
     const t0 = performance.now();
-    const rawGray = loadPngGray(item.file);
-    const baseImg = minmaxSize(padCropDiv32(rawGray));
-    let r = 1.0;
-    let w = baseImg.width;
-    let h = baseImg.height;
-    let finalTensor = null;
-
-    // Official RapidLaTeXOCR loop_image_resizer (mirrors rapid_latex_ocr/main.py exactly)
-    for (let iter = 0; iter < 10; iter++) {
-      h = Math.max(1, Math.floor(h * r));
-      const resized = resizeBilinearGray(baseImg, Math.max(1, Math.round(w)), h);
-      const padded = padCropDiv32(minmaxSize(resized));
-      finalTensor = toNormalizedTensor(padded);
-      const resOut = await resizerSess.run({ [resizerIn]: finalTensor });
-      const logits = resOut[resizerSess.outputNames[0]].data;
-      let bestIdx = 0;
-      for (let i = 1; i < logits.length; i++) {
-        if (logits[i] > logits[bestIdx]) bestIdx = i;
-      }
-      w = (bestIdx + 1) * 32;
-      if (w === padded.width) break;
-      r = w / padded.width;
-    }
-
-    // Encoder
-    const encOut = await encoderSess.run({ [encIn]: finalTensor });
-    const context = encOut[encoderSess.outputNames[0]];
-
-    // Autoregressive greedy decoder (matching temperature=0.00001 in LaTeXOCRInput)
-    const seq = [BOS_TOKEN];
-    for (let step = 0; step < MAX_SEQ_LEN; step++) {
-      const xData = BigInt64Array.from(seq.map((v) => BigInt(v)));
-      const maskData = new Uint8Array(seq.length).fill(1);
-      const feeds = {
-        [decInNames[0]]: new ort.Tensor("int64", xData, [1, seq.length]),
-        [decInNames[1]]: new ort.Tensor("bool", maskData, [1, seq.length]),
-        [decInNames[2]]: context,
-      };
-      const decOut = await decoderSess.run(feeds);
-      const outTensor = decOut[decoderSess.outputNames[0]];
-      const vocabSize = outTensor.dims[2];
-      const offset = (seq.length - 1) * vocabSize;
-      let bestId = 0;
-      let bestVal = -Infinity;
-      for (let v = 0; v < vocabSize; v++) {
-        const val = outTensor.data[offset + v];
-        if (val > bestVal) {
-          bestVal = val;
-          bestId = v;
-        }
-      }
-      seq.push(bestId);
-      if (bestId === EOS_TOKEN) break;
-    }
-
-    const rawLatex = decodeTokens(seq.slice(1), idToToken);
+    const rawLatex = await recognizePngRapidLatexOcr(item.file, loaded);
     const elapsedMs = Math.round(performance.now() - t0);
     const rssMb = Math.round(process.memoryUsage().rss / (1024 * 1024));
     if (rssMb > peakRssMb) peakRssMb = rssMb;

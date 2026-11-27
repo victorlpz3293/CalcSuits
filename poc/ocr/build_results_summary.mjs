@@ -16,7 +16,7 @@ const ENGINE_PAIRS = [
     id: "tesseract_5_lstm",
     base_file: "tesseract_base.json",
     preprocessed_file: "tesseract_preprocessed.json",
-    pinned_revision: "tessdata.projectnaptha.com/4.0.0_fast (tesseract.js@5.1.1)",
+    pinned_revision: "cdn.jsdelivr.net/npm/@tesseract.js-data/eng/4.0.0_best_int (tesseract.js@5.1.1)",
     model_sha256: {
       "eng.traineddata": "5dc5d8d640a212c9d6184921ba103b186f50e0fed9ee716c53e6b312b400d747",
     },
@@ -42,6 +42,10 @@ const ENGINE_PAIRS = [
       "onnx/encoder_model_quantized.onnx": "302452c132a82b1c70389f0f646952586afa20c3f9a16b517e40600c49eb8f23",
       "onnx/decoder_model_merged_quantized.onnx": "ed067534a996c818708d0d377b94ace32b9738f0d7a0c4ef635e4fa3d28653ce",
       "tokenizer.json": "02c318d9cfa95bf323371762b8f838a82709530274d36dba6eca880f0add6cc4",
+      "config.json": "e1c4e95573d80a1816d8d1e00fcc9f71961226369877b4fd392708fe7d2e9e23",
+      "preprocessor_config.json": "b2fc6ff0098ac8e6af6e688bfc28188db883c99a48afa60e8555faeedc0c45e4",
+      "generation_config.json": "0fb8980236d664d2851ed5939b435ecc6fe0e32ee08b83e75cb1743db0cfe10e",
+      "tokenizer_config.json": "fd4d94f8b9dbb7deeb3a3ef084ca0e16c43d45774a180730b7e9cfd6359a074b",
     },
   },
   {
@@ -53,6 +57,7 @@ const ENGINE_PAIRS = [
       "onnx/encoder_model_q4f16.onnx": "c42190515ffcd4a728a1abee4dc8d4636b62f782fd823294d2861434a7f7d0eb",
       "onnx/decoder_model_q4f16.onnx": "edebc4c90596d13313382eecfeef89f0041efe7bfa4e89391d5b5dbabab25100",
       "tokenizer.json": "ec4ca954798a092faf6fefcfa47fb5f85d76cdf6ab170b624ae1a683d53dae14",
+      "tokenizer_config.json": "74c8bdcd769acae371f98980fe929be1172fab3df844a50159c61998a3832eea",
     },
   },
 ];

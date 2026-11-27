@@ -1,6 +1,6 @@
 {
   "schema_version": "4.1.2",
-  "source_artifacts_sha256": "19e9f08f8c90462c47dbc2ca65393ea5b8c71b168993aa80f338bbe6d7b31bba",
+  "source_artifacts_sha256": "8c2bba9ecd1e8e540d67116127f612eab4db6390325cc3f6e735dc88f2e2a711",
   "execution_environment": {
     "platform": "Linux x86_64 container (4 vCPU, gVisor kernel 4.19.0)",
     "warning": "CPU container measurements only. NOT Android ARM64 on-device benchmarks.",
@@ -34,7 +34,7 @@
     {
       "id": "tesseract_5_lstm",
       "engine": "Tesseract 5 LSTM (eng, tessdata_fast via tesseract.js WASM)",
-      "pinned_revision": "tessdata.projectnaptha.com/4.0.0_fast (tesseract.js@5.1.1)",
+      "pinned_revision": "cdn.jsdelivr.net/npm/@tesseract.js-data/eng/4.0.0_best_int (tesseract.js@5.1.1)",
       "model_sha256": {
         "eng.traineddata": "5dc5d8d640a212c9d6184921ba103b186f50e0fed9ee716c53e6b312b400d747"
       },
@@ -1151,7 +1151,11 @@
       "model_sha256": {
         "onnx/encoder_model_quantized.onnx": "302452c132a82b1c70389f0f646952586afa20c3f9a16b517e40600c49eb8f23",
         "onnx/decoder_model_merged_quantized.onnx": "ed067534a996c818708d0d377b94ace32b9738f0d7a0c4ef635e4fa3d28653ce",
-        "tokenizer.json": "02c318d9cfa95bf323371762b8f838a82709530274d36dba6eca880f0add6cc4"
+        "tokenizer.json": "02c318d9cfa95bf323371762b8f838a82709530274d36dba6eca880f0add6cc4",
+        "config.json": "e1c4e95573d80a1816d8d1e00fcc9f71961226369877b4fd392708fe7d2e9e23",
+        "preprocessor_config.json": "b2fc6ff0098ac8e6af6e688bfc28188db883c99a48afa60e8555faeedc0c45e4",
+        "generation_config.json": "0fb8980236d664d2851ed5939b435ecc6fe0e32ee08b83e75cb1743db0cfe10e",
+        "tokenizer_config.json": "fd4d94f8b9dbb7deeb3a3ef084ca0e16c43d45774a180730b7e9cfd6359a074b"
       },
       "artifacts": {
         "base": {
@@ -1699,32 +1703,33 @@
       "model_sha256": {
         "onnx/encoder_model_q4f16.onnx": "c42190515ffcd4a728a1abee4dc8d4636b62f782fd823294d2861434a7f7d0eb",
         "onnx/decoder_model_q4f16.onnx": "edebc4c90596d13313382eecfeef89f0041efe7bfa4e89391d5b5dbabab25100",
-        "tokenizer.json": "ec4ca954798a092faf6fefcfa47fb5f85d76cdf6ab170b624ae1a683d53dae14"
+        "tokenizer.json": "ec4ca954798a092faf6fefcfa47fb5f85d76cdf6ab170b624ae1a683d53dae14",
+        "tokenizer_config.json": "74c8bdcd769acae371f98980fe929be1172fab3df844a50159c61998a3832eea"
       },
       "artifacts": {
         "base": {
           "file": "poc/ocr/results/texteller_q4f16_base.json",
-          "sha256": "276fee052f1d939db1cf3568a9f7cf76da48a6c6019135b071211de811ba8021",
+          "sha256": "96897adfd337ed2e059d81ed0bcd55d6da2f2d27ce82f870273d758222959cd6",
           "records": 67
         },
         "preprocessed": {
           "file": "poc/ocr/results/texteller_q4f16_preprocessed.json",
-          "sha256": "862b347042f12974180a72a6e3760aaaad7853a534fb017540a79740f551d06c",
+          "sha256": "148864121050b599fe1b9103bd3ae7650cb9992ef85736cceef715de1f2a27bf",
           "records": 21
         }
       },
       "base_67": {
         "engine": "onnx-community/TexTeller-ONNX (q4f16, Direct onnxruntime-node CPU)",
         "total_images": 67,
-        "total_passed": 60,
-        "overall_accuracy_pct": 89.6,
+        "total_passed": 59,
+        "overall_accuracy_pct": 88.1,
         "latency": {
           "count": 67,
-          "min_ms": 4429,
-          "p50_ms": 6034,
-          "p95_ms": 12950,
-          "max_ms": 16980,
-          "avg_ms": 6705
+          "min_ms": 4248,
+          "p50_ms": 5632,
+          "p95_ms": 11951,
+          "max_ms": 18280,
+          "avg_ms": 6317
         },
         "source_repo": "https://huggingface.co/onnx-community/TexTeller-ONNX (upstream https://github.com/OleehyO/TexTeller)",
         "license_code_and_model": "Apache-2.0",
@@ -1738,18 +1743,19 @@
           ]
         },
         "chosen_start_token_id": 0,
-        "load_ms": 1667,
+        "load_ms": 1212,
         "model_files_mb": {
           "encoder_model_q4f16.onnx": 47.45,
           "decoder_model_q4f16.onnx": 145.13
         },
         "model_disk_mb": 192.57,
-        "peak_rss_mb": 854,
+        "peak_rss_mb": 918,
         "error_origins": {
-          "PASS": 60,
+          "PASS": 59,
           "ENGINE_ERROR_HALLUCINATION": 5,
           "ENGINE_ERROR_SEMANTIC_MISMATCH": 1,
-          "ENGINE_OR_PARSE_ERROR": 1
+          "ENGINE_OR_PARSE_ERROR": 1,
+          "ENGINE_ERROR_CORRUPTED_TEXT": 1
         },
         "granular_metrics": {
           "symbols": {
@@ -1764,8 +1770,8 @@
           },
           "fractions": {
             "total": 20,
-            "passed": 19,
-            "accuracy_pct": 95
+            "passed": 18,
+            "accuracy_pct": 90
           },
           "roots": {
             "total": 10,
@@ -1774,22 +1780,22 @@
           },
           "grouping": {
             "total": 10,
-            "passed": 10,
-            "accuracy_pct": 100
+            "passed": 9,
+            "accuracy_pct": 90
           }
         },
         "by_category": {
           "printed": {
             "total": 49,
-            "passed": 42,
-            "accuracy_pct": 85.7,
+            "passed": 41,
+            "accuracy_pct": 83.7,
             "latency": {
               "count": 49,
-              "min_ms": 4429,
-              "p50_ms": 6034,
-              "p95_ms": 13204,
-              "max_ms": 16980,
-              "avg_ms": 6982
+              "min_ms": 4248,
+              "p50_ms": 5657,
+              "p95_ms": 12206,
+              "max_ms": 18280,
+              "avg_ms": 6623
             }
           },
           "handwritten_synthetic": {
@@ -1798,11 +1804,11 @@
             "accuracy_pct": 100,
             "latency": {
               "count": 14,
-              "min_ms": 4765,
-              "p50_ms": 5773,
-              "p95_ms": 6770,
-              "max_ms": 6770,
-              "avg_ms": 5850
+              "min_ms": 4513,
+              "p50_ms": 5396,
+              "p95_ms": 6141,
+              "max_ms": 6141,
+              "avg_ms": 5380
             }
           },
           "printed_2d": {
@@ -1811,11 +1817,11 @@
             "accuracy_pct": 100,
             "latency": {
               "count": 4,
-              "min_ms": 5120,
-              "p50_ms": 6464,
-              "p95_ms": 6953,
-              "max_ms": 6953,
-              "avg_ms": 6309
+              "min_ms": 4682,
+              "p50_ms": 6178,
+              "p95_ms": 6330,
+              "max_ms": 6330,
+              "avg_ms": 5846
             }
           }
         },
@@ -1826,11 +1832,11 @@
             "accuracy_pct": 100,
             "latency": {
               "count": 7,
-              "min_ms": 5137,
-              "p50_ms": 5886,
-              "p95_ms": 7912,
-              "max_ms": 7912,
-              "avg_ms": 6177
+              "min_ms": 4751,
+              "p50_ms": 5632,
+              "p95_ms": 6864,
+              "max_ms": 6864,
+              "avg_ms": 5679
             }
           },
           "printed_serif": {
@@ -1839,11 +1845,11 @@
             "accuracy_pct": 100,
             "latency": {
               "count": 7,
-              "min_ms": 5171,
-              "p50_ms": 6074,
-              "p95_ms": 8974,
-              "max_ms": 8974,
-              "avg_ms": 6444
+              "min_ms": 5174,
+              "p50_ms": 5695,
+              "p95_ms": 7230,
+              "max_ms": 7230,
+              "avg_ms": 5918
             }
           },
           "printed_large": {
@@ -1852,11 +1858,11 @@
             "accuracy_pct": 100,
             "latency": {
               "count": 7,
-              "min_ms": 5363,
-              "p50_ms": 6034,
-              "p95_ms": 7824,
-              "max_ms": 7824,
-              "avg_ms": 6337
+              "min_ms": 5037,
+              "p50_ms": 5564,
+              "p95_ms": 7021,
+              "max_ms": 7021,
+              "avg_ms": 5792
             }
           },
           "printed_mono_small": {
@@ -1865,11 +1871,11 @@
             "accuracy_pct": 85.7,
             "latency": {
               "count": 7,
-              "min_ms": 4429,
-              "p50_ms": 5785,
-              "p95_ms": 7005,
-              "max_ms": 7005,
-              "avg_ms": 5786
+              "min_ms": 4248,
+              "p50_ms": 5374,
+              "p95_ms": 6100,
+              "max_ms": 6100,
+              "avg_ms": 5372
             }
           },
           "printed_low_light": {
@@ -1878,11 +1884,11 @@
             "accuracy_pct": 71.4,
             "latency": {
               "count": 7,
-              "min_ms": 4740,
-              "p50_ms": 5884,
-              "p95_ms": 12950,
-              "max_ms": 12950,
-              "avg_ms": 6834
+              "min_ms": 4540,
+              "p50_ms": 5336,
+              "p95_ms": 11951,
+              "max_ms": 11951,
+              "avg_ms": 6346
             }
           },
           "printed_tilted": {
@@ -1891,24 +1897,24 @@
             "accuracy_pct": 100,
             "latency": {
               "count": 7,
-              "min_ms": 5202,
-              "p50_ms": 6155,
-              "p95_ms": 7497,
-              "max_ms": 7497,
-              "avg_ms": 6170
+              "min_ms": 4857,
+              "p50_ms": 5605,
+              "p95_ms": 7190,
+              "max_ms": 7190,
+              "avg_ms": 5821
             }
           },
           "printed_blur_noise": {
             "total": 7,
-            "passed": 3,
-            "accuracy_pct": 42.9,
+            "passed": 2,
+            "accuracy_pct": 28.6,
             "latency": {
               "count": 7,
-              "min_ms": 5155,
-              "p50_ms": 11982,
-              "p95_ms": 16980,
-              "max_ms": 16980,
-              "avg_ms": 11123
+              "min_ms": 4753,
+              "p50_ms": 11844,
+              "p95_ms": 18280,
+              "max_ms": 18280,
+              "avg_ms": 11434
             }
           },
           "handwritten_synth_clear": {
@@ -1917,11 +1923,11 @@
             "accuracy_pct": 100,
             "latency": {
               "count": 7,
-              "min_ms": 4765,
-              "p50_ms": 5784,
-              "p95_ms": 6618,
-              "max_ms": 6618,
-              "avg_ms": 5759
+              "min_ms": 4696,
+              "p50_ms": 5352,
+              "p95_ms": 6141,
+              "max_ms": 6141,
+              "avg_ms": 5337
             }
           },
           "handwritten_synth_difficult": {
@@ -1930,11 +1936,11 @@
             "accuracy_pct": 100,
             "latency": {
               "count": 7,
-              "min_ms": 5260,
-              "p50_ms": 5773,
-              "p95_ms": 6770,
-              "max_ms": 6770,
-              "avg_ms": 5941
+              "min_ms": 4513,
+              "p50_ms": 5516,
+              "p95_ms": 6128,
+              "max_ms": 6128,
+              "avg_ms": 5422
             }
           },
           "printed_2d_typeset": {
@@ -1943,11 +1949,11 @@
             "accuracy_pct": 100,
             "latency": {
               "count": 4,
-              "min_ms": 5120,
-              "p50_ms": 6464,
-              "p95_ms": 6953,
-              "max_ms": 6953,
-              "avg_ms": 6309
+              "min_ms": 4682,
+              "p50_ms": 6178,
+              "p95_ms": 6330,
+              "max_ms": 6330,
+              "avg_ms": 5846
             }
           }
         },
@@ -1994,8 +2000,8 @@
           },
           "expr_05_grouped_frac": {
             "total": 10,
-            "passed": 10,
-            "printed_pass": 7,
+            "passed": 9,
+            "printed_pass": 6,
             "printed_total": 7,
             "d2_pass": 1,
             "d2_total": 1,
@@ -2027,15 +2033,15 @@
       "preprocessed_21": {
         "engine": "onnx-community/TexTeller-ONNX (q4f16, Direct onnxruntime-node CPU)",
         "total_images": 21,
-        "total_passed": 8,
-        "overall_accuracy_pct": 38.1,
+        "total_passed": 7,
+        "overall_accuracy_pct": 33.3,
         "latency": {
           "count": 21,
-          "min_ms": 3595,
-          "p50_ms": 6651,
-          "p95_ms": 14231,
-          "max_ms": 20426,
-          "avg_ms": 8788
+          "min_ms": 4878,
+          "p50_ms": 7992,
+          "p95_ms": 15424,
+          "max_ms": 19944,
+          "avg_ms": 9087
         },
         "source_repo": "https://huggingface.co/onnx-community/TexTeller-ONNX (upstream https://github.com/OleehyO/TexTeller)",
         "license_code_and_model": "Apache-2.0",
@@ -2049,29 +2055,30 @@
           ]
         },
         "chosen_start_token_id": 0,
-        "load_ms": 1610,
+        "load_ms": 1377,
         "model_files_mb": {
           "encoder_model_q4f16.onnx": 47.45,
           "decoder_model_q4f16.onnx": 145.13
         },
         "model_disk_mb": 192.57,
-        "peak_rss_mb": 810,
+        "peak_rss_mb": 868,
         "error_origins": {
-          "PASS": 8,
-          "ENGINE_ERROR_HALLUCINATION": 6,
-          "ENGINE_ERROR_CORRUPTED_TEXT": 6,
+          "PASS": 7,
+          "ENGINE_ERROR_CORRUPTED_TEXT": 5,
+          "ENGINE_ERROR_HALLUCINATION": 5,
+          "ENGINE_ERROR_SEMANTIC_MISMATCH": 3,
           "ENGINE_OR_PARSE_ERROR": 1
         },
         "granular_metrics": {
           "symbols": {
             "total": 21,
-            "passed": 17,
-            "accuracy_pct": 81
+            "passed": 20,
+            "accuracy_pct": 95.2
           },
           "exponents": {
             "total": 3,
-            "passed": 1,
-            "accuracy_pct": 33.3
+            "passed": 3,
+            "accuracy_pct": 100
           },
           "fractions": {
             "total": 6,
@@ -2096,24 +2103,24 @@
             "accuracy_pct": 50,
             "latency": {
               "count": 14,
-              "min_ms": 5332,
-              "p50_ms": 7044,
-              "p95_ms": 20426,
-              "max_ms": 20426,
-              "avg_ms": 10115
+              "min_ms": 4878,
+              "p50_ms": 6398,
+              "p95_ms": 19944,
+              "max_ms": 19944,
+              "avg_ms": 8920
             }
           },
           "handwritten_synthetic": {
             "total": 7,
-            "passed": 1,
-            "accuracy_pct": 14.3,
+            "passed": 0,
+            "accuracy_pct": 0,
             "latency": {
               "count": 7,
-              "min_ms": 3595,
-              "p50_ms": 6212,
-              "p95_ms": 8361,
-              "max_ms": 8361,
-              "avg_ms": 6133
+              "min_ms": 6098,
+              "p50_ms": 9123,
+              "p95_ms": 13392,
+              "max_ms": 13392,
+              "avg_ms": 9420
             }
           }
         },
@@ -2124,11 +2131,11 @@
             "accuracy_pct": 100,
             "latency": {
               "count": 7,
-              "min_ms": 5332,
-              "p50_ms": 5904,
-              "p95_ms": 7044,
-              "max_ms": 7044,
-              "avg_ms": 6139
+              "min_ms": 4878,
+              "p50_ms": 5993,
+              "p95_ms": 6398,
+              "max_ms": 6398,
+              "avg_ms": 5821
             }
           },
           "printed_blur_noise": {
@@ -2137,36 +2144,36 @@
             "accuracy_pct": 0,
             "latency": {
               "count": 7,
-              "min_ms": 11626,
-              "p50_ms": 13035,
-              "p95_ms": 20426,
-              "max_ms": 20426,
-              "avg_ms": 14091
+              "min_ms": 7992,
+              "p50_ms": 10328,
+              "p95_ms": 19944,
+              "max_ms": 19944,
+              "avg_ms": 12019
             }
           },
           "handwritten_synth_difficult": {
             "total": 7,
-            "passed": 1,
-            "accuracy_pct": 14.3,
+            "passed": 0,
+            "accuracy_pct": 0,
             "latency": {
               "count": 7,
-              "min_ms": 3595,
-              "p50_ms": 6212,
-              "p95_ms": 8361,
-              "max_ms": 8361,
-              "avg_ms": 6133
+              "min_ms": 6098,
+              "p50_ms": 9123,
+              "p95_ms": 13392,
+              "max_ms": 13392,
+              "avg_ms": 9420
             }
           }
         },
         "by_expression": {
           "expr_01_arith_mul": {
             "total": 3,
-            "passed": 2,
+            "passed": 1,
             "printed_pass": 1,
             "printed_total": 2,
             "d2_pass": 0,
             "d2_total": 0,
-            "hw_pass": 1,
+            "hw_pass": 0,
             "hw_total": 1
           },
           "expr_02_div_dec": {
@@ -2233,10 +2240,10 @@
       },
       "degraded_before_vs_after": {
         "total_degraded": 21,
-        "before_passed": 15,
-        "before_pct": 71.4,
-        "after_passed": 8,
-        "after_pct": 38.1,
+        "before_passed": 14,
+        "before_pct": 66.7,
+        "after_passed": 7,
+        "after_pct": 33.3,
         "delta_pct_points": -33.3,
         "by_variant": {
           "printed_low_light": {
@@ -2249,22 +2256,22 @@
             "delta_pct_points": 28.6
           },
           "printed_blur_noise": {
-            "before_passed": 3,
+            "before_passed": 2,
             "before_total": 7,
-            "before_pct": 42.9,
+            "before_pct": 28.6,
             "after_passed": 0,
             "after_total": 7,
             "after_pct": 0,
-            "delta_pct_points": -42.9
+            "delta_pct_points": -28.6
           },
           "handwritten_synth_difficult": {
             "before_passed": 7,
             "before_total": 7,
             "before_pct": 100,
-            "after_passed": 1,
+            "after_passed": 0,
             "after_total": 7,
-            "after_pct": 14.3,
-            "delta_pct_points": -85.7
+            "after_pct": 0,
+            "delta_pct_points": -100
           }
         }
       }

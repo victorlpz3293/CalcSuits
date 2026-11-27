@@ -9,6 +9,7 @@
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import zlib from "node:zlib";
 import { createRequire } from "node:module";
 import { performance } from "node:perf_hooks";
 import { pathToFileURL } from "node:url";
@@ -22,20 +23,29 @@ const MANIFEST_PATH = process.argv[2] || "/tmp/poc_ocr_dataset/manifest.json";
 const OUT_FILE = process.argv[3] || "poc/ocr/results/tesseract_base.json";
 const CACHE_DIR = "/tmp/poc_ocr_env/tessdata_cache";
 
-const TESSDATA_LANG_PATH = "https://tessdata.projectnaptha.com/4.0.0_fast";
+const TESSDATA_LANG_PATH = "https://cdn.jsdelivr.net/npm/@tesseract.js-data/eng/4.0.0_best_int";
 const EXPECTED_ENG_SHA256 = "5dc5d8d640a212c9d6184921ba103b186f50e0fed9ee716c53e6b312b400d747";
+const SHA256_HEX_RE = /^[a-f0-9]{64}$/;
+
+export function isValidSha256Hex(value) {
+  return typeof value === "string" && SHA256_HEX_RE.test(value.toLowerCase());
+}
 
 export function verifyFileSha256(filePath, expectedSha256, label = filePath) {
-  if (!expectedSha256) {
-    throw new Error(`Missing expected SHA-256 for ${label}; refusing unverified artifact.`);
+  if (!isValidSha256Hex(expectedSha256)) {
+    throw new Error(`Missing or invalid expected SHA-256 for ${label}; refusing unverified artifact.`);
   }
   if (!fs.existsSync(filePath)) {
     throw new Error(`Expected artifact not found for SHA-256 verification: ${filePath}`);
   }
+  if (!fs.statSync(filePath).isFile()) {
+    throw new Error(`Expected regular file for SHA-256 verification: ${filePath}`);
+  }
+  const expectedLower = expectedSha256.toLowerCase();
   const actual = crypto.createHash("sha256").update(fs.readFileSync(filePath)).digest("hex");
-  if (actual !== expectedSha256) {
+  if (actual !== expectedLower) {
     throw new Error(
-      `SHA-256 mismatch for ${label} (${filePath}): expected ${expectedSha256}, got ${actual}`
+      `SHA-256 mismatch for ${label} (${filePath}): expected ${expectedLower}, got ${actual}`
     );
   }
   return actual;
@@ -46,37 +56,79 @@ export function verifyTesseractCache(cacheDir = CACHE_DIR, expectedSha256 = EXPE
   return verifyFileSha256(trainedDataPath, expectedSha256, "eng.traineddata");
 }
 
-async function main() {
-  fs.mkdirSync(CACHE_DIR, { recursive: true });
-  const manifest = JSON.parse(fs.readFileSync(MANIFEST_PATH, "utf-8"));
+export async function ensureVerifiedTesseractModel({
+  cacheDir = CACHE_DIR,
+  expectedSha256 = EXPECTED_ENG_SHA256,
+  fetchImpl = fetch,
+} = {}) {
+  if (!isValidSha256Hex(expectedSha256)) {
+    throw new Error(`Missing or invalid expected SHA-256 for eng.traineddata; refusing load.`);
+  }
+  fs.mkdirSync(cacheDir, { recursive: true });
+  const targetPath = path.join(cacheDir, "eng.traineddata");
+  let downloaded = false;
 
-  // Never load an unverified cached traineddata file
-  const cachedTrainedData = path.join(CACHE_DIR, "eng.traineddata");
-  if (fs.existsSync(cachedTrainedData)) {
-    verifyTesseractCache(CACHE_DIR, EXPECTED_ENG_SHA256);
+  if (fs.existsSync(targetPath)) {
+    verifyFileSha256(targetPath, expectedSha256, "eng.traineddata");
+  } else {
+    const url = `${TESSDATA_LANG_PATH}/eng.traineddata.gz`;
+    const tmpPath = `${targetPath}.tmp.${process.pid}.${Date.now()}`;
+    try {
+      const resp = await fetchImpl(url, { redirect: "follow" });
+      if (!resp.ok) throw new Error(`Failed downloading eng.traineddata.gz: HTTP ${resp.status}`);
+      const gzBuf = Buffer.from(await resp.arrayBuffer());
+      const rawBuf = zlib.gunzipSync(gzBuf);
+      const actual = crypto.createHash("sha256").update(rawBuf).digest("hex");
+      const expectedLower = expectedSha256.toLowerCase();
+      if (actual !== expectedLower) {
+        throw new Error(
+          `SHA-256 mismatch for downloaded eng.traineddata (${url}): expected ${expectedLower}, got ${actual}`
+        );
+      }
+      fs.writeFileSync(tmpPath, rawBuf);
+      fs.renameSync(tmpPath, targetPath);
+      downloaded = true;
+    } catch (err) {
+      fs.rmSync(tmpPath, { force: true });
+      throw err;
+    }
   }
 
+  const verifiedSha = verifyTesseractCache(cacheDir, expectedSha256);
+  return { trainedDataPath: targetPath, verifiedSha, downloaded, bytes: fs.statSync(targetPath).size };
+}
+
+export async function loadVerifiedTesseractWorker({
+  cacheDir = CACHE_DIR,
+  expectedSha256 = EXPECTED_ENG_SHA256,
+  fetchImpl = fetch,
+  workerFactory = createWorker,
+} = {}) {
+  const artifact = await ensureVerifiedTesseractModel({ cacheDir, expectedSha256, fetchImpl });
   const tInit0 = performance.now();
-  const worker = await createWorker("eng", 1, {
-    langPath: TESSDATA_LANG_PATH,
-    cachePath: CACHE_DIR,
+  // Offline-safe: reads verified eng.traineddata exclusively from cacheDir without touching network
+  const worker = await workerFactory("eng", 1, {
+    langPath: cacheDir,
+    cachePath: cacheDir,
+    cacheMethod: "readOnly",
+    gzip: false,
     logger: () => {},
   });
   const initMs = Math.round(performance.now() - tInit0);
-
-  // Verify downloaded/cached artifact immediately before any inference
   try {
-    verifyTesseractCache(CACHE_DIR, EXPECTED_ENG_SHA256);
+    verifyTesseractCache(cacheDir, expectedSha256);
   } catch (err) {
     await worker.terminate();
     throw err;
   }
+  return { worker, initMs, ...artifact };
+}
 
-  let trainedDataBytes = 0;
-  for (const f of fs.readdirSync(CACHE_DIR)) {
-    const stat = fs.statSync(path.join(CACHE_DIR, f));
-    if (stat.isFile()) trainedDataBytes += stat.size;
-  }
+async function main() {
+  const manifest = JSON.parse(fs.readFileSync(MANIFEST_PATH, "utf-8"));
+  const { worker, initMs, bytes: trainedDataBytes } = await loadVerifiedTesseractWorker({
+    cacheDir: CACHE_DIR,
+  });
 
   const results = [];
   let peakRssMb = 0;

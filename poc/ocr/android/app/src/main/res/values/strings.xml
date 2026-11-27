@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="poc_app_name">CalcSuits OCR POC</string>
+    <string name="poc_subtitle">Phase 4.1 Offline ARM64 Harness (TexTeller-ONNX q4f16)</string>
+    <string name="btn_verify_models">Verify SHA-256 &amp; Load Model</string>
+    <string name="btn_pick_photo">Pick Formula Image (Offline)</string>
+    <string name="btn_run_batch">Run Local Benchmark Dir</string>
+    <string name="status_idle">Idle. Push verified TexTeller q4f16 files to app-private models dir, then tap Verify.</string>
+</resources>
