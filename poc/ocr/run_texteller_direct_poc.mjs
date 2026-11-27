@@ -35,7 +35,9 @@ const EXPECTED_Q4F16_SHA256 = {
   "encoder_model_q4f16.onnx": "c42190515ffcd4a728a1abee4dc8d4636b62f782fd823294d2861434a7f7d0eb",
   "decoder_model_q4f16.onnx": "edebc4c90596d13313382eecfeef89f0041efe7bfa4e89391d5b5dbabab25100",
   "tokenizer.json": "ec4ca954798a092faf6fefcfa47fb5f85d76cdf6ab170b624ae1a683d53dae14",
+  "tokenizer_config.json": "74c8bdcd769acae371f98980fe929be1172fab3df844a50159c61998a3832eea",
 };
+const TOKENIZER_HF_FILES = ["tokenizer.json", "tokenizer_config.json"];
 const PINNED_VARIANT_SHA256 = {
   q4f16: EXPECTED_Q4F16_SHA256,
 };
@@ -88,7 +90,7 @@ export function resolvePinnedTexTellerConfig(variant = VARIANT) {
       `No pinned SHA-256 manifest declared for TexTeller variant "${variant}"; refusing unverified execution.`
     );
   }
-  for (const requiredKey of [...files, "tokenizer.json"]) {
+  for (const requiredKey of [...files, ...TOKENIZER_HF_FILES]) {
     if (!isValidSha256Hex(expectedHashes[requiredKey])) {
       throw new Error(
         `Missing or invalid pinned SHA-256 for "${requiredKey}" (variant "${variant}"); refusing unverified execution.`
@@ -150,11 +152,13 @@ export function verifyFileSha256(filePath, expectedSha256, label = filePath) {
 
 export function assertNoUnrevisionedShadowTokenizer(hfCacheDir = HF_CACHE) {
   const localModelPath = env.localModelPath || "";
-  const shadowPath = path.join(hfCacheDir, localModelPath, MODEL_ID, "tokenizer.json");
-  if (fs.existsSync(shadowPath)) {
-    throw new Error(
-      `Unauthorized unrevisioned shadow cache file detected at "${shadowPath}"; refusing tokenizer load.`
-    );
+  for (const relPath of TOKENIZER_HF_FILES) {
+    const shadowPath = path.join(hfCacheDir, localModelPath, MODEL_ID, relPath);
+    if (fs.existsSync(shadowPath)) {
+      throw new Error(
+        `Unauthorized unrevisioned shadow cache file detected at "${shadowPath}"; refusing tokenizer load.`
+      );
+    }
   }
 }
 
@@ -185,8 +189,10 @@ export function verifyTexTellerCache(
   for (const fname of files) {
     verified[fname] = verifyFileSha256(path.join(modelDir, fname), expectedHashes[fname], fname);
   }
-  const tokPath = getHfCacheFilePath(hfCacheDir, MODEL_ID, MODEL_REVISION, "tokenizer.json");
-  verified["tokenizer.json"] = verifyFileSha256(tokPath, expectedHashes["tokenizer.json"], "tokenizer.json");
+  for (const relPath of TOKENIZER_HF_FILES) {
+    const tokPath = getHfCacheFilePath(hfCacheDir, MODEL_ID, MODEL_REVISION, relPath);
+    verified[relPath] = verifyFileSha256(tokPath, expectedHashes[relPath], relPath);
+  }
   return verified;
 }
 
@@ -269,24 +275,24 @@ export async function ensureVerifiedTexTellerArtifacts({
     sizes[fname] = fs.statSync(dst).size;
   }
 
-  // Exact @huggingface/transformers@3.4.0 FileCache path for tokenizer.json under pinned revision
-  const tokenizerCachePath = getHfCacheFilePath(hfCacheDir, MODEL_ID, revision, "tokenizer.json");
-  if (fs.existsSync(tokenizerCachePath)) {
-    verifiedHashes["tokenizer.json"] = verifyFileSha256(
-      tokenizerCachePath,
-      expectedHashes["tokenizer.json"],
-      "tokenizer.json"
-    );
-  } else {
-    const tokUrl = `${HF_REMOTE_HOST}${MODEL_ID}/resolve/${encodeURIComponent(revision)}/tokenizer.json`;
-    verifiedHashes["tokenizer.json"] = await downloadAndVerifyArtifact(
-      tokUrl,
-      tokenizerCachePath,
-      expectedHashes["tokenizer.json"],
-      "tokenizer.json",
-      fetchImpl
-    );
-    downloadedFiles.push("tokenizer.json");
+  // Exact @huggingface/transformers@3.4.0 FileCache paths for all tokenizer files under pinned revision
+  const tokenizerCachePaths = {};
+  for (const relPath of TOKENIZER_HF_FILES) {
+    const cachePath = getHfCacheFilePath(hfCacheDir, MODEL_ID, revision, relPath);
+    tokenizerCachePaths[relPath] = cachePath;
+    if (fs.existsSync(cachePath)) {
+      verifiedHashes[relPath] = verifyFileSha256(cachePath, expectedHashes[relPath], relPath);
+    } else {
+      const tokUrl = `${HF_REMOTE_HOST}${MODEL_ID}/resolve/${encodeURIComponent(revision)}/${relPath}`;
+      verifiedHashes[relPath] = await downloadAndVerifyArtifact(
+        tokUrl,
+        cachePath,
+        expectedHashes[relPath],
+        relPath,
+        fetchImpl
+      );
+      downloadedFiles.push(relPath);
+    }
   }
 
   verifyTexTellerCache(variant, modelDir, hfCacheDir, expectedHashes);
@@ -295,7 +301,8 @@ export async function ensureVerifiedTexTellerArtifacts({
     revision,
     encoderPath: path.join(modelDir, files[0]),
     decoderPath: path.join(modelDir, files[1]),
-    tokenizerCachePath,
+    tokenizerCachePath: tokenizerCachePaths["tokenizer.json"],
+    tokenizerCachePaths,
     sizes,
     expectedHashes,
     verifiedHashes,
@@ -327,13 +334,19 @@ export async function loadVerifiedTexTeller({
     const normFile = String(evt.file || "").replace(/^\/+/, "");
     if (!normFile) return;
     requestedTokenizerFiles.add(normFile);
-    if (normFile === "tokenizer.json") {
-      verifyFileSha256(
-        artifacts.tokenizerCachePath,
-        artifacts.expectedHashes["tokenizer.json"],
-        "tokenizer.json"
+    if (
+      !TOKENIZER_HF_FILES.includes(normFile) ||
+      !Object.prototype.hasOwnProperty.call(artifacts.expectedHashes, normFile)
+    ) {
+      throw new Error(
+        `Transformers.js requested undeclared tokenizer artifact "${normFile}" without a pinned SHA-256; refusing unverified load.`
       );
     }
+    verifyFileSha256(
+      artifacts.tokenizerCachePaths[normFile],
+      artifacts.expectedHashes[normFile],
+      normFile
+    );
   };
 
   const tLoad0 = performance.now();

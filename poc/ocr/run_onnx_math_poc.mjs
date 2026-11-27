@@ -30,6 +30,10 @@ const EXPECTED_TEXIFY_Q8_SHA256 = {
   "onnx/encoder_model_quantized.onnx": "302452c132a82b1c70389f0f646952586afa20c3f9a16b517e40600c49eb8f23",
   "onnx/decoder_model_merged_quantized.onnx": "ed067534a996c818708d0d377b94ace32b9738f0d7a0c4ef635e4fa3d28653ce",
   "tokenizer.json": "02c318d9cfa95bf323371762b8f838a82709530274d36dba6eca880f0add6cc4",
+  "config.json": "e1c4e95573d80a1816d8d1e00fcc9f71961226369877b4fd392708fe7d2e9e23",
+  "preprocessor_config.json": "b2fc6ff0098ac8e6af6e688bfc28188db883c99a48afa60e8555faeedc0c45e4",
+  "generation_config.json": "0fb8980236d664d2851ed5939b435ecc6fe0e32ee08b83e75cb1743db0cfe10e",
+  "tokenizer_config.json": "fd4d94f8b9dbb7deeb3a3ef084ca0e16c43d45774a180730b7e9cfd6359a074b",
 };
 const PINNED_MODEL_HASHES = {
   "Xenova/texify:q8": EXPECTED_TEXIFY_Q8_SHA256,
@@ -294,20 +298,16 @@ export async function loadVerifiedTexifyPipeline({
     const normFile = String(evt.file || "").replace(/^\/+/, "");
     if (!normFile) return;
     requestedFiles.add(normFile);
-    const requiresDeclaredHash =
-      normFile.endsWith(".onnx") || normFile.includes(".onnx_data") || normFile === "tokenizer.json";
-    if (requiresDeclaredHash) {
-      if (!Object.prototype.hasOwnProperty.call(expectedHashes, normFile)) {
-        throw new Error(
-          `Transformers.js requested unpinned model/tokenizer artifact "${normFile}" without a declared SHA-256.`
-        );
-      }
-      verifyFileSha256(
-        getHfCacheFilePath(cacheDir, modelId, revision, normFile),
-        expectedHashes[normFile],
-        normFile
+    if (!Object.prototype.hasOwnProperty.call(expectedHashes, normFile)) {
+      throw new Error(
+        `Transformers.js requested undeclared artifact "${normFile}" without a pinned SHA-256; refusing unverified load.`
       );
     }
+    verifyFileSha256(
+      getHfCacheFilePath(cacheDir, modelId, revision, normFile),
+      expectedHashes[normFile],
+      normFile
+    );
   };
 
   const tLoad0 = performance.now();
